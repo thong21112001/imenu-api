@@ -1,0 +1,6 @@
+export const SYSTEM_DEFAULTS = {
+  PAGE_DEFAULT: 1,
+  LIMIT_DEFAULT: 20,
+  LIMIT_MAX: 100,
+  DATE_FORMAT: 'YYYY-MM-DD HH:mm:ss',
+};
