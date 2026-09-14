@@ -1,14 +1,24 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
 
 export class LoginDto {
-  @ApiProperty({ example: 'admin' })
+  @ApiPropertyOptional({ example: 'owner@sample.vn' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Tên đăng nhập không được để trống' })
-  username: string;
+  email?: string;
 
-  @ApiProperty({ example: 'admin123456' })
+  @ApiPropertyOptional({ example: 'admin' })
+  @IsOptional()
+  @IsString()
+  username?: string;
+
+  @ApiProperty({ example: 'Demo@123' })
   @IsString()
   @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
   password: string;
+
+  @ApiPropertyOptional({ example: true, default: true })
+  @IsOptional()
+  @IsBoolean()
+  rememberMe?: boolean;
 }

@@ -52,8 +52,21 @@ export class UsersService {
     return query.exec();
   }
 
-  async findByEmail(email: string): Promise<UserDocument | null> {
-    return this.userModel.findOne({ email: email.toLowerCase() }).exec();
+  async findByEmail(email: string, selectPassword = false): Promise<UserDocument | null> {
+    const query = this.userModel.findOne({ email: email.toLowerCase() });
+    if (selectPassword) query.select('+password');
+    return query.exec();
+  }
+
+  async findByEmailOrUsername(identifier: string, selectPassword = false): Promise<UserDocument | null> {
+    const query = this.userModel.findOne({
+      $or: [
+        { email: identifier.toLowerCase() },
+        { username: identifier.toLowerCase() },
+      ],
+    });
+    if (selectPassword) query.select('+password');
+    return query.exec();
   }
 
   async findById(id: string): Promise<UserDocument> {

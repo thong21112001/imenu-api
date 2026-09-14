@@ -23,9 +23,12 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type, Accept, Authorization, X-Requested-With',
   });
 
-  // 2. Chuan hoa URL path (Xoa double slashes neu co)
+  // 2. Chuan hoa URL path va rewrite /api/v1/* thanh /api/*
   app.use((req: any, _res: any, next: any) => {
     req.url = req.url.replace(/\/\//g, '/');
+    if (req.url.startsWith('/api/v1/')) {
+      req.url = req.url.replace('/api/v1/', '/api/');
+    }
     next();
   });
 
@@ -46,7 +49,7 @@ async function bootstrap() {
   app.use(morganLog.middleware());
 
   // 6. Global API Prefix
-  app.setGlobalPrefix('api/v1', {
+  app.setGlobalPrefix('api', {
     exclude: ['health', ''],
   });
 

@@ -1,8 +1,8 @@
-import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
+import { RegisterRestaurantDto } from './dto/register-restaurant.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { Public } from '../../shared/common/decorators/public.decorator';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
@@ -16,6 +16,7 @@ export class AuthController {
 
   @Public()
   @ApiOperation({ summary: 'Đăng nhập vào hệ thống iMenu' })
+  @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     const data = await this.authService.login(loginDto);
@@ -23,15 +24,16 @@ export class AuthController {
   }
 
   @Public()
-  @ApiOperation({ summary: 'Đăng ký tài khoản chủ nhà hàng mới' })
+  @ApiOperation({ summary: 'Đăng ký nhà hàng mới kèm tài khoản chủ quán' })
   @Post('register')
-  async register(@Body() registerDto: RegisterDto) {
+  async register(@Body() registerDto: RegisterRestaurantDto) {
     const data = await this.authService.register(registerDto);
-    return new OkResponse({ message: 'Đăng ký tài khoản thành công', data });
+    return new OkResponse({ message: 'Đăng ký nhà hàng thành công', data });
   }
 
   @Public()
   @ApiOperation({ summary: 'Làm mới Access Token bằng Refresh Token' })
+  @HttpCode(HttpStatus.OK)
   @Post('refresh')
   async refresh(@Body() dto: RefreshTokenDto) {
     const data = await this.authService.refreshToken(dto);
@@ -39,9 +41,19 @@ export class AuthController {
   }
 
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Lấy thông tin tài khoản hiện tại' })
+  @ApiOperation({ summary: 'Đăng xuất khỏi hệ thống' })
+  @HttpCode(HttpStatus.OK)
+  @Post('logout')
+  async logout(@CurrentUser() user: JwtUser) {
+    const data = await this.authService.logout(user);
+    return new OkResponse({ message: 'Đăng xuất thành công', data });
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Lấy thông tin tài khoản và quyền hạn hiện tại' })
   @Get('me')
   async getProfile(@CurrentUser() user: JwtUser) {
-    return new OkResponse({ data: user });
+    const data = await this.authService.getProfile(user);
+    return new OkResponse({ message: 'Lấy thông tin tài khoản thành công', data });
   }
 }

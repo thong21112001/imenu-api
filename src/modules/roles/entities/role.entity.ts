@@ -27,7 +27,7 @@ export class Role {
   permissions: PermissionSubdocument[];
 
   // Khoa vai tro theo nha hang (null neu la vai tro toan he thong)
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: false, index: true })
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: false })
   restaurantId?: Types.ObjectId;
 }
 
