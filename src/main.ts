@@ -58,7 +58,7 @@ async function bootstrap() {
   SwaggerModule.setup(ENV.SWAGGER_PATH, app, document, swaggerOption);
   SwaggerModule.setup('api/v1/' + ENV.SWAGGER_PATH, app, document, swaggerOption);
 
-  // 8. Auto-seed 6 vai tro he thong mac dinh & Super Admin
+  // 8. Đảm bảo vai trò hệ thống & Super Admin sẵn sàng
   try {
     const rolesService = app.get(RolesService);
     await rolesService.seedDefaultRoles();
@@ -66,7 +66,7 @@ async function bootstrap() {
     const usersService = app.get(UsersService);
     await usersService.initAdmin();
   } catch (err: any) {
-    logger.error('Lỗi khi seed dữ liệu ban đầu:', err.message);
+    logger.error('Lỗi khi khởi tạo dữ liệu hệ thống ban đầu:', err.message);
   }
 
   // 9. Khoi dong HTTP Server

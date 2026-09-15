@@ -47,6 +47,7 @@ Bộ kiểm thử này thực hiện kiểm tra tích hợp toàn diện từ đ
 3. **Dependencies**: Đã chạy `npm install` tại thư mục gốc `imenu-api`.
 
 ---
+---
 
 ## 4. 🚀 Hướng Dẫn Chạy Kiểm Thử
 
@@ -62,9 +63,27 @@ npm run test:phase2
 npx ts-node tests/phase-02-auth-restaurant/test.ts
 ```
 
+> [!TIP]
+> **Chính sách Không Phát Sinh Rác (Zero-Garbage Policy)**:
+> Bộ test tự động kết nối vào Database kiểm thử độc lập (`imenu-db-test`) và kích hoạt cơ chế `finally { await teardown(); }` dọn dẹp sạch sẽ 100% người dùng, nhà hàng và chi nhánh được tạo ra ngay sau khi hoàn thành. Database phát triển (`imenu-db`) hoàn toàn được giữ nguyên vẹn.
+
 ---
 
-## 5. 🔍 Kết Quả Kỳ Vọng Khi Chạy Thành Công
+## 5. 🌱 Cơ Chế Khởi Tạo Dữ Liệu Demo (Seed CLI)
+
+Hệ thống cung cấp lệnh CLI Seeder riêng biệt chạy độc lập (idempotent - an toàn, không sinh trùng lặp bản ghi):
+
+```bash
+# Seed dữ liệu mặc định (Roles, Admin, Demo Restaurant & Owner)
+npm run seed
+
+# Dọn dẹp dữ liệu demo cũ và seed lại mới
+npm run seed:clean
+```
+
+---
+
+## 6. 🔍 Kết Quả Kỳ Vọng Khi Chạy Thành Công
 
 ```text
 ====================================================
@@ -72,7 +91,7 @@ npx ts-node tests/phase-02-auth-restaurant/test.ts
 ====================================================
 
 Khởi động test server trên port 3099 ...
-Test server đã sẵn sàng!
+Test server đã sẵn sàng! (DB: imenu-db-test)
 
   ✔ PASS: 1. Đăng ký nhà hàng mới kèm chủ quán (POST /auth/register) (Slug: bep-nha-sai-gon)
   ✔ PASS: 2. Chặn đăng ký trùng email (409 Conflict)
@@ -90,11 +109,14 @@ Test server đã sẵn sàng!
 ----------------------------------------------------
 Kết quả kiểm thử: 12 passed, 0 failed
 ----------------------------------------------------
+
+[Teardown] Tự động dọn dẹp tài nguyên kiểm thử...
+  ✔ Đã dọn dẹp sạch sẽ toàn bộ dữ liệu test (Zero Garbage)
 ```
 
 ---
 
-## 6. 🛠️ Khắc Phục Lỗi Thường Gặp (Troubleshooting)
+## 7. 🛠️ Khắc Phục Lỗi Thường Gặp (Troubleshooting)
 
 - **Lỗi không kết nối được MongoDB (`MongoServerSelectionError`)**:
   - Hãy kiểm tra xem service MongoDB đã được khởi động chưa (`Get-Process mongod` hoặc `docker ps`).

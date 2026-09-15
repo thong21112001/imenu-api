@@ -1,6 +1,9 @@
 import 'dotenv/config';
+process.env.MONGODB_URL = process.env.TEST_MONGODB_URL || 'mongodb://localhost:27017/imenu-db-test';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, INestApplication } from '@nestjs/common';
+import { getConnectionToken } from '@nestjs/mongoose';
+import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 
@@ -49,12 +52,14 @@ async function main() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.setGlobalPrefix('api');
 
+  const connection: Connection = app.get(getConnectionToken());
+
   // Seed default roles
   const rolesService = app.get(RolesService);
   await rolesService.seedDefaultRoles();
 
   await app.listen(TEST_PORT);
-  console.log('Test server đã sẵn sàng!\n');
+  console.log(`Test server đã sẵn sàng! (DB: ${colors.cyan}imenu-db-test${colors.reset})\n`);
 
   let passed = 0;
   let failed = 0;
@@ -66,8 +71,9 @@ async function main() {
   let createdRestaurantId = '';
   let createdBranchId = '';
 
-  // 1. Register Happy Path
   try {
+    // 1. Register Happy Path
+    try {
     const res = await request('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
@@ -392,11 +398,29 @@ async function main() {
     failed++;
   }
 
-  console.log(`\n----------------------------------------------------`);
-  console.log(`Kết quả kiểm thử: ${colors.green}${passed} passed${colors.reset}, ${failed > 0 ? colors.red : colors.green}${failed} failed${colors.reset}`);
-  console.log(`----------------------------------------------------\n`);
+    console.log(`\n----------------------------------------------------`);
+    console.log(`Kết quả kiểm thử: ${colors.green}${passed} passed${colors.reset}, ${failed > 0 ? colors.red : colors.green}${failed} failed${colors.reset}`);
+    console.log(`----------------------------------------------------\n`);
+  } finally {
+    console.log(`${colors.cyan}[Teardown] Tự động dọn dẹp tài nguyên kiểm thử...${colors.reset}`);
+    try {
+      if (createdRestaurantId) {
+        await connection.collection('restaurants').deleteOne({ _id: new Types.ObjectId(createdRestaurantId) });
+      }
+      if (testEmail) {
+        await connection.collection('users').deleteOne({ email: testEmail });
+      }
+      // Dọn dẹp quét sạch bất kỳ bản ghi thử nghiệm nào
+      await connection.collection('users').deleteMany({ email: /^test\.owner\./i });
+      await connection.collection('restaurants').deleteMany({ slug: /^bep-nha-sai-gon-/i });
+      console.log(`  ${colors.green}✔ Đã dọn dẹp sạch sẽ toàn bộ dữ liệu test (Zero Garbage)${colors.reset}\n`);
+    } catch (cleanErr: any) {
+      console.warn('Cảnh báo khi dọn dẹp dữ liệu test:', cleanErr.message);
+    }
 
-  await app.close();
+    await app.close();
+  }
+
   process.exit(failed > 0 ? 1 : 0);
 }
 

@@ -46,6 +46,32 @@ export class UsersService {
     }
   }
 
+  async createDemoUser(userData: {
+    username: string;
+    email: string;
+    passwordHash: string;
+    fullName: string;
+    phone: string;
+    roleId: string;
+    restaurantId: string;
+    branchId?: string;
+    branchName?: string;
+  }): Promise<UserDocument> {
+    return this.userModel.create({
+      username: userData.username.toLowerCase(),
+      email: userData.email.toLowerCase(),
+      password: userData.passwordHash,
+      fullName: userData.fullName,
+      phone: userData.phone,
+      role: userData.roleId,
+      restaurantId: userData.restaurantId,
+      branchId: userData.branchId,
+      branchName: userData.branchName,
+      isRoleActive: true,
+      status: 'ACTIVE',
+    });
+  }
+
   async findByUsername(username: string, selectPassword = false): Promise<UserDocument | null> {
     const query = this.userModel.findOne({ username: username.toLowerCase() });
     if (selectPassword) query.select('+password');

@@ -47,6 +47,7 @@ This automated End-to-End (E2E) integration test suite verifies the complete fea
 3. **Dependencies**: Installed via `npm install` in `imenu-api`.
 
 ---
+---
 
 ## 4. 🚀 How to Execute the Tests
 
@@ -62,9 +63,27 @@ npm run test:phase2
 npx ts-node tests/phase-02-auth-restaurant/test.ts
 ```
 
+> [!TIP]
+> **Zero-Garbage Policy & Test Isolation**:
+> The test runner automatically routes database operations to an isolated test database (`imenu-db-test`) and activates a `finally { await teardown(); }` lifecycle hook that purges 100% of test users, restaurants, and branches upon completion. The development database (`imenu-db`) remains pristine.
+
 ---
 
-## 5. 🔍 Expected Console Output
+## 5. 🌱 Database Seeder CLI (`npm run seed`)
+
+A dedicated, idempotent CLI seeder is available for environment bootstrapping:
+
+```bash
+# Seed default system roles, super admin, and demo restaurant & owner
+npm run seed
+
+# Clean existing demo data and re-seed from scratch
+npm run seed:clean
+```
+
+---
+
+## 6. 🔍 Expected Console Output
 
 ```text
 ====================================================
@@ -72,7 +91,7 @@ npx ts-node tests/phase-02-auth-restaurant/test.ts
 ====================================================
 
 Khởi động test server trên port 3099 ...
-Test server đã sẵn sàng!
+Test server đã sẵn sàng! (DB: imenu-db-test)
 
   ✔ PASS: 1. Đăng ký nhà hàng mới kèm chủ quán (POST /auth/register) (Slug: bep-nha-sai-gon)
   ✔ PASS: 2. Chặn đăng ký trùng email (409 Conflict)
@@ -90,11 +109,14 @@ Test server đã sẵn sàng!
 ----------------------------------------------------
 Kết quả kiểm thử: 12 passed, 0 failed
 ----------------------------------------------------
+
+[Teardown] Tự động dọn dẹp tài nguyên kiểm thử...
+  ✔ Đã dọn dẹp sạch sẽ toàn bộ dữ liệu test (Zero Garbage)
 ```
 
 ---
 
-## 6. 🛠️ Troubleshooting
+## 7. 🛠️ Troubleshooting
 
 - **MongoDB Connection Error (`MongoServerSelectionError`)**:
   - Verify that the MongoDB service is active (`Get-Process mongod` on PowerShell or `docker ps`).

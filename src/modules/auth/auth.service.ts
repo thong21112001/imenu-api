@@ -13,7 +13,7 @@ import { RestaurantsService } from '../restaurants/restaurants.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterRestaurantDto } from './dto/register-restaurant.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { comparePassword } from '../../shared/common/utils/password.util';
+import { comparePassword, hashPassword } from '../../shared/common/utils/password.util';
 import { JwtPayload } from './interface/jwtPayload';
 import { JwtUser } from './interface/jwtUser';
 import { JwtConstants } from '../../shared/common/constants/envConstants';
@@ -142,7 +142,9 @@ export class AuthService {
 
     const refreshExpiry = loginDto.rememberMe ? '30d' : (JwtConstants.refreshExpiresIn as any) || '7d';
 
-    const accessToken = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: (JwtConstants.expiresIn as any) || '1d',
+    });
     const refreshToken = this.jwtService.sign(payload, {
       expiresIn: refreshExpiry,
     });
@@ -223,7 +225,9 @@ export class AuthService {
       branchId: mainBranchId.toString(),
     };
 
-    const accessToken = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: (JwtConstants.expiresIn as any) || '1d',
+    });
     const refreshToken = this.jwtService.sign(payload, {
       expiresIn: (JwtConstants.refreshExpiresIn as any) || '7d',
     });
@@ -271,7 +275,9 @@ export class AuthService {
         branchId: user.branchId,
       };
 
-      const accessToken = this.jwtService.sign(payload);
+      const accessToken = this.jwtService.sign(payload, {
+        expiresIn: (JwtConstants.expiresIn as any) || '1d',
+      });
       return { accessToken };
     } catch {
       throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
@@ -304,5 +310,80 @@ export class AuthService {
 
   async logout(user?: any) {
     return { success: true, message: 'Đăng xuất thành công' };
+  }
+
+  /**
+   * Tự động khởi tạo dữ liệu mẫu Nhà Hàng "Bếp Nhà" và tài khoản chủ quán:
+   * Email: owner@sample.vn / Mật khẩu: Demo@123
+   */
+  async seedDemoOwner(): Promise<void> {
+    try {
+      const demoEmail = 'owner@sample.vn';
+      const existingUser = await this.usersService.findByEmail(demoEmail);
+      if (existingUser) {
+        return;
+      }
+
+      let restaurant = await this.restaurantsService.findBySlug('bep-nha');
+      const mainBranchId = new Types.ObjectId();
+      const branchName = 'Chi nhánh Quận 1';
+
+      if (!restaurant) {
+        restaurant = await this.restaurantsService.create({
+          name: 'Bếp Nhà - Ẩm Thực Việt',
+          phone: '0901234567',
+          address: '123 Đồng Khởi, Bến Nghé, Quận 1, TP.HCM',
+          tagline: 'Hương vị gia đình, trọn vẹn từng khoảnh khắc',
+          bankAccount: {
+            bankId: 'MB',
+            bankName: 'MBBank',
+            accountNo: '0901234567',
+            accountName: 'NGUYEN MINH AN',
+            template: 'compact',
+          },
+          isOpen: true,
+          openingHours: '08:00 - 22:30',
+          plan: 'Pro',
+          branches: [
+            {
+              _id: mainBranchId,
+              name: branchName,
+              address: '123 Đồng Khởi, Bến Nghé, Quận 1, TP.HCM',
+              phone: '0901234567',
+              isMainBranch: true,
+              isActive: true,
+            } as any,
+          ],
+        });
+      }
+
+      const branch =
+        restaurant.branches && restaurant.branches.length > 0
+          ? restaurant.branches[0]
+          : { _id: mainBranchId, name: branchName };
+
+      const ownerRole = await this.rolesService.findBySlug('restaurant_admin');
+      if (!ownerRole) {
+        return;
+      }
+
+      const hashedPassword = await hashPassword('Demo@123');
+
+      await this.usersService.createDemoUser({
+        username: 'owner',
+        email: demoEmail,
+        passwordHash: hashedPassword,
+        fullName: 'Nguyễn Minh An',
+        phone: '0901234567',
+        roleId: (ownerRole as any)._id.toString(),
+        restaurantId: (restaurant as any)._id.toString(),
+        branchId: (branch as any)._id.toString(),
+        branchName: (branch as any).name,
+      });
+
+      this.logger.log('[Seed] Đã tạo tài khoản demo chủ quán (owner@sample.vn / Demo@123)');
+    } catch (err: any) {
+      this.logger.warn(`Không thể seed tài khoản demo chủ quán: ${err.message}`);
+    }
   }
 }
