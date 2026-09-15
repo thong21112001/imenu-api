@@ -21,6 +21,8 @@ import { TablesModule } from './modules/tables/tables.module';
 import { MenuModule } from './modules/menu/menu.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { BillsModule } from './modules/bills/bills.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { BillsModule } from './modules/bills/bills.module';
     MenuModule,
     OrdersModule,
     BillsModule,
+    DashboardModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -3,45 +3,54 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
-import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
+import { CreateBranchDto, UpdateBranchDto, CloseBranchDto, DeactivateBranchDto } from './dto/branch.dto';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { OkResponse } from '../../shared/common/dto/okResponse';
 import { JwtUser } from '../auth/interface/jwtUser';
+import { RequirePermissions } from '../../shared/common/decorators/require-permissions.decorator';
+import { ActionType, ResourceType } from '../../shared/common/constants/permission.const';
+import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
 
 @ApiTags('Branches')
 @ApiBearerAuth('JWT-auth')
+@UseGuards(PermissionsGuard)
 @Controller('branches')
 export class BranchesController {
   constructor(private readonly branchesService: BranchesService) {}
 
   @ApiOperation({ summary: 'Lấy danh sách chi nhánh của nhà hàng' })
+  @RequirePermissions(ResourceType.BRANCH, ActionType.VIEW)
   @Get()
   async findAll(@CurrentUser() user: JwtUser) {
     if (!user.restaurantId) {
       throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
     }
-    const data = await this.branchesService.findAll(user.restaurantId);
+    const data = await this.branchesService.findAll(user.restaurantId, user);
     return new OkResponse({ message: 'Lấy danh sách chi nhánh thành công', data });
   }
 
   @ApiOperation({ summary: 'Lấy chi tiết một chi nhánh' })
+  @RequirePermissions(ResourceType.BRANCH, ActionType.VIEW)
   @Get(':id')
   async findOne(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     if (!user.restaurantId) {
       throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
     }
-    const data = await this.branchesService.findById(user.restaurantId, id);
+    const data = await this.branchesService.findById(user.restaurantId, id, user);
     return new OkResponse({ message: 'Lấy chi tiết chi nhánh thành công', data });
   }
 
-  @ApiOperation({ summary: 'Tạo chi nhánh mới' })
+  @ApiOperation({ summary: 'Tạo chi nhánh mới (Chỉ quản trị chi nhánh chính)' })
+  @RequirePermissions(ResourceType.BRANCH, ActionType.CREATE)
   @Post()
   async create(
     @CurrentUser() user: JwtUser,
@@ -50,11 +59,12 @@ export class BranchesController {
     if (!user.restaurantId) {
       throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
     }
-    const data = await this.branchesService.create(user.restaurantId, dto);
+    const data = await this.branchesService.create(user.restaurantId, dto, user);
     return new OkResponse({ message: 'Tạo chi nhánh mới thành công', data });
   }
 
-  @ApiOperation({ summary: 'Cập nhật thông tin chi nhánh' })
+  @ApiOperation({ summary: 'Cập nhật thông tin chi nhánh (Chỉ quản trị chi nhánh chính)' })
+  @RequirePermissions(ResourceType.BRANCH, ActionType.UPDATE)
   @Put(':id')
   async update(
     @CurrentUser() user: JwtUser,
@@ -64,17 +74,62 @@ export class BranchesController {
     if (!user.restaurantId) {
       throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
     }
-    const data = await this.branchesService.update(user.restaurantId, id, dto);
+    const data = await this.branchesService.update(user.restaurantId, id, dto, user);
     return new OkResponse({ message: 'Cập nhật chi nhánh thành công', data });
   }
 
-  @ApiOperation({ summary: 'Xóa chi nhánh' })
+  @ApiOperation({ summary: 'Tạm đóng chi nhánh (Chỉ quản trị chi nhánh chính)' })
+  @RequirePermissions(ResourceType.BRANCH, ActionType.CONFIRM)
+  @Patch(':id/close')
+  async close(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() dto: CloseBranchDto,
+  ) {
+    if (!user.restaurantId) {
+      throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
+    }
+    const data = await this.branchesService.closeBranch(user.restaurantId, id, dto, user);
+    return new OkResponse({ message: 'Tạm đóng chi nhánh thành công', data });
+  }
+
+  @ApiOperation({ summary: 'Mở lại chi nhánh đang tạm đóng (Chỉ quản trị chi nhánh chính)' })
+  @RequirePermissions(ResourceType.BRANCH, ActionType.CONFIRM)
+  @Patch(':id/reopen')
+  async reopen(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+  ) {
+    if (!user.restaurantId) {
+      throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
+    }
+    const data = await this.branchesService.reopenBranch(user.restaurantId, id, user);
+    return new OkResponse({ message: 'Mở lại chi nhánh thành công', data });
+  }
+
+  @ApiOperation({ summary: 'Ngừng hoạt động vĩnh viễn chi nhánh (Chỉ quản trị chi nhánh chính)' })
+  @RequirePermissions(ResourceType.BRANCH, ActionType.CONFIRM)
+  @Patch(':id/deactivate')
+  async deactivate(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Body() dto: DeactivateBranchDto,
+  ) {
+    if (!user.restaurantId) {
+      throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
+    }
+    const data = await this.branchesService.deactivateBranch(user.restaurantId, id, dto, user);
+    return new OkResponse({ message: 'Ngừng hoạt động chi nhánh thành công', data });
+  }
+
+  @ApiOperation({ summary: 'Xóa chi nhánh (Chỉ xóa nếu chưa có đơn hàng lịch sử)' })
+  @RequirePermissions(ResourceType.BRANCH, ActionType.DELETE)
   @Delete(':id')
   async delete(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     if (!user.restaurantId) {
       throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
     }
-    const result = await this.branchesService.delete(user.restaurantId, id);
+    const result = await this.branchesService.delete(user.restaurantId, id, user);
     return new OkResponse(result);
   }
 }

@@ -11,4 +11,5 @@ export interface JwtUser {
   restaurantId?: string;
   branchId?: string;
   branchName?: string;
+  isMainBranch?: boolean;
 }

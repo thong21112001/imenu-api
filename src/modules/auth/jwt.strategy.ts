@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { JwtConstants } from '../../shared/common/constants/envConstants';
 import { UsersService } from '../users/users.service';
+import { RestaurantsService } from '../restaurants/restaurants.service';
 import { JwtPayload } from './interface/jwtPayload';
 import { JwtUser } from './interface/jwtUser';
 
@@ -12,7 +13,10 @@ import { JwtUser } from './interface/jwtUser';
  */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly usersService: UsersService) {
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly restaurantsService: RestaurantsService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -26,6 +30,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Tai khoan khong ton tai hoac da bi khoa');
     }
 
+    let isMainBranch = false;
+    const roleSlug = (user.role as any)?.slug?.toLowerCase() || '';
+
+    if (roleSlug === 'system_admin' || roleSlug === 'super_admin' || roleSlug === 'restaurant_admin') {
+      isMainBranch = true;
+    } else if (user.restaurantId && user.branchId) {
+      try {
+        const restaurant = await this.restaurantsService.findById(user.restaurantId.toString());
+        const branch = restaurant?.branches?.find(
+          (b: any) => b._id.toString() === user.branchId || b.id === user.branchId,
+        );
+        isMainBranch = !!branch?.isMainBranch;
+      } catch {
+        isMainBranch = false;
+      }
+    }
+
     return {
       userId: (user as any)._id.toString(),
       username: user.username,
@@ -37,6 +58,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       restaurantId: user.restaurantId ? (user.restaurantId as any).toString() : undefined,
       branchId: user.branchId,
       branchName: user.branchName,
+      isMainBranch,
     };
   }
 }

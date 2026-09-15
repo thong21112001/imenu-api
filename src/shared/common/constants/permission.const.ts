@@ -12,6 +12,7 @@ export enum ResourceType {
   REPORT = 'REPORT',           // Bao cao doanh thu & thong ke
   STAFF = 'STAFF',             // Nhan vien & phan quyen
   SETTING = 'SETTING',         // Cai dat nha hang & chi nhanh
+  BRANCH = 'BRANCH',           // Quan ly chi nhanh
   ROLE = 'ROLE',               // Quan ly vai tro
   ACTIVITY_LOG = 'ACTIVITY_LOG',// Nhat ky kiem toan he thong
 }
@@ -30,7 +31,7 @@ export enum ActionType {
 }
 
 /**
- * Danh muc 17 quyen chuan tuong ung truc tiep voi UI iMenu
+ * Danh muc quyen chuan tuong ung truc tiep voi UI iMenu
  */
 export const IMENU_PERMISSIONS = {
   // Dashboard
@@ -64,10 +65,18 @@ export const IMENU_PERMISSIONS = {
   // Bao cao
   REPORT_VIEW: { id: 'perm-rep-view', resource: ResourceType.REPORT, action: ActionType.VIEW, name: 'Xem bao cao doanh thu' },
   REPORT_EXPORT: { id: 'perm-rep-export', resource: ResourceType.REPORT, action: ActionType.EXPORT, name: 'Xuat file bao cao doanh thu' },
+  REPORT_CONSOLIDATED: { id: 'perm-rep-consolidated', resource: ResourceType.REPORT, action: ActionType.CONFIRM, name: 'Xem bao cao doanh thu chuoi hop nhat' },
 
   // Nhan vien & Phan quyen
   STAFF_VIEW: { id: 'perm-staff-view', resource: ResourceType.STAFF, action: ActionType.VIEW, name: 'Xem danh sach nhan vien' },
   STAFF_EDIT: { id: 'perm-staff-edit', resource: ResourceType.STAFF, action: ActionType.UPDATE, name: 'Them, sua nhan vien & phan quyen' },
+  STAFF_TRANSFER: { id: 'perm-staff-transfer', resource: ResourceType.STAFF, action: ActionType.CONFIRM, name: 'Dieu chuyen chi nhanh nhan vien' },
+
+  // Chi nhanh (Branch)
+  BRANCH_VIEW: { id: 'perm-branch-view', resource: ResourceType.BRANCH, action: ActionType.VIEW, name: 'Xem danh sach & chi tiet chi nhanh' },
+  BRANCH_CREATE: { id: 'perm-branch-create', resource: ResourceType.BRANCH, action: ActionType.CREATE, name: 'Them chi nhanh moi' },
+  BRANCH_EDIT: { id: 'perm-branch-edit', resource: ResourceType.BRANCH, action: ActionType.UPDATE, name: 'Chinh sua thong tin chi nhanh' },
+  BRANCH_LIFECYCLE: { id: 'perm-branch-lifecycle', resource: ResourceType.BRANCH, action: ActionType.CONFIRM, name: 'Dong / mo / ngung hoat dong chi nhanh' },
 
   // Cai dat
   SETTING_VIEW: { id: 'perm-set-view', resource: ResourceType.SETTING, action: ActionType.VIEW, name: 'Xem cai dat nha hang' },

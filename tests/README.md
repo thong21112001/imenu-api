@@ -15,9 +15,10 @@ tests/
 ├── README.md                      # Mục lục & hướng dẫn tổng quan (Tiếng Việt)
 ├── README_en.md                   # Master testing documentation (English)
 │
-├── phase-02-auth-restaurant/       # [HOÀN THÀNH] Phase 2: Xác thực, Nhà hàng & Chi nhánh
-│   ├── test.ts                    # Kịch bản E2E kiểm thử 12 ca nghiệp vụ
-│   ├── README.md                  # Hướng dẫn kiểm thử Phase 2 (Tiếng Việt)
+├── phase-02-auth-restaurant/       # [HOÀN THÀNH] Phase 2: Xác thực, Nhà hàng & Multi-Branch
+│   ├── test.ts                    # Kịch bản E2E Phần 1: Auth, Restaurant & Branch CRUD (12 ca)
+│   ├── test-multi-branch.ts       # Kịch bản E2E Phần 2: Multi-Branch Lifecycle & Isolation (10 ca)
+│   ├── README.md                  # Hướng dẫn kiểm thử Phase 2 chi tiết (Tiếng Việt)
 │   └── README_en.md               # Detailed Phase 2 test guide (English)
 │
 ├── phase-03-staff-rbac/           # [LỘ TRÌNH] Phase 3: Nhân sự & Ma trận phân quyền
@@ -59,10 +60,12 @@ tests/
 
 Các lệnh kiểm thử được đăng ký trực tiếp trong `package.json` của `imenu-api`:
 
-| Phase | Lệnh NPM | Lệnh Trực Tiếp | Trạng Thái |
-| :--- | :--- | :--- | :---: |
-| **Phase 2: Auth + Restaurant** | `npm run test:phase2` | `npx ts-node tests/phase-02-auth-restaurant/test.ts` | **12/12 PASSED** |
-| **Toàn bộ hệ thống (All)** | `npm test` | `jest` | Đang cấu hình |
+| Phase | Lệnh NPM | Lệnh Trực Tiếp | Trọng Tâm | Trạng Thái |
+| :--- | :--- | :--- | :--- | :---: |
+| **Phase 2 - Phần 1** | `npm run test:phase2` | `npx ts-node tests/phase-02-auth-restaurant/test.ts` | Auth, Restaurant & Branch CRUD | **12/12 PASSED** |
+| **Phase 2 - Phần 2** | `npm run test:multibranch` | `npx ts-node tests/phase-02-auth-restaurant/test-multi-branch.ts` | Multi-Branch Lifecycle & Isolation | **10/10 PASSED** |
+| **Phase 2 - Toàn bộ** | `npm run test:phase2:all` | Chạy tuần tự cả 2 file trên | 22 kịch bản tích hợp Phase 2 | **22/22 PASSED** |
+| **Toàn bộ hệ thống** | `npm test` | `jest` | Unit tests toàn dự án | Đang cấu hình |
 
 ---
 

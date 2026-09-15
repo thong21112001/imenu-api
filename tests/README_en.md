@@ -15,8 +15,9 @@ tests/
 ├── README.md                      # Master index & guidelines (Vietnamese)
 ├── README_en.md                   # Master test documentation (English)
 │
-├── phase-02-auth-restaurant/       # [COMPLETED] Phase 2: Auth, Restaurant & Branches
-│   ├── test.ts                    # E2E test runner (12 scenarios)
+├── phase-02-auth-restaurant/       # [COMPLETED] Phase 2: Auth, Restaurant & Multi-Branch
+│   ├── test.ts                    # E2E runner Part 1: Auth, Restaurant & Branch CRUD (12 cases)
+│   ├── test-multi-branch.ts       # E2E runner Part 2: Multi-Branch Lifecycle & Isolation (10 cases)
 │   ├── README.md                  # Vietnamese documentation
 │   └── README_en.md               # English documentation
 │
@@ -59,10 +60,12 @@ tests/
 
 Convenient test scripts are registered directly in `imenu-api/package.json`:
 
-| Phase | NPM Script | Direct Command | Status |
-| :--- | :--- | :--- | :---: |
-| **Phase 2: Auth + Restaurant** | `npm run test:phase2` | `npx ts-node tests/phase-02-auth-restaurant/test.ts` | **12/12 PASSED** |
-| **Complete System (All)** | `npm test` | `jest` | In setup |
+| Phase | NPM Script | Direct Command | Scope | Status |
+| :--- | :--- | :--- | :--- | :---: |
+| **Phase 2 - Part 1** | `npm run test:phase2` | `npx ts-node tests/phase-02-auth-restaurant/test.ts` | Auth, Restaurant & Branch CRUD | **12/12 PASSED** |
+| **Phase 2 - Part 2** | `npm run test:multibranch` | `npx ts-node tests/phase-02-auth-restaurant/test-multi-branch.ts` | Multi-Branch Lifecycle & Isolation | **10/10 PASSED** |
+| **Phase 2 - Complete** | `npm run test:phase2:all` | Sequentially runs both test files above | All 22 Phase 2 Integration Tests | **22/22 PASSED** |
+| **Complete System (All)** | `npm test` | `jest` | Global unit tests | In setup |
 
 ---
 

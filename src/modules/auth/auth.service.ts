@@ -111,6 +111,27 @@ export class AuthService {
     return null;
   }
 
+  private async checkIsMainBranch(
+    restaurantId?: string,
+    branchId?: string,
+    roleSlug?: string,
+  ): Promise<boolean> {
+    const slug = (roleSlug || '').toLowerCase();
+    if (slug === 'system_admin' || slug === 'super_admin' || slug === 'restaurant_admin') {
+      return true;
+    }
+    if (!restaurantId || !branchId) return false;
+    try {
+      const restaurant = await this.restaurantsService.findById(restaurantId);
+      const branch = restaurant?.branches?.find(
+        (b: any) => b._id.toString() === branchId || b.id === branchId,
+      );
+      return !!branch?.isMainBranch;
+    } catch {
+      return false;
+    }
+  }
+
   async login(loginDto: LoginDto) {
     const identifier = loginDto.email || loginDto.username;
     if (!identifier) {
@@ -151,6 +172,12 @@ export class AuthService {
 
     await this.usersService.updateLastLogin(user._id.toString());
 
+    const isMainBranch = await this.checkIsMainBranch(
+      user.restaurantId?.toString(),
+      user.branchId,
+      roleObj?.slug,
+    );
+
     return {
       user: {
         id: user._id.toString(),
@@ -160,6 +187,7 @@ export class AuthService {
         restaurantId: user.restaurantId ? user.restaurantId.toString() : undefined,
         branchId: user.branchId,
         branchName: user.branchName,
+        isMainBranch,
       },
       permissions,
       accessToken,
@@ -289,6 +317,11 @@ export class AuthService {
     const roleObj = user.role;
     const roleCode = this.getRoleCode(roleObj);
     const permissions = this.resolvePermissions(roleObj);
+    const isMainBranch = await this.checkIsMainBranch(
+      user.restaurantId?.toString(),
+      user.branchId,
+      (roleObj as any)?.slug,
+    );
 
     return {
       user: {
@@ -302,6 +335,7 @@ export class AuthService {
           : undefined,
         branchId: user.branchId,
         branchName: user.branchName,
+        isMainBranch,
         status: user.status,
       },
       permissions,

@@ -59,7 +59,8 @@ export class RolesService {
           { resource: ResourceType.QR_CODE, actions: [ActionType.VIEW, ActionType.CREATE, ActionType.PRINT] },
           { resource: ResourceType.BILL, actions: [ActionType.VIEW, ActionType.PRINT] },
           { resource: ResourceType.REPORT, actions: [ActionType.VIEW, ActionType.EXPORT] },
-          { resource: ResourceType.STAFF, actions: [ActionType.VIEW] },
+          { resource: ResourceType.STAFF, actions: [ActionType.VIEW, ActionType.CREATE, ActionType.UPDATE] },
+          { resource: ResourceType.BRANCH, actions: [ActionType.VIEW] },
         ],
       },
       {
@@ -73,6 +74,7 @@ export class RolesService {
           { resource: ResourceType.POS, actions: [ActionType.VIEW, ActionType.CREATE, ActionType.CONFIRM] },
           { resource: ResourceType.BILL, actions: [ActionType.VIEW, ActionType.PRINT] },
           { resource: ResourceType.MENU, actions: [ActionType.VIEW] },
+          { resource: ResourceType.BRANCH, actions: [ActionType.VIEW] },
         ],
       },
       {
@@ -105,6 +107,11 @@ export class RolesService {
       if (!exists) {
         await this.roleModel.create(roleData);
         this.logger.log(`[Seed] Đã tạo vai trò hệ thống: ${roleData.name} (${roleData.slug})`);
+      } else if (roleData.isSystem) {
+        await this.roleModel.updateOne(
+          { _id: exists._id },
+          { $set: { permissions: roleData.permissions, description: roleData.description } },
+        );
       }
     }
   }

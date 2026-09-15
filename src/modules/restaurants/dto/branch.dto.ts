@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { BranchStatus } from '../entities/branch.schema';
 
 export class CreateBranchDto {
   @ApiProperty({ example: 'Chi nhánh Quận 3' })
@@ -21,6 +22,11 @@ export class CreateBranchDto {
   @IsOptional()
   @IsBoolean()
   isMainBranch?: boolean;
+
+  @ApiPropertyOptional({ enum: BranchStatus, default: BranchStatus.ACTIVE })
+  @IsOptional()
+  @IsEnum(BranchStatus)
+  status?: BranchStatus;
 }
 
 export class UpdateBranchDto {
@@ -43,4 +49,33 @@ export class UpdateBranchDto {
   @IsOptional()
   @IsBoolean()
   isMainBranch?: boolean;
+
+  @ApiPropertyOptional({ enum: BranchStatus })
+  @IsOptional()
+  @IsEnum(BranchStatus)
+  status?: BranchStatus;
+}
+
+export class CloseBranchDto {
+  @ApiPropertyOptional({ example: 'Sửa chữa mặt bằng và bảo dưỡng thiết bị' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @ApiPropertyOptional({ example: false, description: 'Tự động hủy các đơn chưa hoàn tất nếu có' })
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
+}
+
+export class DeactivateBranchDto {
+  @ApiPropertyOptional({ example: 'Ngừng kinh doanh chi nhánh vĩnh viễn' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @ApiPropertyOptional({ example: false, description: 'Tự động xử lý các đơn đang mở' })
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
 }
