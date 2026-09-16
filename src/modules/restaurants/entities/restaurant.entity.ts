@@ -55,7 +55,7 @@ export class Restaurant {
   @Prop({ type: [BranchSchema], default: [] })
   branches: Branch[];
 
-  @Prop({ default: 'Basic', enum: ['Basic', 'Standard', 'Advanced'] })
+  @Prop({ default: 'Basic', enum: ['Basic', 'Standard', 'Advanced', 'Pro', 'Enterprise'] })
   plan: string;
 }
 

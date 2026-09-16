@@ -70,6 +70,13 @@ export class RestaurantsService implements OnApplicationBootstrap {
               changed = true;
             }
           });
+
+          // Dam bao plan luon hop le
+          const validPlans = ['Basic', 'Standard', 'Advanced', 'Pro', 'Enterprise'];
+          if (!restaurant.plan || !validPlans.includes(restaurant.plan)) {
+            restaurant.plan = 'Basic';
+            changed = true;
+          }
         }
 
         if (changed) {
