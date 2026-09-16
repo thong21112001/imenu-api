@@ -19,6 +19,7 @@ import { JwtUser } from '../auth/interface/jwtUser';
 import { RequirePermissions } from '../../shared/common/decorators/require-permissions.decorator';
 import { ActionType, ResourceType } from '../../shared/common/constants/permission.const';
 import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
+import { DemoBlockGuard } from '../../shared/common/guards/demo-block.guard';
 
 @ApiTags('Branches')
 @ApiBearerAuth('JWT-auth')
@@ -51,6 +52,7 @@ export class BranchesController {
 
   @ApiOperation({ summary: 'Tạo chi nhánh mới (Chỉ quản trị chi nhánh chính)' })
   @RequirePermissions(ResourceType.BRANCH, ActionType.CREATE)
+  @UseGuards(DemoBlockGuard)
   @Post()
   async create(
     @CurrentUser() user: JwtUser,
@@ -65,6 +67,7 @@ export class BranchesController {
 
   @ApiOperation({ summary: 'Cập nhật thông tin chi nhánh (Chỉ quản trị chi nhánh chính)' })
   @RequirePermissions(ResourceType.BRANCH, ActionType.UPDATE)
+  @UseGuards(DemoBlockGuard)
   @Put(':id')
   async update(
     @CurrentUser() user: JwtUser,
@@ -80,6 +83,7 @@ export class BranchesController {
 
   @ApiOperation({ summary: 'Tạm đóng chi nhánh (Chỉ quản trị chi nhánh chính)' })
   @RequirePermissions(ResourceType.BRANCH, ActionType.CONFIRM)
+  @UseGuards(DemoBlockGuard)
   @Patch(':id/close')
   async close(
     @CurrentUser() user: JwtUser,
@@ -95,6 +99,7 @@ export class BranchesController {
 
   @ApiOperation({ summary: 'Mở lại chi nhánh đang tạm đóng (Chỉ quản trị chi nhánh chính)' })
   @RequirePermissions(ResourceType.BRANCH, ActionType.CONFIRM)
+  @UseGuards(DemoBlockGuard)
   @Patch(':id/reopen')
   async reopen(
     @CurrentUser() user: JwtUser,
@@ -109,6 +114,7 @@ export class BranchesController {
 
   @ApiOperation({ summary: 'Ngừng hoạt động vĩnh viễn chi nhánh (Chỉ quản trị chi nhánh chính)' })
   @RequirePermissions(ResourceType.BRANCH, ActionType.CONFIRM)
+  @UseGuards(DemoBlockGuard)
   @Patch(':id/deactivate')
   async deactivate(
     @CurrentUser() user: JwtUser,
@@ -124,6 +130,7 @@ export class BranchesController {
 
   @ApiOperation({ summary: 'Xóa chi nhánh (Chỉ xóa nếu chưa có đơn hàng lịch sử)' })
   @RequirePermissions(ResourceType.BRANCH, ActionType.DELETE)
+  @UseGuards(DemoBlockGuard)
   @Delete(':id')
   async delete(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     if (!user.restaurantId) {

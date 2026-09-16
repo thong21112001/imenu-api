@@ -8,6 +8,7 @@ import { RequirePermissions } from '../../shared/common/decorators/require-permi
 import { ActionType, IMENU_PERMISSIONS, ResourceType } from '../../shared/common/constants/permission.const';
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
 import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
+import { DemoBlockGuard } from '../../shared/common/guards/demo-block.guard';
 
 @ApiTags('Roles')
 @ApiBearerAuth('JWT-auth')
@@ -35,6 +36,7 @@ export class RolesController {
 
   @ApiOperation({ summary: 'Tạo vai trò mới tùy chỉnh cho nhà hàng' })
   @RequirePermissions(ResourceType.STAFF, ActionType.CREATE)
+  @UseGuards(DemoBlockGuard)
   @Post()
   async create(@Body() createRoleDto: CreateRoleDto, @CurrentRestaurant() restaurantId: string) {
     const role = await this.rolesService.create(createRoleDto, restaurantId);
@@ -43,6 +45,7 @@ export class RolesController {
 
   @ApiOperation({ summary: 'Cập nhật thông tin vai trò' })
   @RequirePermissions(ResourceType.STAFF, ActionType.UPDATE)
+  @UseGuards(DemoBlockGuard)
   @Put(':id')
   async update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
     const role = await this.rolesService.update(id, updateRoleDto);

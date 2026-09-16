@@ -10,6 +10,7 @@ import { swaggerConfig, swaggerOption } from './shared/configs/swagger.cnf';
 import { MorganLogService } from './shared/loggers/morgan.logger';
 import { RolesService } from './modules/roles/roles.service';
 import { UsersService } from './modules/users/users.service';
+import { AuthService } from './modules/auth/auth.service';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -65,6 +66,9 @@ async function bootstrap() {
 
     const usersService = app.get(UsersService);
     await usersService.initAdmin();
+
+    const authService = app.get(AuthService);
+    await authService.seedDemoOwner();
   } catch (err: any) {
     logger.error('Lỗi khi khởi tạo dữ liệu hệ thống ban đầu:', err.message);
   }

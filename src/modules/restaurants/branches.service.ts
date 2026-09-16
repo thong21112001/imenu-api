@@ -163,10 +163,6 @@ export class BranchesService {
 
     const branch: any = restaurant.branches[branchIndex];
 
-    if (branch.isMainBranch) {
-      throw new BadRequestException('Không thể tạm đóng chi nhánh chính. Chi nhánh chính là trụ sở quản trị');
-    }
-
     if (branch.status === BranchStatus.TEMPORARILY_CLOSED) {
       throw new BadRequestException('Chi nhánh này hiện đã ở trạng thái tạm đóng');
     }
@@ -225,7 +221,12 @@ export class BranchesService {
 
     branch.status = BranchStatus.TEMPORARILY_CLOSED;
     branch.closedAt = new Date();
-    branch.closedReason = dto.reason || 'Tạm đóng chi nhánh';
+    branch.closedReason = dto.reason || 'Tạm đóng chi nhánh (hết giờ làm việc)';
+
+    // Đồng bộ trạng thái mở/đóng cửa hàng nếu là chi nhánh chính
+    if (branch.isMainBranch) {
+      restaurant.isOpen = false;
+    }
 
     restaurant.branches[branchIndex] = branch;
     await restaurant.save();
@@ -258,6 +259,11 @@ export class BranchesService {
 
     branch.status = BranchStatus.ACTIVE;
     branch.closedReason = '';
+
+    // Đồng bộ trạng thái mở cửa hàng nếu là chi nhánh chính
+    if (branch.isMainBranch) {
+      restaurant.isOpen = true;
+    }
 
     restaurant.branches[branchIndex] = branch;
     await restaurant.save();

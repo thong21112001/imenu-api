@@ -11,6 +11,7 @@ import { ActionType, ResourceType } from '../../shared/common/constants/permissi
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
+import { DemoBlockGuard } from '../../shared/common/guards/demo-block.guard';
 import { JwtUser } from '../auth/interface/jwtUser';
 
 @ApiTags('Users')
@@ -42,6 +43,7 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Tạo tài khoản nhân viên mới' })
   @RequirePermissions(ResourceType.STAFF, ActionType.CREATE)
+  @UseGuards(DemoBlockGuard)
   @Post()
   async create(
     @Body() dto: CreateUserDto,
@@ -54,6 +56,7 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Cập nhật tài khoản nhân viên' })
   @RequirePermissions(ResourceType.STAFF, ActionType.UPDATE)
+  @UseGuards(DemoBlockGuard)
   @Put(':id')
   async update(
     @Param('id') id: string,
@@ -66,6 +69,7 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Điều chuyển nhân viên sang chi nhánh khác (Chỉ quản trị chi nhánh chính)' })
   @RequirePermissions(ResourceType.STAFF, ActionType.CONFIRM)
+  @UseGuards(DemoBlockGuard)
   @HttpCode(HttpStatus.OK)
   @Post(':id/transfer')
   async transfer(

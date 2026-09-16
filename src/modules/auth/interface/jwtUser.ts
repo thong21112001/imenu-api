@@ -12,4 +12,5 @@ export interface JwtUser {
   branchId?: string;
   branchName?: string;
   isMainBranch?: boolean;
+  isDemo?: boolean;
 }

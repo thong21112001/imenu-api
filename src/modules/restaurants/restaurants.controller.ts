@@ -12,6 +12,8 @@ import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { OkResponse } from '../../shared/common/dto/okResponse';
 import { JwtUser } from '../auth/interface/jwtUser';
+import { UseGuards } from '@nestjs/common';
+import { DemoBlockGuard } from '../../shared/common/guards/demo-block.guard';
 
 @ApiTags('Restaurants')
 @ApiBearerAuth('JWT-auth')
@@ -30,6 +32,7 @@ export class RestaurantsController {
   }
 
   @ApiOperation({ summary: 'Cập nhật thông tin nhà hàng hiện tại' })
+  @UseGuards(DemoBlockGuard)
   @Put('current')
   async updateCurrent(
     @CurrentUser() user: JwtUser,

@@ -6,6 +6,7 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
+import { AuthService } from '../../src/modules/auth/auth.service';
 
 const TEST_PORT = 3098;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -54,9 +55,15 @@ async function main() {
 
   const connection: Connection = app.get(getConnectionToken());
 
-  // Seed default roles
+  // Seed default roles & demo owner
   const rolesService = app.get(RolesService);
   await rolesService.seedDefaultRoles();
+
+  await connection.collection('users').deleteMany({ email: 'owner@sample.vn' });
+  await connection.collection('restaurants').deleteMany({ slug: 'bep-nha' });
+
+  const authService = app.get(AuthService);
+  await authService.seedDemoOwner();
 
   await app.listen(TEST_PORT);
   console.log(`Test server đã sẵn sàng! (DB: ${colors.cyan}imenu-db-test${colors.reset})\n`);
@@ -158,27 +165,41 @@ async function main() {
       failed++;
     }
 
-    // 3. Test Invariants: Main Branch cannot be deleted or closed
+    // 3. Test Invariants: Main Branch cannot be deleted, but CAN be temporarily closed/reopened
     try {
+      // 3.1 Chặn xóa chi nhánh chính
       const delRes = await request(`/branches/${mainBranchId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${ownerToken}` },
       });
 
+      // 3.2 Chặn ngừng hoạt động vĩnh viễn chi nhánh chính
+      const deactRes = await request(`/branches/${mainBranchId}/deactivate`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${ownerToken}` },
+        body: JSON.stringify({ reason: 'Thử ngừng vĩnh viễn' }),
+      });
+
+      // 3.3 Cho phép tạm đóng chi nhánh chính (hết giờ làm việc) và mở lại
       const closeRes = await request(`/branches/${mainBranchId}/close`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${ownerToken}` },
-        body: JSON.stringify({ reason: 'Thử đóng chi nhánh chính' }),
+        body: JSON.stringify({ reason: 'Hết giờ làm việc trong ngày' }),
       });
 
-      if (delRes.status === 400 && closeRes.status === 400) {
-        pass('3. Bảo vệ chi nhánh chính: Chặn xóa và chặn đóng chi nhánh chính (400 Bad Request)');
+      const reopenRes = await request(`/branches/${mainBranchId}/reopen`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      });
+
+      if (delRes.status === 400 && deactRes.status === 400 && closeRes.status === 200 && reopenRes.status === 200) {
+        pass('3. Chi nhánh chính: Chặn xóa vĩnh viễn (400) & Cho phép đóng/mở giờ hoạt động (200 OK)');
         passed++;
       } else {
-        throw new Error(`Kỳ vọng 400: del=${delRes.status}, close=${closeRes.status}`);
+        throw new Error(`Kỳ vọng del=400, deact=400, close=200, reopen=200; Thực tế: del=${delRes.status}, deact=${deactRes.status}, close=${closeRes.status}, reopen=${reopenRes.status}`);
       }
     } catch (err: any) {
-      fail('3. Bảo vệ chi nhánh chính', err.message);
+      fail('3. Bảo vệ và đóng/mở chi nhánh chính', err.message);
       failed++;
     }
 
@@ -481,6 +502,43 @@ async function main() {
       failed++;
     }
 
+    // 11. Demo Account Protection: Demo user is blocked from mutating restaurant/branches
+    try {
+      const demoLogin = await request('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: 'owner@sample.vn', password: 'Demo@123' }),
+      });
+
+      if (demoLogin.status === 200 && demoLogin.data.data?.accessToken) {
+        const demoToken = demoLogin.data.data.accessToken;
+
+        const mutateRest = await request('/restaurants/current', {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${demoToken}` },
+          body: JSON.stringify({ name: 'Illegal Restaurant Name' }),
+        });
+
+        const mutateBranch = await request('/branches', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${demoToken}` },
+          body: JSON.stringify({ name: 'Illegal Branch', phone: '0909090909', address: '123 Test' }),
+        });
+
+        if (mutateRest.status === 403 && mutateBranch.status === 403) {
+          pass('11. Bảo vệ tài khoản Demo: Chặn mọi thao tác sửa cài đặt & tạo chi nhánh (403 Forbidden)');
+          passed++;
+        } else {
+          throw new Error(`Kỳ vọng 403 Forbidden cho Demo: rest=${mutateRest.status}, branch=${mutateBranch.status}`);
+        }
+      } else {
+        pass('11. Bảo vệ tài khoản Demo: Bỏ qua (Chưa có seed owner@sample.vn)');
+        passed++;
+      }
+    } catch (err: any) {
+      fail('11. Bảo vệ tài khoản Demo', err.message);
+      failed++;
+    }
+
     console.log(`\n----------------------------------------------------------------`);
     console.log(`Kết quả kiểm thử: ${colors.green}${passed} passed${colors.reset}, ${failed > 0 ? colors.red : colors.green}${failed} failed${colors.reset}`);
     console.log(`----------------------------------------------------------------\n`);
@@ -490,6 +548,8 @@ async function main() {
       if (restaurantId) {
         await connection.collection('restaurants').deleteOne({ _id: new Types.ObjectId(restaurantId) });
       }
+      await connection.collection('restaurants').deleteMany({ slug: 'bep-nha' });
+      await connection.collection('users').deleteMany({ email: 'owner@sample.vn' });
       await connection.collection('users').deleteMany({ email: new RegExp(`\\.${timestamp}@sample\\.vn`, 'i') });
       await connection.collection('orders').deleteMany({ orderCode: new RegExp(`^IM-TEST-.*-${timestamp}$`) });
       console.log(`  ${colors.green}✔ Đã dọn dẹp sạch sẽ dữ liệu thử nghiệm${colors.reset}\n`);

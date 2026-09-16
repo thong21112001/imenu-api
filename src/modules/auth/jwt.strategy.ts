@@ -47,6 +47,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
     }
 
+    const isDemo =
+      user.email === 'owner@sample.vn' ||
+      (user as any).isDemo === true;
+
     return {
       userId: (user as any)._id.toString(),
       username: user.username,
@@ -59,6 +63,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       branchId: user.branchId,
       branchName: user.branchName,
       isMainBranch,
+      isDemo,
     };
   }
 }

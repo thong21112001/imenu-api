@@ -188,6 +188,7 @@ export class AuthService {
         branchId: user.branchId,
         branchName: user.branchName,
         isMainBranch,
+        isDemo: user.email === 'owner@sample.vn' || (user as any).isDemo === true,
       },
       permissions,
       accessToken,
@@ -358,7 +359,12 @@ export class AuthService {
         return;
       }
 
-      let restaurant = await this.restaurantsService.findBySlug('bep-nha');
+      let restaurant: any = null;
+      try {
+        restaurant = await this.restaurantsService.findBySlug('bep-nha');
+      } catch {
+        restaurant = null;
+      }
       const mainBranchId = new Types.ObjectId();
       const branchName = 'Chi nhánh Quận 1';
 
