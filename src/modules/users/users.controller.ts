@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -22,10 +22,11 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @ApiOperation({ summary: 'Lấy danh sách nhân viên / tài khoản có phân trang' })
+  @ApiQuery({ name: 'restaurantId', required: false, description: 'Lọc theo nhà hàng (Super Admin)' })
   @RequirePermissions(ResourceType.STAFF, ActionType.VIEW)
   @Get()
   async findAll(
-    @Query() query: PaginateDto & { branchId?: string },
+    @Query() query: PaginateDto & { branchId?: string; restaurantId?: string },
     @CurrentRestaurant() restaurantId: string,
     @CurrentUser() user: JwtUser,
   ) {
@@ -78,6 +79,30 @@ export class UsersController {
     @CurrentUser() user: JwtUser,
   ) {
     const result = await this.usersService.transferStaff(id, dto, user);
+    return new OkResponse(result);
+  }
+
+  @ApiOperation({ summary: 'Bật / tắt trạng thái hoạt động của nhân viên' })
+  @RequirePermissions(ResourceType.STAFF, ActionType.UPDATE)
+  @UseGuards(DemoBlockGuard)
+  @Patch(':id/toggle-status')
+  async toggleStatus(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const updated = await this.usersService.toggleStatus(id, user);
+    return new OkResponse({ message: 'Cập nhật trạng thái nhân viên thành công', data: updated });
+  }
+
+  @ApiOperation({ summary: 'Xóa nhân viên (Soft Delete)' })
+  @RequirePermissions(ResourceType.STAFF, ActionType.DELETE)
+  @UseGuards(DemoBlockGuard)
+  @Delete(':id')
+  async delete(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const result = await this.usersService.deleteUser(id, user);
     return new OkResponse(result);
   }
 }

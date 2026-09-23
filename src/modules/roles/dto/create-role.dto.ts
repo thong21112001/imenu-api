@@ -37,4 +37,9 @@ export class CreateRoleDto {
   @IsArray()
   @IsOptional()
   permissions?: PermissionInputDto[];
+
+  @ApiPropertyOptional({ example: ['perm-pos-view', 'perm-pos-order'] })
+  @IsArray()
+  @IsOptional()
+  permissionIds?: string[];
 }

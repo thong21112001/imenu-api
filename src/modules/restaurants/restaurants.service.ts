@@ -11,6 +11,7 @@ import { Restaurant, RestaurantDocument } from './entities/restaurant.entity';
 import { BranchStatus } from './entities/branch.schema';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { generateSlug } from '../../shared/common/utils/slug.util';
+import { User, UserDocument } from '../users/entities/user.entity';
 
 @Injectable()
 export class RestaurantsService implements OnApplicationBootstrap {
@@ -19,6 +20,8 @@ export class RestaurantsService implements OnApplicationBootstrap {
   constructor(
     @InjectModel(Restaurant.name)
     private readonly restaurantModel: Model<RestaurantDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -186,5 +189,34 @@ export class RestaurantsService implements OnApplicationBootstrap {
     await restaurant.save();
 
     return this.getCurrent(restaurantId);
+  }
+
+  async findAllRestaurants(): Promise<any[]> {
+    const restaurants = await this.restaurantModel.find().sort({ createdAt: -1 }).exec();
+
+    return Promise.all(
+      restaurants.map(async (r) => {
+        const branchCount = Array.isArray(r.branches) ? r.branches.length : 0;
+        const staffCount = await this.userModel.countDocuments({
+          restaurantId: r._id,
+          isDeleted: { $ne: true },
+        });
+
+        return {
+          id: (r as any)._id.toString(),
+          name: r.name,
+          slug: r.slug,
+          phone: r.phone,
+          address: r.address,
+          logoUrl: r.logoUrl,
+          coverUrl: r.coverUrl,
+          plan: r.plan,
+          isOpen: r.isOpen,
+          branchCount,
+          staffCount,
+          createdAt: (r as any).createdAt,
+        };
+      }),
+    );
   }
 }

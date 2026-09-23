@@ -19,6 +19,7 @@
     "test:phase2": "ts-node tests/phase-02-auth-restaurant/test.ts",
     "test:multibranch": "ts-node tests/phase-02-auth-restaurant/test-multi-branch.ts",
     "test:phase2:all": "ts-node tests/phase-02-auth-restaurant/test.ts && ts-node tests/phase-02-auth-restaurant/test-multi-branch.ts",
+    "test:phase3": "ts-node tests/phase-03-staff-rbac/test.ts",
     "seed": "ts-node src/database/seed.ts",
     "seed:clean": "ts-node src/database/seed.ts --clean"
   },

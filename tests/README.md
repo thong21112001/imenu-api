@@ -21,9 +21,10 @@ tests/
 │   ├── README.md                  # Hướng dẫn kiểm thử Phase 2 chi tiết (Tiếng Việt)
 │   └── README_en.md               # Detailed Phase 2 test guide (English)
 │
-├── phase-03-staff-rbac/           # [LỘ TRÌNH] Phase 3: Nhân sự & Ma trận phân quyền
-│   ├── README.md
-│   └── README_en.md
+├── phase-03-staff-rbac/           # [HOÀN THÀNH] Phase 3: Nhân sự & Ma trận phân quyền
+│   ├── test.ts                    # Kịch bản E2E: Super Admin ENV, Soft Delete, Cross-Tenant Staff & Roles (12 ca)
+│   ├── README.md                  # Hướng dẫn kiểm thử Phase 3 chi tiết (Tiếng Việt)
+│   └── README_en.md               # Detailed Phase 3 test guide (English)
 │
 ├── phase-04-menu/                 # [LỘ TRÌNH] Phase 4: Thực đơn, Danh mục & Topping
 │   ├── README.md
@@ -65,6 +66,7 @@ Các lệnh kiểm thử được đăng ký trực tiếp trong `package.json` 
 | **Phase 2 - Phần 1** | `npm run test:phase2` | `npx ts-node tests/phase-02-auth-restaurant/test.ts` | Auth, Restaurant & Branch CRUD | **12/12 PASSED** |
 | **Phase 2 - Phần 2** | `npm run test:multibranch` | `npx ts-node tests/phase-02-auth-restaurant/test-multi-branch.ts` | Multi-Branch Lifecycle & Isolation | **10/10 PASSED** |
 | **Phase 2 - Toàn bộ** | `npm run test:phase2:all` | Chạy tuần tự cả 2 file trên | 22 kịch bản tích hợp Phase 2 | **22/22 PASSED** |
+| **Phase 3 - Staff & RBAC** | `npm run test:phase3` | `npx ts-node tests/phase-03-staff-rbac/test.ts` | Super Admin, Soft Delete, Staff & RBAC | **12/12 PASSED** |
 | **Toàn bộ hệ thống** | `npm test` | `jest` | Unit tests toàn dự án | Đang cấu hình |
 
 ---

@@ -44,6 +44,12 @@ export class User {
   @Prop({ default: UserStatus.ACTIVE, enum: Object.values(UserStatus) })
   status: UserStatus;
 
+  @Prop({ default: false, index: true })
+  isDeleted: boolean;
+
+  @Prop()
+  deletedAt?: Date;
+
   @Prop()
   avatarUrl?: string;
 
@@ -54,4 +60,4 @@ export class User {
 export type UserDocument = User & Document;
 export const UserSchema = SchemaFactory.createForClass(User);
 
-UserSchema.index({ restaurantId: 1, status: 1 });
+UserSchema.index({ restaurantId: 1, isDeleted: 1, status: 1 });

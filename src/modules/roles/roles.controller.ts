@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -43,6 +43,14 @@ export class RolesController {
     return new OkResponse({ message: 'Tạo vai trò mới thành công', data: role });
   }
 
+  @ApiOperation({ summary: 'Xem chi tiết vai trò' })
+  @RequirePermissions(ResourceType.STAFF, ActionType.VIEW)
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const role = await this.rolesService.findById(id);
+    return new OkResponse({ data: role });
+  }
+
   @ApiOperation({ summary: 'Cập nhật thông tin vai trò' })
   @RequirePermissions(ResourceType.STAFF, ActionType.UPDATE)
   @UseGuards(DemoBlockGuard)
@@ -50,5 +58,14 @@ export class RolesController {
   async update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
     const role = await this.rolesService.update(id, updateRoleDto);
     return new OkResponse({ message: 'Cập nhật vai trò thành công', data: role });
+  }
+
+  @ApiOperation({ summary: 'Xóa vai trò tùy chỉnh' })
+  @RequirePermissions(ResourceType.STAFF, ActionType.DELETE)
+  @UseGuards(DemoBlockGuard)
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    const result = await this.rolesService.delete(id);
+    return new OkResponse(result);
   }
 }

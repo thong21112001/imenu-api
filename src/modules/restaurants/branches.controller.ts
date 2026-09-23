@@ -7,15 +7,16 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   BadRequestException,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
 import { CreateBranchDto, UpdateBranchDto, CloseBranchDto, DeactivateBranchDto } from './dto/branch.dto';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { OkResponse } from '../../shared/common/dto/okResponse';
-import { JwtUser } from '../auth/interface/jwtUser';
+import { JwtUser, isSuperAdminUser } from '../auth/interface/jwtUser';
 import { RequirePermissions } from '../../shared/common/decorators/require-permissions.decorator';
 import { ActionType, ResourceType } from '../../shared/common/constants/permission.const';
 import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
@@ -29,24 +30,34 @@ export class BranchesController {
   constructor(private readonly branchesService: BranchesService) {}
 
   @ApiOperation({ summary: 'Lấy danh sách chi nhánh của nhà hàng' })
+  @ApiQuery({ name: 'restaurantId', required: false, description: 'ID nhà hàng (Dành cho Super Admin)' })
   @RequirePermissions(ResourceType.BRANCH, ActionType.VIEW)
   @Get()
-  async findAll(@CurrentUser() user: JwtUser) {
-    if (!user.restaurantId) {
-      throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
+  async findAll(@CurrentUser() user: JwtUser, @Query('restaurantId') queryRestaurantId?: string) {
+    const isSuperAdmin = isSuperAdminUser(user);
+    const effectiveRestaurantId = isSuperAdmin ? (queryRestaurantId || user.restaurantId) : user.restaurantId;
+    if (!effectiveRestaurantId) {
+      throw new BadRequestException('Vui lòng chỉ định nhà hàng (restaurantId)');
     }
-    const data = await this.branchesService.findAll(user.restaurantId, user);
+    const data = await this.branchesService.findAll(effectiveRestaurantId, user);
     return new OkResponse({ message: 'Lấy danh sách chi nhánh thành công', data });
   }
 
   @ApiOperation({ summary: 'Lấy chi tiết một chi nhánh' })
+  @ApiQuery({ name: 'restaurantId', required: false, description: 'ID nhà hàng (Dành cho Super Admin)' })
   @RequirePermissions(ResourceType.BRANCH, ActionType.VIEW)
   @Get(':id')
-  async findOne(@CurrentUser() user: JwtUser, @Param('id') id: string) {
-    if (!user.restaurantId) {
-      throw new BadRequestException('Tài khoản chưa được gán vào nhà hàng nào');
+  async findOne(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Query('restaurantId') queryRestaurantId?: string,
+  ) {
+    const isSuperAdmin = isSuperAdminUser(user);
+    const effectiveRestaurantId = isSuperAdmin ? (queryRestaurantId || user.restaurantId) : user.restaurantId;
+    if (!effectiveRestaurantId) {
+      throw new BadRequestException('Vui lòng chỉ định nhà hàng (restaurantId)');
     }
-    const data = await this.branchesService.findById(user.restaurantId, id, user);
+    const data = await this.branchesService.findById(effectiveRestaurantId, id, user);
     return new OkResponse({ message: 'Lấy chi tiết chi nhánh thành công', data });
   }
 

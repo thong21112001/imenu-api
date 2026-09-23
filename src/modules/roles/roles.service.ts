@@ -1,10 +1,21 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Role, RoleDocument } from './entities/role.entity';
+import { User, UserDocument } from '../users/entities/user.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { ActionType, ResourceType } from '../../shared/common/constants/permission.const';
+import {
+  convertPermissionIdsToSubdocs,
+  convertSubdocsToPermissionIds,
+} from '../../shared/common/utils/permission-mapping.util';
 
 @Injectable()
 export class RolesService {
@@ -12,6 +23,7 @@ export class RolesService {
 
   constructor(
     @InjectModel(Role.name) private readonly roleModel: Model<RoleDocument>,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
   /**
@@ -116,12 +128,19 @@ export class RolesService {
     }
   }
 
-  async findAll(restaurantId?: string): Promise<Role[]> {
+  async findAll(restaurantId?: string): Promise<any[]> {
     const filter: any = { isActive: true };
     if (restaurantId) {
       filter.$or = [{ isSystem: true }, { restaurantId }];
     }
-    return this.roleModel.find(filter).exec();
+    const roles = await this.roleModel.find(filter).exec();
+    return roles.map((r) => {
+      const obj = r.toObject();
+      return {
+        ...obj,
+        permissionIds: convertSubdocsToPermissionIds(obj.permissions),
+      };
+    });
   }
 
   async findBySlug(slug: string): Promise<RoleDocument> {
@@ -132,33 +151,94 @@ export class RolesService {
     return role;
   }
 
-  async findById(id: string): Promise<RoleDocument> {
+  async findById(id: string): Promise<any> {
     const role = await this.roleModel.findById(id);
     if (!role) {
       throw new NotFoundException('Không tìm thấy vai trò');
     }
-    return role;
+    const obj = role.toObject();
+    return {
+      ...obj,
+      permissionIds: convertSubdocsToPermissionIds(obj.permissions),
+    };
   }
 
-  async create(createRoleDto: CreateRoleDto, restaurantId?: string): Promise<Role> {
+  async create(createRoleDto: CreateRoleDto, restaurantId?: string): Promise<any> {
     const exists = await this.roleModel.findOne({ slug: createRoleDto.slug });
     if (exists) {
       throw new ConflictException('Mã vai trò (slug) đã tồn tại');
     }
+
+    let finalPermissions = createRoleDto.permissions;
+    if (createRoleDto.permissionIds && createRoleDto.permissionIds.length > 0) {
+      finalPermissions = convertPermissionIdsToSubdocs(createRoleDto.permissionIds);
+    }
+
     const role = new this.roleModel({
       ...createRoleDto,
+      permissions: finalPermissions || [],
       isSystem: false,
       restaurantId: restaurantId ? restaurantId : undefined,
     });
-    return role.save();
+
+    const saved = await role.save();
+    const obj = saved.toObject();
+    return {
+      ...obj,
+      permissionIds: convertSubdocsToPermissionIds(obj.permissions),
+    };
   }
 
-  async update(id: string, updateRoleDto: UpdateRoleDto): Promise<Role> {
-    const role = await this.findById(id);
+  async update(id: string, updateRoleDto: UpdateRoleDto): Promise<any> {
+    const role = await this.roleModel.findById(id);
+    if (!role) {
+      throw new NotFoundException('Không tìm thấy vai trò');
+    }
+
     if (role.isSystem && updateRoleDto.slug && updateRoleDto.slug !== role.slug) {
       throw new ConflictException('Không thể thay đổi slug của vai trò hệ thống');
     }
-    Object.assign(role, updateRoleDto);
-    return role.save();
+
+    const updatePayload: any = { ...updateRoleDto };
+
+    if (updateRoleDto.permissionIds && updateRoleDto.permissionIds.length > 0) {
+      updatePayload.permissions = convertPermissionIdsToSubdocs(updateRoleDto.permissionIds);
+    }
+
+    delete updatePayload.permissionIds;
+    Object.assign(role, updatePayload);
+    const saved = await role.save();
+    const obj = saved.toObject();
+    return {
+      ...obj,
+      permissionIds: convertSubdocsToPermissionIds(obj.permissions),
+    };
+  }
+
+  async delete(id: string): Promise<{ success: boolean; message: string }> {
+    const role = await this.roleModel.findById(id);
+    if (!role) {
+      throw new NotFoundException('Không tìm thấy vai trò');
+    }
+
+    if (role.isSystem) {
+      throw new BadRequestException('Không thể xóa vai trò mặc định của hệ thống');
+    }
+
+    // Kiem tra xem co user nao dang su dung role nay khong
+    const userCount = await this.userModel.countDocuments({
+      role: id,
+      isDeleted: { $ne: true },
+    });
+
+    if (userCount > 0) {
+      throw new BadRequestException(`Không thể xóa vai trò này vì đang có ${userCount} nhân viên được gán vai trò`);
+    }
+
+    await this.roleModel.findByIdAndDelete(id);
+    return {
+      success: true,
+      message: 'Đã xóa vai trò thành công',
+    };
   }
 }
