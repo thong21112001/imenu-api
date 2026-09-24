@@ -87,6 +87,9 @@ export class BranchesService {
       phone: dto.phone,
       isMainBranch: dto.isMainBranch || false,
       status: dto.status || BranchStatus.ACTIVE,
+      bankAccount: dto.bankAccount || {},
+      openingHours: dto.openingHours || '08:00 - 22:00',
+      tagline: dto.tagline || '',
     };
 
     restaurant.branches.push(newBranch);
@@ -97,7 +100,17 @@ export class BranchesService {
 
   async update(restaurantId: string, branchId: string, dto: UpdateBranchDto, caller?: JwtUser) {
     if (caller && !caller.isMainBranch) {
-      throw new ForbiddenException('Chỉ quản trị viên chi nhánh chính mới có quyền cập nhật chi nhánh');
+      // Chi nhánh con chỉ được phép cập nhật thông tin chi nhánh của chính mình
+      if (caller.branchId !== branchId) {
+        throw new ForbiddenException('Bạn chỉ có quyền cập nhật thông tin chi nhánh của mình');
+      }
+      // Không cho phép chi nhánh con thay đổi isMainBranch hoặc status
+      if (dto.isMainBranch !== undefined) {
+        throw new ForbiddenException('Chi nhánh con không được phép thay đổi cờ chi nhánh chính');
+      }
+      if (dto.status !== undefined) {
+        throw new ForbiddenException('Chi nhánh con không được phép tự ý thay đổi trạng thái chi nhánh');
+      }
     }
 
     const restaurant = await this.restaurantModel.findById(restaurantId);
@@ -135,8 +148,11 @@ export class BranchesService {
     if (dto.name !== undefined) currentBranch.name = dto.name;
     if (dto.address !== undefined) currentBranch.address = dto.address;
     if (dto.phone !== undefined) currentBranch.phone = dto.phone;
-    if (dto.isMainBranch !== undefined) currentBranch.isMainBranch = dto.isMainBranch;
-    if (dto.status !== undefined) currentBranch.status = dto.status;
+    if (dto.isMainBranch !== undefined && (!caller || caller.isMainBranch)) currentBranch.isMainBranch = dto.isMainBranch;
+    if (dto.status !== undefined && (!caller || caller.isMainBranch)) currentBranch.status = dto.status;
+    if (dto.bankAccount !== undefined) currentBranch.bankAccount = dto.bankAccount;
+    if (dto.openingHours !== undefined) currentBranch.openingHours = dto.openingHours;
+    if (dto.tagline !== undefined) currentBranch.tagline = dto.tagline;
 
     restaurant.branches[branchIndex] = currentBranch;
     await restaurant.save();

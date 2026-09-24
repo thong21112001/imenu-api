@@ -44,8 +44,12 @@ export class RolesController {
   @RequirePermissions(ResourceType.STAFF, ActionType.CREATE)
   @UseGuards(DemoBlockGuard)
   @Post()
-  async create(@Body() createRoleDto: CreateRoleDto, @CurrentRestaurant() restaurantId: string) {
-    const role = await this.rolesService.create(createRoleDto, restaurantId);
+  async create(
+    @Body() createRoleDto: CreateRoleDto,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const role = await this.rolesService.create(createRoleDto, restaurantId, user);
     return new OkResponse({ message: 'Tạo vai trò mới thành công', data: role });
   }
 
@@ -64,8 +68,12 @@ export class RolesController {
   @RequirePermissions(ResourceType.STAFF, ActionType.UPDATE)
   @UseGuards(DemoBlockGuard)
   @Put(':id')
-  async update(@Param('id') id: string, @Body() updateRoleDto: UpdateRoleDto) {
-    const role = await this.rolesService.update(id, updateRoleDto);
+  async update(
+    @Param('id') id: string,
+    @Body() updateRoleDto: UpdateRoleDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const role = await this.rolesService.update(id, updateRoleDto, user);
     return new OkResponse({ message: 'Cập nhật vai trò thành công', data: role });
   }
 
@@ -73,8 +81,8 @@ export class RolesController {
   @RequirePermissions(ResourceType.STAFF, ActionType.DELETE)
   @UseGuards(DemoBlockGuard)
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    const result = await this.rolesService.delete(id);
+  async delete(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    const result = await this.rolesService.delete(id, user);
     return new OkResponse(result);
   }
 }

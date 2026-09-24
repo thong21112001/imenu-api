@@ -117,13 +117,20 @@ export class AuthService {
     roleSlug?: string,
   ): Promise<boolean> {
     const slug = (roleSlug || '').toLowerCase();
-    if (slug === 'system_admin' || slug === 'super_admin' || slug === 'restaurant_admin') {
+    if (slug === 'system_admin' || slug === 'super_admin') {
       return true;
     }
-    if (!restaurantId || !branchId) return false;
+    if (!restaurantId) return false;
     try {
       const restaurant = await this.restaurantsService.findById(restaurantId);
-      const branch = restaurant?.branches?.find(
+      if (!restaurant?.branches || restaurant.branches.length === 0) return false;
+
+      // Nếu không có branchId cụ thể nhưng là chủ nhà hàng gốc -> coi như thuộc main branch
+      if (!branchId) {
+        return slug === 'restaurant_admin';
+      }
+
+      const branch = restaurant.branches.find(
         (b: any) => b._id.toString() === branchId || b.id === branchId,
       );
       return !!branch?.isMainBranch;

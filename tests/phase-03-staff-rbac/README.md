@@ -12,11 +12,11 @@ Bộ kiểm thử tích hợp (End-to-End Integration Test Suite) của Phase 3 
 
 | File Kiểm Thử | Tên Bộ Kiểm Thử | Số Lượng Test | Lệnh Thực Thi | Trọng Tâm Nghiệp Vụ |
 | :--- | :--- | :---: | :--- | :--- |
-| [`test.ts`](test.ts) | **Phase 3: Staff Management & RBAC Test Suite** | 12 ca | `npm run test:phase3` | Đồng bộ Super Admin từ ENV, xem & quản lý đa nhà hàng, tạo hộ nhân sự, Soft Delete, bảo vệ tài khoản hệ thống, CRUD vai trò & mapping permissions 2 chiều |
+| [`test.ts`](test.ts) | **Phase 3: Staff Management & RBAC Test Suite** | 16 ca | `npm run test:phase3` | Đồng bộ Super Admin từ ENV, xem & quản lý đa nhà hàng, Soft Delete, bảo vệ tài khoản hệ thống, CRUD vai trò & mapping permissions 2 chiều, phân lập dữ liệu chi nhánh con, bảo vệ toàn vẹn nhân sự và cấu hình VietQR độc lập từng chi nhánh |
 
 ---
 
-## 2. 📋 Danh Sách 12 Ca Kiểm Thử Chi Tiết
+## 2. 📋 Danh Sách 16 Ca Kiểm Thử Chi Tiết
 
 | STT | Tên Ca Kiểm Thử | Endpoint & Method | Ý Nghĩa Nghiệp Vụ & Kết Quả Kỳ Vọng |
 | :---: | :--- | :--- | :--- |
@@ -32,6 +32,10 @@ Bộ kiểm thử tích hợp (End-to-End Integration Test Suite) của Phase 3 
 | **10** | **Bảo vệ tuyệt đối tài khoản Super Admin** | `DELETE & PATCH /users/:superAdminId` | `403 Forbidden`, nghiêm cấm mọi người dùng hoặc chủ nhà hàng khác thực hiện xóa/khóa tài khoản Quản trị viên hệ thống cấp cao nhất. |
 | **11** | **CRUD Vai trò tùy chỉnh & Mapping 2 Chiều** | `/api/roles` (POST, GET, PUT, DELETE) | Tạo vai trò custom nhận mảng flat permission IDs (`['perm-pos-view', 'perm-pos-create']`), MongoDB lưu trữ dạng chuẩn hóa `PermissionSubdocument[]`, API trả về trường ảo `permissionIds`, xóa vai trò thành công. |
 | **12** | **Bảo vệ vai trò hệ thống & Demo Block Guard** | `DELETE /api/roles/:id` | `400 Bad Request` khi cố xóa vai trò mặc định (`isSystem: true`); Tài khoản dùng thử demo (`owner@sample.vn`) bị chặn ghi `403 Forbidden` bởi `DemoBlockGuard`. |
+| **13** | **Phân lập quyền hạn & Dữ liệu chi nhánh con (Scoping)** | `GET /api/users` & `GET /api/branches` | `isMainBranch = false` cho tài khoản chi nhánh con; danh sách nhân viên và danh sách chi nhánh tự động được giới hạn 100% trong chi nhánh phụ của họ. |
+| **14** | **Bảo vệ toàn vẹn nhân sự chi nhánh** | `/api/users` (POST, PUT, PATCH, DELETE) | `403 Forbidden` khi chi nhánh con cố tạo nhân viên cho chi nhánh khác, gán role quản trị (`restaurant_admin`), sửa/khóa/xóa nhân viên chi nhánh khác, hoặc điều chuyển nhân sự. Cho phép tạo thu ngân trong chi nhánh của mình (`201 Created`). |
+| **15** | **Phân lập quản lý chi nhánh & Cài đặt độc lập VietQR** | `/api/branches` (POST, PUT) | `403 Forbidden` khi chi nhánh con tạo chi nhánh mới, sửa chi nhánh khác hoặc tự ý nâng cờ `isMainBranch`. Cho phép chi nhánh con cập nhật hotline, giờ mở cửa và tài khoản VietQR nhận tiền riêng biệt của mình (`200 OK`). |
+| **16** | **Bảo vệ vai trò hệ thống SaaS & Phân lập RBAC** | `/api/roles` (POST, PUT) | `403 Forbidden` khi chi nhánh con tạo/sửa vai trò phân quyền; `403 Forbidden` khi chủ nhà hàng cố sửa vai trò mặc định của hệ thống SaaS; Duy nhất Super Admin có quyền cập nhật vai trò hệ thống (`200 OK`). |
 
 ---
 
@@ -56,6 +60,6 @@ npm run test:phase2:all && npm run test:phase3
 
 Mỗi lần chạy kiểm thử, script `test.ts` sẽ tự động:
 1. Tạo môi trường độc lập với mã định danh thời gian thực (`timestamp`).
-2. Thực thi tuần tự 12 kịch bản.
-3. Trong khối `finally`: Tự động tìm kiếm và xóa toàn bộ các nhà hàng, người dùng, và vai trò thử nghiệm có tiền tố `owner.p3.`, `staff.p3.`, `custom_pos_`.
+2. Thực thi tuần tự 16 kịch bản.
+3. Trong khối `finally`: Tự động tìm kiếm và xóa toàn bộ các nhà hàng, chi nhánh, người dùng, và vai trò thử nghiệm có tiền tố `owner.p3.`, `staff.p3.`, `subadmin.`, `cashier.q7.`, `custom_pos_`.
 4. Đảm bảo cơ sở dữ liệu kiểm thử luôn sạch sẽ, không để lại rác dữ liệu sau khi hoàn thành.

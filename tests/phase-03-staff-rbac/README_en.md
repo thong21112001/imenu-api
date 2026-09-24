@@ -12,11 +12,11 @@ The End-to-End Integration Test Suite for Phase 3 is organized inside:
 
 | Test File | Test Suite Name | Test Count | Command | Business Focus |
 | :--- | :--- | :---: | :--- | :--- |
-| [`test.ts`](test.ts) | **Phase 3: Staff Management & RBAC Test Suite** | 12 cases | `npm run test:phase3` | Super Admin env credentials synchronization, multi-restaurant visibility & management, staff onboarding assistance, Soft Delete, system role immutability, 2-way permission mapping |
+| [`test.ts`](test.ts) | **Phase 3: Staff Management & RBAC Test Suite** | 16 cases | `npm run test:phase3` | Super Admin env credentials synchronization, multi-restaurant visibility & management, staff onboarding assistance, Soft Delete, system role immutability, 2-way permission mapping, sub-branch data scoping, branch staff protection, and independent VietQR branch accounts |
 
 ---
 
-## 2. 📋 12 Detailed Test Scenarios
+## 2. 📋 16 Detailed Test Scenarios
 
 | # | Test Scenario | Endpoint & Method | Business Purpose & Expected Results |
 | :---: | :--- | :--- | :--- |
@@ -32,6 +32,10 @@ The End-to-End Integration Test Suite for Phase 3 is organized inside:
 | **10** | **Super Admin Account Absolute Protection** | `DELETE & PATCH /users/:superAdminId` | `403 Forbidden`, other users or tenant owners are strictly prohibited from deleting or modifying Super Admin accounts. |
 | **11** | **Custom Role CRUD & Bidirectional Permission Mapping** | `/api/roles` (POST, GET, PUT, DELETE) | Creates role with flat permission string IDs (`['perm-pos-view', 'perm-pos-create']`), MongoDB persists normalized `PermissionSubdocument[]`, API returns mapped `permissionIds`, role deletion succeeds. |
 | **12** | **System Role Immutability & Demo Block Guard** | `DELETE /api/roles/:id` | `400 Bad Request` when attempting to delete predefined system roles (`isSystem: true`); Demo accounts (`owner@sample.vn`) receive `403 Forbidden` for mutating requests via `DemoBlockGuard`. |
+| **13** | **Sub-Branch Data Scoping & Permission Isolation** | `GET /api/users` & `GET /api/branches` | `isMainBranch = false` for sub-branch users; staff queries and branch queries automatically restrict results to the caller's sub-branch only. |
+| **14** | **Branch Staff Integrity & Cross-Branch Protection** | `/api/users` (POST, PUT, PATCH, DELETE) | `403 Forbidden` when a sub-branch user attempts to create staff for another branch, assign admin roles, mutate/lock/delete staff outside their branch, or transfer staff across branches. Sub-branch cashier creation succeeds with `201 Created`. |
+| **15** | **Branch Management Scoping & Independent VietQR Configuration** | `/api/branches` (POST, PUT) | `403 Forbidden` when a sub-branch admin attempts to create branches, modify another branch, or escalate `isMainBranch`. Sub-branch successfully updates its own hotline, operating hours, and independent VietQR account (`200 OK`). |
+| **16** | **SaaS System Role Immutability & RBAC Scoping** | `/api/roles` (POST, PUT) | `403 Forbidden` when sub-branch accounts attempt to create or modify roles; `403 Forbidden` when restaurant owners attempt to alter SaaS default roles; Only Super Admin can modify system roles (`200 OK`). |
 
 ---
 
@@ -56,5 +60,5 @@ npm run test:phase2:all && npm run test:phase3
 
 Upon completion, `test.ts` executes automated cleanup in its `finally` block:
 1. Spawns isolated test records with unique timestamps (`timestamp`).
-2. Cleans up test restaurants, users with prefix `owner.p3.`, `staff.p3.`, and custom roles with prefix `custom_pos_`.
+2. Cleans up test restaurants, branches, users with prefix `owner.p3.`, `staff.p3.`, `subadmin.`, `cashier.q7.`, and custom roles with prefix `custom_pos_`.
 3. Assures zero database residue after test suite completion.

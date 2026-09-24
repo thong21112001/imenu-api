@@ -503,6 +503,303 @@ async function main() {
       failed++;
     }
 
+    // ----------------------------------------------------
+    // SUB-BRANCH ISOLATION & SCOPING TEST CASES (CASES 13 - 16)
+    // ----------------------------------------------------
+    let subBranchId = '';
+    let mainBranchId = '';
+    let subAdminToken = '';
+    let subAdminUserId = '';
+    let subBranchCashierId = '';
+
+    // Ca 13: Tạo chi nhánh con, gán tài khoản quản trị chi nhánh con & Phân lập danh sách (Scoping)
+    try {
+      // 1. Lấy main branch ID của nhà hàng A
+      const restADoc: any = await connection.collection('restaurants').findOne({ _id: new Types.ObjectId(restaurantAId) });
+      const mainBranch = restADoc?.branches?.find((b: any) => b.isMainBranch);
+      mainBranchId = mainBranch?._id?.toString() || mainBranch?.id?.toString();
+
+      // 2. Tạo chi nhánh con Bếp Nhà Q.7
+      const createBranchRes = await request('/branches', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          name: 'Chi Nhánh Quận 7',
+          address: '777 Nguyễn Thị Thập, Q.7',
+          phone: '0907777777',
+          isMainBranch: false,
+        }),
+      });
+      subBranchId = (createBranchRes.data.data?._id || createBranchRes.data.data?.id)?.toString();
+
+      // 3. Tạo tài khoản quản trị chi nhánh con
+      const restaurantAdminRole = await rolesService.findBySlug('restaurant_admin');
+      const createSubAdminRes = await request('/users', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          fullName: 'Quản Lý CN Quận 7',
+          email: `subadmin.${timestamp}@imenu.vn`,
+          username: `subadmin${timestamp}`,
+          phone: '0907777888',
+          password: 'Password@123',
+          roleId: restaurantAdminRole._id.toString(),
+          branchId: subBranchId,
+        }),
+      });
+      subAdminUserId = (createSubAdminRes.data.data?._id || createSubAdminRes.data.data?.id)?.toString();
+
+      // 4. Đăng nhập bằng tài khoản quản lý chi nhánh con
+      const subAdminLogin = await request('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: `subadmin.${timestamp}@imenu.vn`,
+          password: 'Password@123',
+        }),
+      });
+      subAdminToken = subAdminLogin.data.data?.accessToken;
+      const isMain = subAdminLogin.data.data?.user?.isMainBranch;
+
+      // 5. Kiểm tra phân lập danh sách nhân viên: Sub-admin chỉ thấy nhân viên chi nhánh mình
+      const listStaffRes = await request('/users', {
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+      });
+      const staffList = listStaffRes.data.data?.data || [];
+      const allBelongToSubBranch = staffList.length > 0 && staffList.every((u: any) => u.branchId === subBranchId);
+
+      // 6. Kiểm tra phân lập chi nhánh: Sub-admin chỉ thấy chi nhánh của mình
+      const listBranchesRes = await request('/branches', {
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+      });
+      const branchList = listBranchesRes.data.data || [];
+      const onlySubBranchVisible = branchList.length === 1 && (branchList[0]._id === subBranchId || branchList[0].id === subBranchId);
+
+      if (isMain === false && allBelongToSubBranch && onlySubBranchVisible) {
+        pass('Ca 13: Phân lập quyền hạn & Dữ liệu chi nhánh con', 'isMainBranch=false, chỉ thấy nhân viên và chi nhánh thuộc quyền quản lý');
+        passed++;
+      } else {
+        fail('Ca 13: Phân lập quyền hạn & Dữ liệu chi nhánh con', `isMain: ${isMain}, allBelongToSubBranch: ${allBelongToSubBranch}, onlySubBranchVisible: ${onlySubBranchVisible}`);
+        failed++;
+      }
+    } catch (e: any) {
+      fail('Ca 13: Phân lập quyền hạn & Dữ liệu chi nhánh con', e.message);
+      failed++;
+    }
+
+    // Ca 14: Bảo vệ toàn vẹn nhân sự: Chặn chi nhánh con thao tác nhân sự chi nhánh khác hoặc gán vai trò quản trị
+    try {
+      // 1. Chặn tạo nhân viên cho chi nhánh chính
+      const blockCreateOtherBranch = await request('/users', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({
+          fullName: 'Nhân viên lậu',
+          email: `inv.staff.${timestamp}@imenu.vn`,
+          phone: '0901239999',
+          password: 'Password@123',
+          roleId: cashierRoleId,
+          branchId: mainBranchId,
+        }),
+      });
+
+      // 2. Chặn gán vai trò quản trị (restaurant_admin)
+      const restaurantAdminRole = await rolesService.findBySlug('restaurant_admin');
+      const blockAssignAdminRole = await request('/users', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({
+          fullName: 'Admin lậu',
+          email: `admin.fraud.${timestamp}@imenu.vn`,
+          phone: '0901239998',
+          password: 'Password@123',
+          roleId: restaurantAdminRole._id.toString(),
+          branchId: subBranchId,
+        }),
+      });
+
+      // 3. Tạo hợp lệ thu ngân cho chi nhánh của mình
+      const validCreateRes = await request('/users', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({
+          fullName: 'Thu Ngân CN Quận 7',
+          email: `cashier.q7.${timestamp}@imenu.vn`,
+          phone: '0901239997',
+          password: 'Password@123',
+          roleId: cashierRoleId,
+          branchId: subBranchId,
+        }),
+      });
+      subBranchCashierId = (validCreateRes.data.data?._id || validCreateRes.data.data?.id)?.toString();
+
+      // 4. Chặn sửa nhân viên ở chi nhánh khác (sửa ownerA)
+      const blockUpdateOtherBranch = await request(`/users/${ownerAId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({ fullName: 'Tên Đã Bị Hack' }),
+      });
+
+      // 5. Chặn khóa tài khoản nhân viên chi nhánh khác
+      const blockToggleOtherBranch = await request(`/users/${ownerAId}/toggle-status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+      });
+
+      // 6. Chặn xóa nhân viên chi nhánh khác
+      const blockDeleteOtherBranch = await request(`/users/${ownerAId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+      });
+
+      // 7. Chặn điều chuyển nhân sự giữa các chi nhánh
+      const blockTransferStaff = await request(`/users/${subBranchCashierId}/transfer`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({ targetBranchId: mainBranchId }),
+      });
+
+      if (
+        blockCreateOtherBranch.status === 403 &&
+        blockAssignAdminRole.status === 403 &&
+        validCreateRes.status === 201 &&
+        blockUpdateOtherBranch.status === 403 &&
+        blockToggleOtherBranch.status === 403 &&
+        blockDeleteOtherBranch.status === 403 &&
+        blockTransferStaff.status === 403
+      ) {
+        pass('Ca 14: Bảo vệ toàn vẹn nhân sự chi nhánh', 'Chặn tạo chi nhánh khác, gán role admin, sửa, khóa, xóa chéo và điều chuyển (403)');
+        passed++;
+      } else {
+        fail(
+          'Ca 14: Bảo vệ toàn vẹn nhân sự chi nhánh',
+          `createOther: ${blockCreateOtherBranch.status}, assignAdmin: ${blockAssignAdminRole.status}, validCreate: ${validCreateRes.status}, updateOther: ${blockUpdateOtherBranch.status}, toggleOther: ${blockToggleOtherBranch.status}, deleteOther: ${blockDeleteOtherBranch.status}, transfer: ${blockTransferStaff.status}`,
+        );
+        failed++;
+      }
+    } catch (e: any) {
+      fail('Ca 14: Bảo vệ toàn vẹn nhân sự chi nhánh', e.message);
+      failed++;
+    }
+
+    // Ca 15: Phân lập quản lý chi nhánh & Cài đặt độc lập tài khoản VietQR / hotline chi nhánh con
+    try {
+      // 1. Chặn chi nhánh con tạo chi nhánh mới
+      const blockCreateBranch = await request('/branches', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({ name: 'Chi Nhánh Lậu', address: '123', phone: '0901' }),
+      });
+
+      // 2. Chặn chi nhánh con sửa chi nhánh khác (sửa main branch)
+      const blockUpdateMainBranch = await request(`/branches/${mainBranchId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({ name: 'Trụ sở chính bị hack' }),
+      });
+
+      // 3. Chặn chi nhánh con tự ý thăng cấp thành isMainBranch: true
+      const blockElevateMain = await request(`/branches/${subBranchId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({ isMainBranch: true }),
+      });
+
+      // 4. Cho phép chi nhánh con cập nhật thông tin riêng biệt của mình (hotline, openingHours, bankAccount riêng)
+      const updateOwnBranchRes = await request(`/branches/${subBranchId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({
+          name: 'Chi Nhánh Bếp Nhà Quận 7 - Premium',
+          phone: '0907777999',
+          openingHours: '07:30 - 23:00',
+          tagline: 'Ẩm thực chuẩn vị gia đình',
+          bankAccount: {
+            bankId: 'TCB',
+            bankName: 'Techcombank',
+            accountNo: '888899990000',
+            accountName: 'BEP NHA CHI NHANH QUAN 7',
+            template: 'compact',
+          },
+        }),
+      });
+
+      const updatedData = updateOwnBranchRes.data.data;
+      const bankAccountSaved =
+        updatedData?.bankAccount?.bankId === 'TCB' &&
+        updatedData?.bankAccount?.accountNo === '888899990000' &&
+        updatedData?.phone === '0907777999';
+
+      if (
+        blockCreateBranch.status === 403 &&
+        blockUpdateMainBranch.status === 403 &&
+        blockElevateMain.status === 403 &&
+        updateOwnBranchRes.status === 200 &&
+        bankAccountSaved
+      ) {
+        pass('Ca 15: Phân lập quản lý chi nhánh & Cài đặt độc lập VietQR', 'Chặn can thiệp chi nhánh khác (403), lưu thành công VietQR và Hotline riêng cho chi nhánh con');
+        passed++;
+      } else {
+        fail(
+          'Ca 15: Phân lập quản lý chi nhánh & Cài đặt độc lập VietQR',
+          `createBranch: ${blockCreateBranch.status}, updateMain: ${blockUpdateMainBranch.status}, elevateMain: ${blockElevateMain.status}, updateOwn: ${updateOwnBranchRes.status}, bankSaved: ${bankAccountSaved}`,
+        );
+        failed++;
+      }
+    } catch (e: any) {
+      fail('Ca 15: Phân lập quản lý chi nhánh & Cài đặt độc lập VietQR', e.message);
+      failed++;
+    }
+
+    // Ca 16: Bảo vệ vai trò mặc định hệ thống SaaS & Phân lập RBAC
+    try {
+      // 1. Chặn chi nhánh con tạo vai trò tùy chỉnh
+      const blockSubCreateRole = await request('/roles', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({ name: 'Role Chi Nhánh', slug: `sub_role_${timestamp}` }),
+      });
+
+      // 2. Chặn chi nhánh con sửa vai trò
+      const blockSubUpdateRole = await request(`/roles/${cashierRoleId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${subAdminToken}` },
+        body: JSON.stringify({ name: 'Sửa bởi chi nhánh con' }),
+      });
+
+      // 3. Chặn chủ nhà hàng (HQ) sửa vai trò mặc định của hệ thống (chỉ Super Admin mới có quyền)
+      const blockOwnerUpdateSystemRole = await request(`/roles/${cashierRoleId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({ description: 'Chủ nhà hàng cố ý sửa role hệ thống' }),
+      });
+
+      // 4. Super Admin có quyền cập nhật vai trò hệ thống
+      const superAdminUpdateSystemRole = await request(`/roles/${cashierRoleId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+        body: JSON.stringify({ description: 'Cập nhật hợp lệ bởi Super Admin' }),
+      });
+
+      if (
+        blockSubCreateRole.status === 403 &&
+        blockSubUpdateRole.status === 403 &&
+        blockOwnerUpdateSystemRole.status === 403 &&
+        superAdminUpdateSystemRole.status === 200
+      ) {
+        pass('Ca 16: Bảo vệ vai trò mặc định hệ thống & Phân lập RBAC', 'Chặn chi nhánh con sửa role (403), chặn chủ nhà hàng sửa role hệ thống (403), Super Admin toàn quyền (200)');
+        passed++;
+      } else {
+        fail(
+          'Ca 16: Bảo vệ vai trò mặc định hệ thống & Phân lập RBAC',
+          `subCreate: ${blockSubCreateRole.status}, subUpdate: ${blockSubUpdateRole.status}, ownerUpdateSys: ${blockOwnerUpdateSystemRole.status}, superUpdateSys: ${superAdminUpdateSystemRole.status}`,
+        );
+        failed++;
+      }
+    } catch (e: any) {
+      fail('Ca 16: Bảo vệ vai trò mặc định hệ thống & Phân lập RBAC', e.message);
+      failed++;
+    }
+
     console.log(`\n----------------------------------------------------------------`);
     console.log(`Kết quả kiểm thử Phase 3: ${colors.green}${passed} passed${colors.reset}, ${failed > 0 ? colors.red : colors.green}${failed} failed${colors.reset}`);
     console.log(`----------------------------------------------------------------\n`);

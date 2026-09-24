@@ -1,24 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { Branch, BranchSchema } from './branch.schema';
+import { BankAccount } from './bank-account.schema';
 
-@Schema({ _id: false })
-export class BankAccount {
-  @Prop({ default: '' })
-  bankId: string; // VCB, MB, TCB...
-
-  @Prop({ default: '' })
-  bankName: string;
-
-  @Prop({ default: '' })
-  accountNo: string;
-
-  @Prop({ default: '' })
-  accountName: string;
-
-  @Prop({ default: 'compact' })
-  template: string;
-}
+export { BankAccount };
 
 @Schema({ timestamps: true, collection: 'restaurants' })
 export class Restaurant {

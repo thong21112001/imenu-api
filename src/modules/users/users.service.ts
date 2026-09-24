@@ -387,10 +387,16 @@ export class UsersService {
       throw new ForbiddenException('Không thể khóa tài khoản Quản trị viên hệ thống (Super Admin)');
     }
 
-    // Kiem tra quyen theo nha hang
+    // Kiem tra quyen theo nha hang va chi nhanh
     const isSuperAdmin = isSuperAdminUser(caller);
     if (!isSuperAdmin && user.restaurantId?.toString() !== caller.restaurantId) {
       throw new ForbiddenException('Bạn không có quyền thao tác trên nhân sự của nhà hàng khác');
+    }
+
+    if (!isSuperAdmin && caller && !caller.isMainBranch && caller.branchId) {
+      if (user.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền thao tác trên nhân sự của chi nhánh khác');
+      }
     }
 
     user.status = user.status === UserStatus.ACTIVE ? UserStatus.INACTIVE : UserStatus.ACTIVE;
@@ -417,10 +423,16 @@ export class UsersService {
       throw new ForbiddenException('Không thể xóa tài khoản Quản trị viên hệ thống (Super Admin)');
     }
 
-    // Kiem tra quyen theo nha hang
+    // Kiem tra quyen theo nha hang va chi nhanh
     const isSuperAdmin = isSuperAdminUser(caller);
     if (!isSuperAdmin && user.restaurantId?.toString() !== caller.restaurantId) {
       throw new ForbiddenException('Bạn không có quyền thao tác trên nhân sự của nhà hàng khác');
+    }
+
+    if (!isSuperAdmin && caller && !caller.isMainBranch && caller.branchId) {
+      if (user.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền thao tác trên nhân sự của chi nhánh khác');
+      }
     }
 
     // Thuc hien Soft Delete

@@ -33,15 +33,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     let isMainBranch = false;
     const roleSlug = (user.role as any)?.slug?.toLowerCase() || '';
 
-    if (roleSlug === 'system_admin' || roleSlug === 'super_admin' || roleSlug === 'restaurant_admin') {
+    if (roleSlug === 'system_admin' || roleSlug === 'super_admin') {
       isMainBranch = true;
-    } else if (user.restaurantId && user.branchId) {
+    } else if (user.restaurantId) {
       try {
         const restaurant = await this.restaurantsService.findById(user.restaurantId.toString());
-        const branch = restaurant?.branches?.find(
-          (b: any) => b._id.toString() === user.branchId || b.id === user.branchId,
-        );
-        isMainBranch = !!branch?.isMainBranch;
+        if (restaurant?.branches && restaurant.branches.length > 0) {
+          if (!user.branchId) {
+            isMainBranch = roleSlug === 'restaurant_admin';
+          } else {
+            const branch = restaurant.branches.find(
+              (b: any) => b._id.toString() === user.branchId || b.id === user.branchId,
+            );
+            isMainBranch = !!branch?.isMainBranch;
+          }
+        }
       } catch {
         isMainBranch = false;
       }

@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { BankAccount } from './bank-account.schema';
 
 export enum BranchStatus {
   ACTIVE = 'ACTIVE',
@@ -31,6 +32,15 @@ export class Branch {
 
   @Prop({ default: '' })
   closedReason?: string;
+
+  @Prop({ type: BankAccount, default: () => ({}) })
+  bankAccount: BankAccount;
+
+  @Prop({ default: '08:00 - 22:00' })
+  openingHours: string;
+
+  @Prop({ default: '' })
+  tagline: string;
 }
 
 export const BranchSchema = SchemaFactory.createForClass(Branch);

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -16,6 +17,7 @@ import {
   convertPermissionIdsToSubdocs,
   convertSubdocsToPermissionIds,
 } from '../../shared/common/utils/permission-mapping.util';
+import { JwtUser, isSuperAdminUser } from '../auth/interface/jwtUser';
 
 @Injectable()
 export class RolesService {
@@ -184,7 +186,12 @@ export class RolesService {
     };
   }
 
-  async create(createRoleDto: CreateRoleDto, restaurantId?: string): Promise<any> {
+  async create(createRoleDto: CreateRoleDto, restaurantId?: string, caller?: JwtUser): Promise<any> {
+    const isSuperAdmin = isSuperAdminUser(caller);
+    if (!isSuperAdmin && caller && !caller.isMainBranch) {
+      throw new ForbiddenException('Chi nhánh con không có quyền tạo vai trò phân quyền mới');
+    }
+
     const exists = await this.roleModel.findOne({ slug: createRoleDto.slug });
     if (exists) {
       throw new ConflictException('Mã vai trò (slug) đã tồn tại');
@@ -210,10 +217,18 @@ export class RolesService {
     };
   }
 
-  async update(id: string, updateRoleDto: UpdateRoleDto): Promise<any> {
+  async update(id: string, updateRoleDto: UpdateRoleDto, caller?: JwtUser): Promise<any> {
     const role = await this.roleModel.findById(id);
     if (!role) {
       throw new NotFoundException('Không tìm thấy vai trò');
+    }
+
+    const isSuperAdmin = isSuperAdminUser(caller);
+    if (role.isSystem && !isSuperAdmin) {
+      throw new ForbiddenException('Chỉ Quản trị viên hệ thống (Super Admin) mới có quyền chỉnh sửa các vai trò chuẩn của hệ thống');
+    }
+    if (!isSuperAdmin && caller && !caller.isMainBranch) {
+      throw new ForbiddenException('Chi nhánh con không có quyền chỉnh sửa phân quyền');
     }
 
     if (role.isSystem && updateRoleDto.slug && updateRoleDto.slug !== role.slug) {
@@ -236,7 +251,12 @@ export class RolesService {
     };
   }
 
-  async delete(id: string): Promise<{ success: boolean; message: string }> {
+  async delete(id: string, caller?: JwtUser): Promise<{ success: boolean; message: string }> {
+    const isSuperAdmin = isSuperAdminUser(caller);
+    if (!isSuperAdmin && caller && !caller.isMainBranch) {
+      throw new ForbiddenException('Chi nhánh con không có quyền xóa vai trò phân quyền');
+    }
+
     const role = await this.roleModel.findById(id);
     if (!role) {
       throw new NotFoundException('Không tìm thấy vai trò');

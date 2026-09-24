@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { BranchStatus } from '../entities/branch.schema';
+import { BankAccountDto } from './update-restaurant.dto';
 
 export class CreateBranchDto {
   @ApiProperty({ example: 'Chi nhánh Quận 3' })
@@ -27,6 +29,22 @@ export class CreateBranchDto {
   @IsOptional()
   @IsEnum(BranchStatus)
   status?: BranchStatus;
+
+  @ApiPropertyOptional({ type: BankAccountDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BankAccountDto)
+  bankAccount?: BankAccountDto;
+
+  @ApiPropertyOptional({ example: '08:00 - 22:00' })
+  @IsOptional()
+  @IsString()
+  openingHours?: string;
+
+  @ApiPropertyOptional({ example: 'Hương vị truyền thống' })
+  @IsOptional()
+  @IsString()
+  tagline?: string;
 }
 
 export class UpdateBranchDto {
@@ -54,6 +72,22 @@ export class UpdateBranchDto {
   @IsOptional()
   @IsEnum(BranchStatus)
   status?: BranchStatus;
+
+  @ApiPropertyOptional({ type: BankAccountDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BankAccountDto)
+  bankAccount?: BankAccountDto;
+
+  @ApiPropertyOptional({ example: '08:00 - 22:00' })
+  @IsOptional()
+  @IsString()
+  openingHours?: string;
+
+  @ApiPropertyOptional({ example: 'Hương vị truyền thống' })
+  @IsOptional()
+  @IsString()
+  tagline?: string;
 }
 
 export class CloseBranchDto {
