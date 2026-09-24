@@ -12,7 +12,7 @@ import { Role, RoleDocument } from './entities/role.entity';
 import { User, UserDocument } from '../users/entities/user.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
-import { ActionType, ResourceType } from '../../shared/common/constants/permission.const';
+import { ActionType, ALL_SYSTEM_PERMISSION_IDS, ResourceType } from '../../shared/common/constants/permission.const';
 import {
   convertPermissionIdsToSubdocs,
   convertSubdocsToPermissionIds,
@@ -29,11 +29,19 @@ export class RolesService {
   ) {}
 
   /**
+   * Danh sach toan bo cac string permission IDs chuan cua he thong
+   */
+  getAllPermissionIds(): string[] {
+    return ALL_SYSTEM_PERMISSION_IDS;
+  }
+
+  /**
    * Tu dong khoi tao 6 vai tro he thong mac dinh khi ung dung khoi dong
    */
   async seedDefaultRoles(): Promise<void> {
     const allResources = Object.values(ResourceType);
     const allActions = Object.values(ActionType);
+    const allPermissionIds = this.getAllPermissionIds();
 
     const defaultRoles = [
       {
@@ -46,6 +54,7 @@ export class RolesService {
           resource: res,
           actions: allActions,
         })),
+        permissionIds: allPermissionIds,
       },
       {
         name: 'Chủ nhà hàng / Chi nhánh',
@@ -57,6 +66,13 @@ export class RolesService {
           resource: res,
           actions: allActions,
         })),
+        permissionIds: [
+          'perm-menu-view', 'perm-menu-create', 'perm-menu-status', 'perm-menu-category',
+          'perm-pos-view', 'perm-pos-order', 'perm-pos-pay', 'perm-pos-table',
+          'perm-kds-view', 'perm-kds-cook', 'perm-kds-out',
+          'perm-rep-view', 'perm-rep-export',
+          'perm-staff-manage', 'perm-role-manage', 'perm-qr-print', 'perm-settings',
+        ],
       },
       {
         name: 'Quản lý nhà hàng',
@@ -76,6 +92,12 @@ export class RolesService {
           { resource: ResourceType.STAFF, actions: [ActionType.VIEW, ActionType.CREATE, ActionType.UPDATE] },
           { resource: ResourceType.BRANCH, actions: [ActionType.VIEW] },
         ],
+        permissionIds: [
+          'perm-menu-view', 'perm-menu-create', 'perm-menu-status', 'perm-menu-category',
+          'perm-pos-view', 'perm-pos-order', 'perm-pos-pay', 'perm-pos-table',
+          'perm-kds-view', 'perm-kds-cook', 'perm-kds-out',
+          'perm-rep-view', 'perm-qr-print',
+        ],
       },
       {
         name: 'Thu ngân (POS Cashier)',
@@ -90,6 +112,11 @@ export class RolesService {
           { resource: ResourceType.MENU, actions: [ActionType.VIEW] },
           { resource: ResourceType.BRANCH, actions: [ActionType.VIEW] },
         ],
+        permissionIds: [
+          'perm-menu-view', 'perm-menu-status',
+          'perm-pos-view', 'perm-pos-order', 'perm-pos-pay',
+          'perm-rep-view',
+        ],
       },
       {
         name: 'Nhân viên Bếp (KDS)',
@@ -100,6 +127,9 @@ export class RolesService {
         permissions: [
           { resource: ResourceType.KITCHEN, actions: [ActionType.VIEW, ActionType.UPDATE] },
           { resource: ResourceType.MENU, actions: [ActionType.VIEW] },
+        ],
+        permissionIds: [
+          'perm-kds-view', 'perm-kds-cook', 'perm-kds-out',
         ],
       },
       {
@@ -113,6 +143,9 @@ export class RolesService {
           { resource: ResourceType.POS, actions: [ActionType.VIEW, ActionType.CREATE] },
           { resource: ResourceType.KITCHEN, actions: [ActionType.VIEW] },
         ],
+        permissionIds: [
+          'perm-menu-view', 'perm-pos-view', 'perm-pos-order',
+        ],
       },
     ];
 
@@ -121,11 +154,29 @@ export class RolesService {
       if (!exists) {
         await this.roleModel.create(roleData);
         this.logger.log(`[Seed] Đã tạo vai trò hệ thống: ${roleData.name} (${roleData.slug})`);
-      } else if (roleData.isSystem) {
-        await this.roleModel.updateOne(
-          { _id: exists._id },
-          { $set: { permissions: roleData.permissions, description: roleData.description } },
-        );
+      } else {
+        // Neu la system_admin: Luon dong bo permissions va permissionIds day du nhat
+        if (roleData.slug === 'system_admin') {
+          await this.roleModel.updateOne(
+            { _id: exists._id },
+            {
+              $set: {
+                permissions: roleData.permissions,
+                permissionIds: allPermissionIds,
+              },
+            },
+          );
+        } else {
+          // Voi cac role he thong khac: KHONG ghi de permissions va description ma SuperAdmin da cau hinh!
+          // Chi backfill permissionIds neu document cu chua co trong DB
+          if (!exists.permissionIds || exists.permissionIds.length === 0) {
+            const fallbackIds = (roleData as any).permissionIds || convertSubdocsToPermissionIds(exists.permissions);
+            await this.roleModel.updateOne(
+              { _id: exists._id },
+              { $set: { permissionIds: fallbackIds } },
+            );
+          }
+        }
       }
     }
   }
@@ -139,11 +190,18 @@ export class RolesService {
       filter.slug = { $nin: ['system_admin', 'super_admin', 'SYSTEM_ADMIN'] };
     }
     const roles = await this.roleModel.find(filter).exec();
+    const allIds = this.getAllPermissionIds();
     return roles.map((r) => {
       const obj = r.toObject();
+      const isSuperAdminRole = obj.slug === 'system_admin' || obj.slug === 'super_admin';
+      const permissionIds = isSuperAdminRole
+        ? allIds
+        : (obj.permissionIds && obj.permissionIds.length > 0
+            ? obj.permissionIds
+            : convertSubdocsToPermissionIds(obj.permissions));
       return {
         ...obj,
-        permissionIds: convertSubdocsToPermissionIds(obj.permissions),
+        permissionIds,
       };
     });
   }
@@ -180,9 +238,15 @@ export class RolesService {
       throw new NotFoundException('Không tìm thấy vai trò');
     }
     const obj = role.toObject();
+    const isSuperAdminRole = obj.slug === 'system_admin' || obj.slug === 'super_admin';
+    const permissionIds = isSuperAdminRole
+      ? this.getAllPermissionIds()
+      : (obj.permissionIds && obj.permissionIds.length > 0
+          ? obj.permissionIds
+          : convertSubdocsToPermissionIds(obj.permissions));
     return {
       ...obj,
-      permissionIds: convertSubdocsToPermissionIds(obj.permissions),
+      permissionIds,
     };
   }
 
@@ -198,13 +262,17 @@ export class RolesService {
     }
 
     let finalPermissions = createRoleDto.permissions;
-    if (createRoleDto.permissionIds && createRoleDto.permissionIds.length > 0) {
-      finalPermissions = convertPermissionIdsToSubdocs(createRoleDto.permissionIds);
+    let finalPermissionIds = createRoleDto.permissionIds || [];
+    if (finalPermissionIds.length > 0 && (!finalPermissions || finalPermissions.length === 0)) {
+      finalPermissions = convertPermissionIdsToSubdocs(finalPermissionIds);
+    } else if (finalPermissions && finalPermissions.length > 0 && finalPermissionIds.length === 0) {
+      finalPermissionIds = convertSubdocsToPermissionIds(finalPermissions as any);
     }
 
     const role = new this.roleModel({
       ...createRoleDto,
       permissions: finalPermissions || [],
+      permissionIds: finalPermissionIds,
       isSystem: false,
       restaurantId: restaurantId ? restaurantId : undefined,
     });
@@ -213,7 +281,9 @@ export class RolesService {
     const obj = saved.toObject();
     return {
       ...obj,
-      permissionIds: convertSubdocsToPermissionIds(obj.permissions),
+      permissionIds: (obj.permissionIds && obj.permissionIds.length > 0)
+        ? obj.permissionIds
+        : convertSubdocsToPermissionIds(obj.permissions),
     };
   }
 
@@ -237,17 +307,22 @@ export class RolesService {
 
     const updatePayload: any = { ...updateRoleDto };
 
-    if (updateRoleDto.permissionIds && updateRoleDto.permissionIds.length > 0) {
+    if (updateRoleDto.permissionIds !== undefined) {
+      updatePayload.permissionIds = updateRoleDto.permissionIds;
       updatePayload.permissions = convertPermissionIdsToSubdocs(updateRoleDto.permissionIds);
+    } else if (updateRoleDto.permissions !== undefined) {
+      updatePayload.permissions = updateRoleDto.permissions;
+      updatePayload.permissionIds = convertSubdocsToPermissionIds(updateRoleDto.permissions as any);
     }
 
-    delete updatePayload.permissionIds;
     Object.assign(role, updatePayload);
     const saved = await role.save();
     const obj = saved.toObject();
     return {
       ...obj,
-      permissionIds: convertSubdocsToPermissionIds(obj.permissions),
+      permissionIds: (obj.permissionIds && obj.permissionIds.length > 0)
+        ? obj.permissionIds
+        : convertSubdocsToPermissionIds(obj.permissions),
     };
   }
 

@@ -26,6 +26,10 @@ export class Role {
   @Prop({ type: [PermissionSchema], default: [] })
   permissions: PermissionSubdocument[];
 
+  // Danh sach string permission IDs (VD: ['perm-pos-view', 'perm-kds-out'])
+  @Prop({ type: [String], default: [] })
+  permissionIds: string[];
+
   // Khoa vai tro theo nha hang (null neu la vai tro toan he thong)
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: false })
   restaurantId?: Types.ObjectId;

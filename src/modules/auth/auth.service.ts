@@ -14,6 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterRestaurantDto } from './dto/register-restaurant.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { comparePassword, hashPassword } from '../../shared/common/utils/password.util';
+import { convertSubdocsToPermissionIds } from '../../shared/common/utils/permission-mapping.util';
 import { JwtPayload } from './interface/jwtPayload';
 import { JwtUser } from './interface/jwtUser';
 import { JwtConstants } from '../../shared/common/constants/envConstants';
@@ -71,8 +72,20 @@ export class AuthService {
   }
 
   private resolvePermissions(role: any): string[] {
-    const roleSlug = (role?.slug || '').toLowerCase();
-    if (roleSlug === 'system_admin' || roleSlug === 'restaurant_admin' || roleSlug === 'super_admin') {
+    const roleSlug = (role?.slug || (typeof role === 'string' ? role : '')).toLowerCase();
+    // Super Admin luon co toan bo cac permission IDs hien co va moi cua he thong
+    if (roleSlug === 'system_admin' || roleSlug === 'super_admin') {
+      return this.rolesService.getAllPermissionIds();
+    }
+    // Uu tien lay permissionIds truc tiep duoc SuperAdmin/chu nha hang cau hinh trong DB
+    if (role?.permissionIds && Array.isArray(role.permissionIds) && role.permissionIds.length > 0) {
+      return role.permissionIds;
+    }
+    if (role?.permissions && Array.isArray(role.permissions) && role.permissions.length > 0) {
+      return convertSubdocsToPermissionIds(role.permissions);
+    }
+    // Fallback cho cac role mac dinh chua co document permissionIds cu the
+    if (roleSlug === 'restaurant_admin') {
       return SYSTEM_PERMISSIONS;
     }
     if (roleSlug === 'restaurant_manager') {

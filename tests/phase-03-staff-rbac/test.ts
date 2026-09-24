@@ -773,18 +773,26 @@ async function main() {
         body: JSON.stringify({ description: 'Chủ nhà hàng cố ý sửa role hệ thống' }),
       });
 
-      // 4. Super Admin có quyền cập nhật vai trò hệ thống
+      // 4. Super Admin có quyền cập nhật vai trò hệ thống (cả description và permissionIds)
       const superAdminUpdateSystemRole = await request(`/roles/${cashierRoleId}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${superAdminToken}` },
-        body: JSON.stringify({ description: 'Cập nhật hợp lệ bởi Super Admin' }),
+        body: JSON.stringify({
+          description: 'Cập nhật hợp lệ bởi Super Admin',
+          permissionIds: ['perm-pos-view', 'perm-pos-pay', 'perm-menu-view'],
+        }),
       });
+
+      const updatedRoleHasPerms =
+        superAdminUpdateSystemRole.data?.data?.permissionIds?.includes('perm-pos-pay') &&
+        superAdminUpdateSystemRole.data?.data?.permissionIds?.length === 3;
 
       if (
         blockSubCreateRole.status === 403 &&
         blockSubUpdateRole.status === 403 &&
         blockOwnerUpdateSystemRole.status === 403 &&
-        superAdminUpdateSystemRole.status === 200
+        superAdminUpdateSystemRole.status === 200 &&
+        updatedRoleHasPerms
       ) {
         pass('Ca 16: Bảo vệ vai trò mặc định hệ thống & Phân lập RBAC', 'Chặn chi nhánh con sửa role (403), chặn chủ nhà hàng sửa role hệ thống (403), Super Admin toàn quyền (200)');
         passed++;
