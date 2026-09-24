@@ -26,7 +26,7 @@ export class UsersController {
   @RequirePermissions(ResourceType.STAFF, ActionType.VIEW)
   @Get()
   async findAll(
-    @Query() query: PaginateDto & { branchId?: string; restaurantId?: string },
+    @Query() query: PaginateDto & { branchId?: string; restaurantId?: string; status?: string; roleId?: string; role?: string },
     @CurrentRestaurant() restaurantId: string,
     @CurrentUser() user: JwtUser,
   ) {

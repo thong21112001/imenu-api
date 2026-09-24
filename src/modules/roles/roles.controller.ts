@@ -7,6 +7,8 @@ import { OkResponse } from '../../shared/common/dto/okResponse';
 import { RequirePermissions } from '../../shared/common/decorators/require-permissions.decorator';
 import { ActionType, IMENU_PERMISSIONS, ResourceType } from '../../shared/common/constants/permission.const';
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
+import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
+import { JwtUser, isSuperAdminUser } from '../auth/interface/jwtUser';
 import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
 import { DemoBlockGuard } from '../../shared/common/guards/demo-block.guard';
 
@@ -29,8 +31,12 @@ export class RolesController {
   @ApiOperation({ summary: 'Lấy danh sách tất cả các vai trò' })
   @RequirePermissions(ResourceType.STAFF, ActionType.VIEW)
   @Get()
-  async findAll(@CurrentRestaurant() restaurantId: string) {
-    const roles = await this.rolesService.findAll(restaurantId);
+  async findAll(
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const isSuperAdmin = isSuperAdminUser(user);
+    const roles = await this.rolesService.findAll(restaurantId, isSuperAdmin);
     return new OkResponse({ data: roles });
   }
 
@@ -46,8 +52,11 @@ export class RolesController {
   @ApiOperation({ summary: 'Xem chi tiết vai trò' })
   @RequirePermissions(ResourceType.STAFF, ActionType.VIEW)
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @CurrentUser() user: JwtUser) {
     const role = await this.rolesService.findById(id);
+    if ((role.slug === 'system_admin' || role.slug === 'super_admin') && !isSuperAdminUser(user)) {
+      return new OkResponse({ data: null });
+    }
     return new OkResponse({ data: role });
   }
 

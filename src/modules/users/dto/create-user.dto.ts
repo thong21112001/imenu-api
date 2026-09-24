@@ -27,10 +27,15 @@ export class CreateUserDto {
   @IsNotEmpty()
   phone: string;
 
-  @ApiProperty({ example: 'role_object_id_here' })
+  @ApiPropertyOptional({ example: 'role_object_id_here' })
   @IsString()
-  @IsNotEmpty()
-  roleId: string;
+  @IsOptional()
+  roleId?: string;
+
+  @ApiPropertyOptional({ example: 'cashier' })
+  @IsString()
+  @IsOptional()
+  role?: string;
 
   @ApiPropertyOptional({ example: 'restaurant_object_id_here', description: 'Chi danh cho Super Admin tao ho cho nha hang' })
   @IsString()

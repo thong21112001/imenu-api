@@ -155,11 +155,11 @@ export class UsersService {
   }
 
   async findAllPaginated(
-    query: PaginateDto & { branchId?: string; restaurantId?: string },
+    query: PaginateDto & { branchId?: string; restaurantId?: string; status?: string; roleId?: string; role?: string },
     restaurantId?: string,
     caller?: JwtUser,
   ): Promise<PaginationResponse<User>> {
-    const { page = 1, limit = 20, search, branchId } = query;
+    const { page = 1, limit = 20, search, branchId, status } = query;
     const filter: any = { isDeleted: { $ne: true } };
 
     const isSuperAdmin = isSuperAdminUser(caller);
@@ -194,6 +194,18 @@ export class UsersService {
       ];
     }
 
+    if (query.status && query.status !== 'all') {
+      filter.status = query.status;
+    }
+
+    const rawRole = query.roleId || (query as any).role;
+    if (rawRole && rawRole !== 'all') {
+      const roleDoc = await this.rolesService.findByIdOrSlug(rawRole);
+      if (roleDoc) {
+        filter.role = roleDoc._id;
+      }
+    }
+
     const total = await this.userModel.countDocuments(filter);
     const data = await this.userModel
       .find(filter)
@@ -225,7 +237,16 @@ export class UsersService {
       throw new ConflictException('Tên đăng nhập hoặc Email đã tồn tại');
     }
 
-    const role = await this.rolesService.findById(dto.roleId);
+    const rawRoleId = dto.roleId || dto.role;
+    if (!rawRoleId) {
+      throw new BadRequestException('Vui lòng chọn vai trò phân quyền (roleId)');
+    }
+
+    const role: any = await this.rolesService.findByIdOrSlug(rawRoleId);
+    if (!role) {
+      throw new NotFoundException(`Không tìm thấy vai trò với ID hoặc mã: ${rawRoleId}`);
+    }
+
     if ((role as any).slug === 'system_admin' || (role as any).slug === 'super_admin') {
       throw new ForbiddenException('Không thể gán vai trò Quản trị viên hệ thống SaaS');
     }
@@ -241,8 +262,8 @@ export class UsersService {
 
       // Kiểm tra phạm vi của caller neu khong phai Super Admin
       if (!isSuperAdmin && caller && !caller.isMainBranch) {
-        if ((role as any).slug === 'restaurant_admin') {
-          throw new ForbiddenException('Quản lý chi nhánh không thể tạo tài khoản Chủ nhà hàng');
+        if ((role as any).slug === 'restaurant_admin' || (role as any).slug === 'restaurant_manager') {
+          throw new ForbiddenException('Chỉ tài khoản chính của chủ nhà hàng (Trụ sở chính) mới có quyền phân quyền vai trò quản trị');
         }
         if (dto.branchId && dto.branchId !== caller.branchId) {
           throw new ForbiddenException('Bạn chỉ có quyền tạo nhân sự cho chi nhánh của mình');
@@ -318,6 +339,25 @@ export class UsersService {
         throw new BadRequestException('Không thể gán nhân viên vào chi nhánh đã ngừng hoạt động');
       }
       dto.branchName = (branch as any).name;
+    }
+
+    const rawRoleId = dto.roleId || (dto as any).role;
+    if (rawRoleId) {
+      if (!isSuperAdmin && caller && !caller.isMainBranch) {
+        throw new ForbiddenException('Chỉ tài khoản chính của chủ nhà hàng mới có quyền phân quyền vai trò');
+      }
+
+      const role: any = await this.rolesService.findByIdOrSlug(rawRoleId);
+      if (!role) {
+        throw new NotFoundException(`Không tìm thấy vai trò với ID hoặc mã: ${rawRoleId}`);
+      }
+
+      if ((role as any).slug === 'system_admin' || (role as any).slug === 'super_admin') {
+        throw new ForbiddenException('Không thể gán vai trò Quản trị viên hệ thống SaaS');
+      }
+      user.role = role._id;
+      delete (dto as any).roleId;
+      delete (dto as any).role;
     }
 
     if (dto.password) {

@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Role, RoleDocument } from './entities/role.entity';
 import { User, UserDocument } from '../users/entities/user.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -128,10 +128,13 @@ export class RolesService {
     }
   }
 
-  async findAll(restaurantId?: string): Promise<any[]> {
+  async findAll(restaurantId?: string, isSuperAdmin = false): Promise<any[]> {
     const filter: any = { isActive: true };
     if (restaurantId) {
       filter.$or = [{ isSystem: true }, { restaurantId }];
+    }
+    if (!isSuperAdmin) {
+      filter.slug = { $nin: ['system_admin', 'super_admin', 'SYSTEM_ADMIN'] };
     }
     const roles = await this.roleModel.find(filter).exec();
     return roles.map((r) => {
@@ -147,6 +150,24 @@ export class RolesService {
     const role = await this.roleModel.findOne({ slug });
     if (!role) {
       throw new NotFoundException(`Không tìm thấy vai trò với slug: ${slug}`);
+    }
+    return role;
+  }
+
+  async findByIdOrSlug(identifier: string): Promise<RoleDocument | null> {
+    if (!identifier) return null;
+    let role: any = null;
+    if (Types.ObjectId.isValid(identifier)) {
+      role = await this.roleModel.findById(identifier).exec();
+    }
+    if (!role) {
+      role = await this.roleModel.findOne({
+        $or: [
+          { slug: identifier },
+          { slug: identifier.toLowerCase() },
+          { name: identifier },
+        ],
+      }).exec();
     }
     return role;
   }
