@@ -42,9 +42,19 @@ async function runSeeder() {
       const userModel = (usersService as any).userModel;
       const restModel = (restaurantsService as any).restaurantModel;
 
-      await userModel.deleteOne({ email: 'owner@sample.vn' });
+      await userModel.deleteMany({
+        email: {
+          $in: [
+            'owner@sample.vn',
+            'manager@sample.vn',
+            'cashier@sample.vn',
+            'kitchen@sample.vn',
+            'waiter@sample.vn',
+          ],
+        },
+      });
       await restModel.deleteOne({ slug: 'bep-nha' });
-      console.log(`  ✔ Đã dọn sạch tài khoản demo owner@sample.vn và nhà hàng bep-nha`);
+      console.log(`  ✔ Đã dọn sạch 5 tài khoản demo (owner, manager, cashier, kitchen, waiter) và nhà hàng bep-nha`);
     }
 
     // 1. Seed Roles hệ thống

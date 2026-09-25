@@ -18,26 +18,10 @@ import { convertSubdocsToPermissionIds } from '../../shared/common/utils/permiss
 import { JwtPayload } from './interface/jwtPayload';
 import { JwtUser } from './interface/jwtUser';
 import { JwtConstants } from '../../shared/common/constants/envConstants';
+import { ALL_SYSTEM_PERMISSION_IDS } from '../../shared/common/constants/permission.const';
 
-const SYSTEM_PERMISSIONS = [
-  'perm-menu-view',
-  'perm-menu-create',
-  'perm-menu-status',
-  'perm-menu-category',
-  'perm-pos-view',
-  'perm-pos-order',
-  'perm-pos-pay',
-  'perm-pos-table',
-  'perm-kds-view',
-  'perm-kds-cook',
-  'perm-kds-out',
-  'perm-rep-view',
-  'perm-rep-export',
-  'perm-staff-manage',
-  'perm-role-manage',
-  'perm-qr-print',
-  'perm-settings',
-];
+// Alias dung de fallback cho cac role mac dinh chua co permissionIds trong DB
+const SYSTEM_PERMISSIONS = ALL_SYSTEM_PERMISSION_IDS;
 
 @Injectable()
 export class AuthService {
@@ -422,28 +406,85 @@ export class AuthService {
           ? restaurant.branches[0]
           : { _id: mainBranchId, name: branchName };
 
-      const ownerRole = await this.rolesService.findBySlug('restaurant_admin');
-      if (!ownerRole) {
-        return;
-      }
+      const sampleAccounts = [
+        {
+          username: 'owner',
+          email: 'owner@sample.vn',
+          fullName: 'Nguyễn Minh An',
+          phone: '0901234567',
+          roleSlug: 'restaurant_admin',
+        },
+        {
+          username: 'manager',
+          email: 'manager@sample.vn',
+          fullName: 'Trần Quốc Bảo',
+          phone: '0902345678',
+          roleSlug: 'restaurant_manager',
+        },
+        {
+          username: 'cashier',
+          email: 'cashier@sample.vn',
+          fullName: 'Lê Thu Thảo',
+          phone: '0903456789',
+          roleSlug: 'cashier',
+        },
+        {
+          username: 'kitchen',
+          email: 'kitchen@sample.vn',
+          fullName: 'Hoàng Văn Bếp',
+          phone: '0904567890',
+          roleSlug: 'kitchen',
+        },
+        {
+          username: 'waiter',
+          email: 'waiter@sample.vn',
+          fullName: 'Phạm Văn Phục',
+          phone: '0905678901',
+          roleSlug: 'waiter',
+        },
+      ];
 
       const hashedPassword = await hashPassword('Demo@123');
 
-      await this.usersService.createDemoUser({
-        username: 'owner',
-        email: demoEmail,
-        passwordHash: hashedPassword,
-        fullName: 'Nguyễn Minh An',
-        phone: '0901234567',
-        roleId: (ownerRole as any)._id.toString(),
-        restaurantId: (restaurant as any)._id.toString(),
-        branchId: (branch as any)._id.toString(),
-        branchName: (branch as any).name,
-      });
+      for (const acc of sampleAccounts) {
+        const existing = await this.usersService.findByEmail(acc.email);
+        const role = await this.rolesService.findBySlug(acc.roleSlug);
+        if (!role) continue;
 
-      this.logger.log('[Seed] Đã tạo tài khoản demo chủ quán (owner@sample.vn / Demo@123)');
+        if (!existing) {
+          await this.usersService.createDemoUser({
+            username: acc.username,
+            email: acc.email,
+            passwordHash: hashedPassword,
+            fullName: acc.fullName,
+            phone: acc.phone,
+            roleId: (role as any)._id.toString(),
+            restaurantId: (restaurant as any)._id.toString(),
+            branchId: (branch as any)._id.toString(),
+            branchName: (branch as any).name,
+          });
+        } else {
+          // Dam bao tai khoan luon hoat dong va dung thong tin
+          await (this.usersService as any).userModel.updateOne(
+            { _id: existing._id },
+            {
+              $set: {
+                role: (role as any)._id,
+                restaurantId: (restaurant as any)._id,
+                branchId: (branch as any)._id.toString(),
+                branchName: (branch as any).name,
+                isRoleActive: true,
+                status: 'ACTIVE',
+                isDeleted: false,
+              },
+            },
+          );
+        }
+      }
+
+      this.logger.log('[Seed] Đã tạo/đồng bộ 5 tài khoản demo vai trò (owner, manager, cashier, kitchen, waiter / Demo@123)');
     } catch (err: any) {
-      this.logger.warn(`Không thể seed tài khoản demo chủ quán: ${err.message}`);
+      this.logger.warn(`Không thể seed tài khoản demo: ${err.message}`);
     }
   }
 }

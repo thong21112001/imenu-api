@@ -4,6 +4,7 @@ import { Role, RoleSchema } from './entities/role.entity';
 import { User, UserSchema } from '../users/entities/user.entity';
 import { RolesService } from './roles.service';
 import { RolesController } from './roles.controller';
+import { PermissionsController } from './permissions.controller';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { RolesController } from './roles.controller';
       { name: User.name, schema: UserSchema },
     ]),
   ],
-  controllers: [RolesController],
+  controllers: [RolesController, PermissionsController],
   providers: [RolesService],
   exports: [RolesService, MongooseModule],
 })

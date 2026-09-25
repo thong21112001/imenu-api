@@ -96,3 +96,166 @@ export const IMENU_PERMISSIONS = {
 export const ALL_SYSTEM_PERMISSION_IDS: string[] = Array.from(
   new Set(Object.values(IMENU_PERMISSIONS).map((p) => p.id)),
 );
+
+/**
+ * Dinh nghia chi tiet quyen han he thong theo chuan Blueprint
+ */
+export interface PermissionDefinition {
+  id: string;
+  groupId: string;
+  groupName: string;
+  groupIcon?: string;
+  name: string;
+  description: string;
+}
+
+/**
+ * Danh muc 17 quyen han chuan phan theo 5 nhom chuc nang (Seed catalog)
+ */
+export const PERMISSION_CATALOG: PermissionDefinition[] = [
+  // 1. Quan Ly Thuc Don
+  {
+    id: 'perm-menu-view',
+    groupId: 'group-menu',
+    groupName: 'Quản Lý Thực Đơn',
+    groupIcon: '🍲',
+    name: 'Xem thực đơn',
+    description: 'Xem danh sách món ăn, giá và danh mục',
+  },
+  {
+    id: 'perm-menu-create',
+    groupId: 'group-menu',
+    groupName: 'Quản Lý Thực Đơn',
+    groupIcon: '🍲',
+    name: 'Thêm món ăn mới',
+    description: 'Tạo món mới, tải ảnh và cấu hình topping',
+  },
+  {
+    id: 'perm-menu-status',
+    groupId: 'group-menu',
+    groupName: 'Quản Lý Thực Đơn',
+    groupIcon: '🍲',
+    name: 'Bật/Tắt trạng thái Còn/Hết',
+    description: 'Bật tắt nhanh trạng thái Còn món / Hết món',
+  },
+  {
+    id: 'perm-menu-category',
+    groupId: 'group-menu',
+    groupName: 'Quản Lý Thực Đơn',
+    groupIcon: '🍲',
+    name: 'Quản lý danh mục',
+    description: 'Tạo, sửa, sắp xếp và xóa danh mục thực đơn',
+  },
+
+  // 2. So Do Ban & POS Ban Hang
+  {
+    id: 'perm-pos-view',
+    groupId: 'group-pos',
+    groupName: 'Sơ Đồ Bàn & POS Bán Hàng',
+    groupIcon: '🍽️',
+    name: 'Xem sơ đồ bàn',
+    description: 'Xem trạng thái bàn ăn thời gian thực',
+  },
+  {
+    id: 'perm-pos-order',
+    groupId: 'group-pos',
+    groupName: 'Sơ Đồ Bàn & POS Bán Hàng',
+    groupIcon: '🍽️',
+    name: 'Tạo đơn gọi món',
+    description: 'Chọn món và gửi đơn vào bếp cho khách',
+  },
+  {
+    id: 'perm-pos-pay',
+    groupId: 'group-pos',
+    groupName: 'Sơ Đồ Bàn & POS Bán Hàng',
+    groupIcon: '🍽️',
+    name: 'Thanh toán & In hóa đơn',
+    description: 'Xác nhận VietQR, thu tiền mặt, in bill 80mm',
+  },
+  {
+    id: 'perm-pos-table',
+    groupId: 'group-pos',
+    groupName: 'Sơ Đồ Bàn & POS Bán Hàng',
+    groupIcon: '🍽️',
+    name: 'Quản lý bàn',
+    description: 'Thêm bàn mới, sửa khu vực, gộp/chuyển bàn',
+  },
+
+  // 3. Man Hinh Bep KDS
+  {
+    id: 'perm-kds-view',
+    groupId: 'group-kds',
+    groupName: 'Màn Hình Bếp KDS',
+    groupIcon: '👨‍🍳',
+    name: 'Xem vé bếp',
+    description: 'Nhận vé order thời gian thực từ khách và thu ngân',
+  },
+  {
+    id: 'perm-kds-cook',
+    groupId: 'group-kds',
+    groupName: 'Màn Hình Bếp KDS',
+    groupIcon: '👨‍🍳',
+    name: 'Xác nhận chế biến',
+    description: 'Chuyển trạng thái Đang nấu / Hoàn tất món',
+  },
+  {
+    id: 'perm-kds-out',
+    groupId: 'group-kds',
+    groupName: 'Màn Hình Bếp KDS',
+    groupIcon: '👨‍🍳',
+    name: 'Báo hết nguyên liệu',
+    description: 'Báo hết món trực tiếp từ khu vực bếp',
+  },
+
+  // 4. Bao Cao & Doanh Thu
+  {
+    id: 'perm-rep-view',
+    groupId: 'group-reports',
+    groupName: 'Báo Cáo & Doanh Thu',
+    groupIcon: '📈',
+    name: 'Xem doanh thu ngày',
+    description: 'Xem biểu đồ doanh thu, số đơn và món bán chạy',
+  },
+  {
+    id: 'perm-rep-export',
+    groupId: 'group-reports',
+    groupName: 'Báo Cáo & Doanh Thu',
+    groupIcon: '📈',
+    name: 'Xuất báo cáo',
+    description: 'Xuất file excel doanh thu và lịch sử hóa đơn',
+  },
+
+  // 5. Nhan Su & Cai Dat
+  {
+    id: 'perm-staff-manage',
+    groupId: 'group-admin',
+    groupName: 'Nhân Sự & Cài Đặt',
+    groupIcon: '⚙️',
+    name: 'Quản lý nhân viên',
+    description: 'Thêm nhân viên, khóa tài khoản, đổi thông tin',
+  },
+  {
+    id: 'perm-role-manage',
+    groupId: 'group-admin',
+    groupName: 'Nhân Sự & Cài Đặt',
+    groupIcon: '⚙️',
+    name: 'Quản lý phân quyền',
+    description: 'Tạo vai trò mới và cấu hình ma trận quyền hạn',
+  },
+  {
+    id: 'perm-qr-print',
+    groupId: 'group-admin',
+    groupName: 'Nhân Sự & Cài Đặt',
+    groupIcon: '⚙️',
+    name: 'Tạo & In mã QR bàn',
+    description: 'Xuất file in Standee mica và mã QR để bàn',
+  },
+  {
+    id: 'perm-settings',
+    groupId: 'group-admin',
+    groupName: 'Nhân Sự & Cài Đặt',
+    groupIcon: '⚙️',
+    name: 'Cài đặt nhà hàng',
+    description: 'Cấu hình thông tin nhà hàng, tài khoản ngân hàng',
+  },
+];

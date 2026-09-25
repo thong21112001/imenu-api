@@ -167,14 +167,21 @@ export class RolesService {
             },
           );
         } else {
-          // Voi cac role he thong khac: KHONG ghi de permissions va description ma SuperAdmin da cau hinh!
-          // Chi backfill permissionIds neu document cu chua co trong DB
-          if (!exists.permissionIds || exists.permissionIds.length === 0) {
-            const fallbackIds = (roleData as any).permissionIds || convertSubdocsToPermissionIds(exists.permissions);
+          // Voi cac role he thong khac (isSystem: true): Dong bo permissionIds theo seed definition
+          // de tranh mat quyen do chuyen doi subdoc->permId khong 1:1 (vi du perm-kds-cook va perm-kds-out
+          // cung map sang KITCHEN:UPDATE, khi convert nguoc lai chi con 1 trong 2)
+          const seedPermIds = (roleData as any).permissionIds || [];
+          const existingPermIds = exists.permissionIds || [];
+          const needsSync = seedPermIds.length > 0 && (
+            existingPermIds.length === 0 ||
+            !seedPermIds.every((id: string) => existingPermIds.includes(id))
+          );
+          if (needsSync) {
             await this.roleModel.updateOne(
               { _id: exists._id },
-              { $set: { permissionIds: fallbackIds } },
+              { $set: { permissionIds: seedPermIds } },
             );
+            this.logger.log(`[Seed] Đồng bộ permissionIds cho vai trò: ${roleData.name} (${seedPermIds.length} quyền)`);
           }
         }
       }
