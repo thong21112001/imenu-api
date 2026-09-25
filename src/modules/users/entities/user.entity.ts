@@ -5,13 +5,13 @@ import { UserStatus } from '../interface/user-status.enum';
 
 @Schema({ timestamps: true, collection: 'users' })
 export class User {
-  @Prop({ required: true, unique: true, lowercase: true, trim: true })
-  username: string;
+  @Prop({ lowercase: true, trim: true, sparse: true })
+  username?: string;
 
   @Prop({ select: false })
   password?: string;
 
-  @Prop({ required: true, lowercase: true, trim: true })
+  @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email: string;
 
   @Prop({ required: true, trim: true })
@@ -28,7 +28,7 @@ export class User {
   })
   role: Role;
 
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: false, index: true })
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: false })
   restaurantId?: Types.ObjectId;
 
   @Prop({ trim: true })
@@ -44,6 +44,12 @@ export class User {
   @Prop({ default: UserStatus.ACTIVE, enum: Object.values(UserStatus) })
   status: UserStatus;
 
+  @Prop({ default: false, index: true })
+  isDeleted: boolean;
+
+  @Prop()
+  deletedAt?: Date;
+
   @Prop()
   avatarUrl?: string;
 
@@ -54,6 +60,4 @@ export class User {
 export type UserDocument = User & Document;
 export const UserSchema = SchemaFactory.createForClass(User);
 
-UserSchema.index({ email: 1 });
-
-UserSchema.index({ restaurantId: 1, status: 1 });
+UserSchema.index({ restaurantId: 1, isDeleted: 1, status: 1 });

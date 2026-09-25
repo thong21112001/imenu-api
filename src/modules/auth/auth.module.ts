@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { RolesModule } from '../roles/roles.module';
+import { RestaurantsModule } from '../restaurants/restaurants.module';
 import { jwtConfig } from '../../shared/configs/jwt.cnf';
 
 @Module({
@@ -14,6 +15,7 @@ import { jwtConfig } from '../../shared/configs/jwt.cnf';
     JwtModule.register(jwtConfig),
     UsersModule,
     RolesModule,
+    RestaurantsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

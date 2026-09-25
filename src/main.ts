@@ -10,6 +10,7 @@ import { swaggerConfig, swaggerOption } from './shared/configs/swagger.cnf';
 import { MorganLogService } from './shared/loggers/morgan.logger';
 import { RolesService } from './modules/roles/roles.service';
 import { UsersService } from './modules/users/users.service';
+import { AuthService } from './modules/auth/auth.service';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -23,9 +24,12 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type, Accept, Authorization, X-Requested-With',
   });
 
-  // 2. Chuan hoa URL path (Xoa double slashes neu co)
+  // 2. Chuan hoa URL path va rewrite /api/v1/* thanh /api/*
   app.use((req: any, _res: any, next: any) => {
     req.url = req.url.replace(/\/\//g, '/');
+    if (req.url.startsWith('/api/v1/')) {
+      req.url = req.url.replace('/api/v1/', '/api/');
+    }
     next();
   });
 
@@ -46,7 +50,7 @@ async function bootstrap() {
   app.use(morganLog.middleware());
 
   // 6. Global API Prefix
-  app.setGlobalPrefix('api/v1', {
+  app.setGlobalPrefix('api', {
     exclude: ['health', ''],
   });
 
@@ -55,15 +59,18 @@ async function bootstrap() {
   SwaggerModule.setup(ENV.SWAGGER_PATH, app, document, swaggerOption);
   SwaggerModule.setup('api/v1/' + ENV.SWAGGER_PATH, app, document, swaggerOption);
 
-  // 8. Auto-seed 6 vai tro he thong mac dinh & Super Admin
+  // 8. Đảm bảo vai trò hệ thống & Super Admin sẵn sàng
   try {
     const rolesService = app.get(RolesService);
     await rolesService.seedDefaultRoles();
 
     const usersService = app.get(UsersService);
     await usersService.initAdmin();
+
+    const authService = app.get(AuthService);
+    await authService.seedDemoOwner();
   } catch (err: any) {
-    logger.error('Lỗi khi seed dữ liệu ban đầu:', err.message);
+    logger.error('Lỗi khi khởi tạo dữ liệu hệ thống ban đầu:', err.message);
   }
 
   // 9. Khoi dong HTTP Server

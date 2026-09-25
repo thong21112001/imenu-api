@@ -202,10 +202,13 @@ Khi khởi động lần đầu, server sẽ tự động tạo các dữ liệu
   4. `cashier`: Thu ngân (POS, Hóa đơn, Thanh toán)
   5. `kitchen`: Nhân viên Bếp (Theo dõi màn hình KDS)
   6. `waiter`: Nhân viên Phục vụ (Bàn & Gọi món)
-- **Tài khoản Super Admin mặc định**:
-  - **Tên đăng nhập (Username)**: `admin`
-  - **Mật khẩu (Password)**: `admin123456`
-  - **Email**: `admin@imenu.vn`
+- **Tài khoản Super Admin cấu hình từ `.env`**:
+  - Tự động đồng bộ và luôn ghi đè password hash từ biến môi trường:
+  - **Email**: `SUPERADMIN_EMAIL` (Mặc định: `superadmin@imenu.vn`)
+  - **Tên đăng nhập (Username)**: `SUPERADMIN_USERNAME` (Mặc định: `superadmin`)
+  - **Mật khẩu (Password)**: `SUPERADMIN_PASSWORD` (Mặc định: `SuperAdmin@2026!`)
+  - **Họ và tên**: `SUPERADMIN_FULLNAME` (Mặc định: `Quan Tri Vien He Thong iMenu`)
+  - **Số điện thoại**: `SUPERADMIN_PHONE` (Mặc định: `0900000000`)
 
 #### Bước 7: Xác nhận hoạt động
 - **Kiểm tra trạng thái máy chủ (Health Check)**:  
@@ -258,6 +261,8 @@ npm run start:prod
 | `npm test` | Chạy bộ kiểm thử tự động (Unit Tests) với Jest |
 | `npm run test:watch` | Chạy kiểm thử tự động và theo dõi file thay đổi |
 | `npm run test:cov` | Báo cáo độ bao phủ mã nguồn của kiểm thử (Test Coverage) |
+| `npm run test:phase2:all` | Chạy toàn bộ 22 kịch bản tích hợp E2E Phase 2 (Auth + Restaurant + Multi-Branch) |
+| `npm run test:phase3` | Chạy toàn bộ 16 kịch bản tích hợp E2E Phase 3 (Super Admin, Soft Delete, Phân lập Chi nhánh con, VietQR & RBAC). Xem chi tiết tại [`tests/phase-03-staff-rbac/README.md`](tests/phase-03-staff-rbac/README.md) |
 
 ---
 
@@ -269,9 +274,10 @@ Tất cả các endpoint nghiệp vụ đều được gắn tiền tố `/api/v
 | :--- | :--- | :--- | :--- |
 | **Health** | `GET /health` | Kiểm tra trạng thái server & database | Công khai (`@Public()`) |
 | **Auth** | `/api/v1/auth` | Đăng nhập (`/login`), làm mới token (`/refresh-token`), lấy profile (`/profile`) | Công khai / JWT |
-| **Users** | `/api/v1/users` | Quản lý danh sách nhân viên, tạo tài khoản, phân vai trò | JWT (`STAFF` permissions) |
-| **Roles** | `/api/v1/roles` | Quản lý vai trò và phân quyền ma trận 17 quyền hạn | JWT (`ROLE` permissions) |
-| **Restaurants**| `/api/v1/restaurants` | Cấu hình nhà hàng, thương hiệu, chi nhánh | JWT (`SETTING` permissions) |
+| **Users** | `/api/v1/users` | Quản lý nhân sự, tạo hộ tài khoản, toggle trạng thái (`PATCH /:id/toggle-status`), xóa mềm (`DELETE /:id`), chuyển chi nhánh | JWT (`STAFF` permissions) |
+| **Roles** | `/api/v1/roles` | Quản lý vai trò tùy chỉnh, CRUD vai trò, ma trận quyền 17 permissions (`GET /permissions/matrix`) | JWT (`ROLE` / `STAFF` permissions) |
+| **Restaurants**| `/api/v1/restaurants` | Danh sách nhà hàng toàn hệ thống (`GET /`), chi tiết (`GET /:id`), cấu hình hiện tại (`GET & PUT /current`) | JWT (`SETTING` permissions / Super Admin) |
+| **Branches** | `/api/v1/branches` | Quản lý chi nhánh, hỗ trợ Super Admin lọc đa nhà hàng qua `?restaurantId=...` | JWT (`BRANCH` permissions) |
 | **Tables** | `/api/v1/tables` | Quản lý danh sách bàn, khu vực, tạo mã QR gọi món | JWT / Public (QR Scan) |
 | **Menu** | `/api/v1/menu` | Danh mục món ăn, danh sách món, trạng thái còn/hết hàng | JWT / Public (Diner Menu) |
 | **Orders** | `/api/v1/orders` | Đặt món tại bàn, gửi bếp KDS, chuyển trạng thái chế biến | JWT / Public (Table Session) |
@@ -461,10 +467,13 @@ During initial startup, the API checks for the presence of essential records and
   4. `cashier`: Cashier (POS ordering, Invoicing, Payments)
   5. `kitchen`: Kitchen Staff (KDS preparation queues)
   6. `waiter`: Service Waiter (Table operations, Serving)
-- **Initial Super Admin Account**:
-  - **Username**: `admin`
-  - **Password**: `admin123456`
-  - **Email**: `admin@imenu.vn`
+- **Super Admin Account Configured via `.env`**:
+  - Automatically synchronized and always overwrites password hash on server boot:
+  - **Email**: `SUPERADMIN_EMAIL` (Default: `superadmin@imenu.vn`)
+  - **Username**: `SUPERADMIN_USERNAME` (Default: `superadmin`)
+  - **Password**: `SUPERADMIN_PASSWORD` (Default: `SuperAdmin@2026!`)
+  - **Full Name**: `SUPERADMIN_FULLNAME` (Default: `Quan Tri Vien He Thong iMenu`)
+  - **Phone**: `SUPERADMIN_PHONE` (Default: `0900000000`)
 
 #### Step 7: Verify Server Health & Swagger UI
 - **Server Health Check**:  
@@ -517,6 +526,8 @@ npm run start:prod
 | `npm test` | Runs automated unit tests with Jest |
 | `npm run test:watch` | Runs unit tests in continuous watch mode |
 | `npm run test:cov` | Generates code coverage reports for tests |
+| `npm run test:phase2:all` | Runs all 22 Phase 2 E2E integration tests (Auth + Multi-Branch) |
+| `npm run test:phase3` | Runs all 16 Phase 3 E2E integration tests (Super Admin, Soft Delete, Sub-branch Scoping, VietQR & RBAC). See [`tests/phase-03-staff-rbac/README_en.md`](tests/phase-03-staff-rbac/README_en.md) |
 
 ---
 
@@ -528,9 +539,10 @@ All business routes are scoped under the `/api/v1/` prefix:
 | :--- | :--- | :--- | :--- |
 | **Health** | `GET /health` | Server and database health status | Public (`@Public()`) |
 | **Auth** | `/api/v1/auth` | User login (`/login`), token refresh (`/refresh-token`), profile (`/profile`) | Public / JWT Authenticated |
-| **Users** | `/api/v1/users` | Staff member management, account creation, role assignment | JWT (`STAFF` permissions) |
-| **Roles** | `/api/v1/roles` | Role definitions, granular 17-permission matrix management | JWT (`ROLE` permissions) |
-| **Restaurants**| `/api/v1/restaurants` | Restaurant identity, branch details, regional settings | JWT (`SETTING` permissions) |
+| **Users** | `/api/v1/users` | Staff directory, onboarding assistance, toggle status (`PATCH /:id/toggle-status`), soft delete (`DELETE /:id`), transfer | JWT (`STAFF` permissions) |
+| **Roles** | `/api/v1/roles` | Custom role definitions, bidirectional mapping, 17-permission matrix (`GET /permissions/matrix`) | JWT (`ROLE` / `STAFF` permissions) |
+| **Restaurants**| `/api/v1/restaurants` | Global restaurant directory (`GET /`), restaurant details (`GET /:id`), current config (`GET & PUT /current`) | JWT (`SETTING` permissions / Super Admin) |
+| **Branches** | `/api/v1/branches` | Multi-branch lifecycle & management, multi-tenant queries via `?restaurantId=...` | JWT (`BRANCH` permissions) |
 | **Tables** | `/api/v1/tables` | Table floor map, area layout, dynamic table QR code creation | JWT / Public (QR Scan) |
 | **Menu** | `/api/v1/menu` | Dish categories, item options, pricing, and stock status | JWT / Public (Diner Menu) |
 | **Orders** | `/api/v1/orders` | Table order placement, KDS dispatch, cooking status flow | JWT / Public (Table Session) |

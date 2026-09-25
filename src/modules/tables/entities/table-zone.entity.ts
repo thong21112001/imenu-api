@@ -18,3 +18,5 @@ export class TableZone {
 
 export type TableZoneDocument = TableZone & Document;
 export const TableZoneSchema = SchemaFactory.createForClass(TableZone);
+
+TableZoneSchema.index({ restaurantId: 1, branchId: 1 });

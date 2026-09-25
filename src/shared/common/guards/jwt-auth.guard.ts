@@ -26,9 +26,18 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(err: any, user: any) {
-    if (err || !user) {
-      throw err || new UnauthorizedException('Chua dang nhap hoac phien lam viec het han');
+  handleRequest(err: any, user: any, info: any) {
+    if (err) {
+      throw err;
+    }
+    if (!user) {
+      if (info?.name === 'TokenExpiredError' || info?.message === 'jwt expired') {
+        throw new UnauthorizedException('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại');
+      }
+      if (info?.name === 'JsonWebTokenError' || info?.message === 'invalid token') {
+        throw new UnauthorizedException('Mã xác thực (Token) không hợp lệ');
+      }
+      throw new UnauthorizedException('Bạn chưa đăng nhập hoặc thiếu mã xác thực (Token)');
     }
     return user;
   }

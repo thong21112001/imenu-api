@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY, RequiredPermission } from '../decorators/require-permissions.decorator';
+import { isSuperAdminUser } from '../../../modules/auth/interface/jwtUser';
 
 /**
  * RBAC Permissions Guard ke thua tu menu-bepthu-api
@@ -27,13 +28,17 @@ export class PermissionsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
+    // 1. Super Admin duoc phep bypass toan bo (ke ca bat ky quyen/resource moi nao)
+    if (isSuperAdminUser(user)) {
+      return true;
+    }
+
     if (!user || !user.role) {
       throw new ForbiddenException('Truy cap bi tu choi: Khong tim thay vai tro');
     }
 
     const role = user.role;
 
-    // 1. Super Admin hoac System Admin duoc phep bypass toan bo
     if (role.slug === 'system_admin' || role.slug === 'super_admin') {
       return true;
     }

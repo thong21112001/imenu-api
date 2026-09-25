@@ -57,3 +57,4 @@ export const BillSchema = SchemaFactory.createForClass(Bill);
 
 
 BillSchema.index({ restaurantId: 1, createdAt: -1 });
+BillSchema.index({ restaurantId: 1, branchId: 1, paymentStatus: 1, createdAt: -1 });

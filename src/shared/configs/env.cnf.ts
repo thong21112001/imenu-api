@@ -17,4 +17,9 @@ export const ENV = {
     .map((o) => o.trim())
     .filter(Boolean),
   SWAGGER_PATH: process.env.SWAGGER_PATH || 'api-docs',
+  SUPERADMIN_EMAIL: process.env.SUPERADMIN_EMAIL || 'superadmin@imenu.vn',
+  SUPERADMIN_USERNAME: process.env.SUPERADMIN_USERNAME || 'superadmin',
+  SUPERADMIN_PASSWORD: process.env.SUPERADMIN_PASSWORD || 'SuperAdmin@2026!',
+  SUPERADMIN_FULLNAME: process.env.SUPERADMIN_FULLNAME || 'Quan Tri Vien He Thong iMenu',
+  SUPERADMIN_PHONE: process.env.SUPERADMIN_PHONE || '0900000000',
 };

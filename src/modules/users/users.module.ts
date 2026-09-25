@@ -5,9 +5,14 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { RolesModule } from '../roles/roles.module';
 
+import { Restaurant, RestaurantSchema } from '../restaurants/entities/restaurant.entity';
+
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: Restaurant.name, schema: RestaurantSchema },
+    ]),
     RolesModule,
   ],
   controllers: [UsersController],

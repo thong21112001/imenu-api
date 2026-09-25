@@ -7,3 +7,11 @@ export const JwtConstants = {
   expiresIn: ENV.JWT_EXPIRES_IN,
   refreshExpiresIn: ENV.JWT_REFRESH_EXPIRES_IN,
 };
+
+export const SuperAdminConstants = {
+  email: ENV.SUPERADMIN_EMAIL,
+  username: ENV.SUPERADMIN_USERNAME,
+  password: ENV.SUPERADMIN_PASSWORD,
+  fullName: ENV.SUPERADMIN_FULLNAME,
+  phone: ENV.SUPERADMIN_PHONE,
+};

@@ -58,6 +58,6 @@ export class Table {
 export type TableDocument = Table & Document;
 export const TableSchema = SchemaFactory.createForClass(Table);
 
-TableSchema.index({ restaurantId: 1, code: 1 }, { unique: true });
-TableSchema.index({ restaurantId: 1, status: 1 });
+TableSchema.index({ restaurantId: 1, branchId: 1, code: 1 }, { unique: true });
+TableSchema.index({ restaurantId: 1, branchId: 1, status: 1 });
 TableSchema.index({ qrToken: 1 });
