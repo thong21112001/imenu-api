@@ -18,10 +18,10 @@ import { convertSubdocsToPermissionIds } from '../../shared/common/utils/permiss
 import { JwtPayload } from './interface/jwtPayload';
 import { JwtUser } from './interface/jwtUser';
 import { JwtConstants } from '../../shared/common/constants/envConstants';
-import { ALL_SYSTEM_PERMISSION_IDS } from '../../shared/common/constants/permission.const';
+import { CANONICAL_UI_PERMISSION_IDS, ALL_SYSTEM_PERMISSION_IDS } from '../../shared/common/constants/permission.const';
 
-// Alias dung de fallback cho cac role mac dinh chua co permissionIds trong DB
-const SYSTEM_PERMISSIONS = ALL_SYSTEM_PERMISSION_IDS;
+// Danh muc 17 quyen han chuan cua nha hang duoc dong bo voi frontend ma tran phan quyen
+const SYSTEM_PERMISSIONS = CANONICAL_UI_PERMISSION_IDS;
 
 @Injectable()
 export class AuthService {

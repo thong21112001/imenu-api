@@ -21,10 +21,10 @@ tests/
 │   ├── README.md                  # Hướng dẫn kiểm thử Phase 2 chi tiết (Tiếng Việt)
 │   └── README_en.md               # Detailed Phase 2 test guide (English)
 │
-├── phase-03-staff-rbac/           # [HOÀN THÀNH] Phase 3: Nhân sự & Ma trận phân quyền
-│   ├── test.ts                    # Kịch bản E2E: Super Admin ENV, Soft Delete, Cross-Tenant Staff & Roles (12 ca)
-│   ├── README.md                  # Hướng dẫn kiểm thử Phase 3 chi tiết (Tiếng Việt)
-│   └── README_en.md               # Detailed Phase 3 test guide (English)
+├── phase-03-staff-rbac/           # [HOÀN THÀNH TOÀN DIỆN] Phase 3: Nhân sự, Phân quyền RBAC & Auto-Redirect
+│   ├── test.ts                    # Kịch bản E2E: Super Admin ENV, Soft Delete, Cross-Tenant Staff & Roles, VietQR Scoping (16 ca)
+│   ├── README.md                  # Hướng dẫn & Nhật ký kiểm thử Phase 3 chi tiết (Tiếng Việt)
+│   └── README_en.md               # Detailed Phase 3 test guide & verification log (English)
 │
 ├── phase-04-menu/                 # [LỘ TRÌNH] Phase 4: Thực đơn, Danh mục & Topping
 │   ├── README.md

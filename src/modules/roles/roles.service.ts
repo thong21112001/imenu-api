@@ -174,6 +174,7 @@ export class RolesService {
           const existingPermIds = exists.permissionIds || [];
           const needsSync = seedPermIds.length > 0 && (
             existingPermIds.length === 0 ||
+            existingPermIds.length !== seedPermIds.length ||
             !seedPermIds.every((id: string) => existingPermIds.includes(id))
           );
           if (needsSync) {

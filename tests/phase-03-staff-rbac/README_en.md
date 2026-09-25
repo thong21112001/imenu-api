@@ -62,3 +62,42 @@ Upon completion, `test.ts` executes automated cleanup in its `finally` block:
 1. Spawns isolated test records with unique timestamps (`timestamp`).
 2. Cleans up test restaurants, branches, users with prefix `owner.p3.`, `staff.p3.`, `subadmin.`, `cashier.q7.`, and custom roles with prefix `custom_pos_`.
 3. Assures zero database residue after test suite completion.
+
+---
+
+## 5. 🛡️ 5 System Roles Matrix & Browser E2E Verification
+
+Phase 3 establishes a canonical **Single Source of Truth** with **17 UI permissions** organized into 5 functional domains:
+* **Menu (4):** `perm-menu-view`, `perm-menu-create`, `perm-menu-status`, `perm-menu-category`
+* **Table & POS (4):** `perm-pos-view`, `perm-pos-order`, `perm-pos-pay`, `perm-pos-table`
+* **Kitchen KDS (3):** `perm-kds-view`, `perm-kds-cook`, `perm-kds-out`
+* **Reports (2):** `perm-rep-view`, `perm-rep-export`
+* **Staff & Settings (4):** `perm-staff-manage`, `perm-role-manage`, `perm-qr-print`, `perm-settings`
+
+### 5.1. 5 Default System Roles & Navigation Routing
+
+| Role | Demo Account | Permissions Count | Default Landing | Visible Sidebar Links | Access Control & Guard Behavior | Test Result |
+| :--- | :--- | :---: | :--- | :--- | :--- | :---: |
+| **Restaurant Owner** (`restaurant_admin`) | `owner@sample.vn` | **17 perms** (Full) | `/` (Dashboard Overview) | All items: Dashboard, Tables, POS, Kitchen, Menu, QR Codes, Bills, Reports, **Staff & RBAC**, Branches, **Restaurant Settings** | Full management authority over the restaurant branch; grants/configures staff permissions | ✅ **PASS** |
+| **Manager** (`restaurant_manager`) | `manager@sample.vn` | **13 perms** | `/` (Dashboard Overview) | Dashboard, Tables, POS, Kitchen KDS, Menu, QR Codes, Bills, Reports (Staff & Settings hidden) | Direct navigation to `/staff`, `/settings` triggers `403 Forbidden` | ✅ **PASS** |
+| **Cashier** (`cashier`) | `cashier@sample.vn` | **6 perms** | `/pos` (Auto-redirect) | POS Orders, Tables, Menu, Bills & Invoices, Revenue Reports (Dashboard & Staff hidden) | Accessing `/` automatically redirects to `/pos`; `/staff` triggers `403 Forbidden`; "Return to Primary Screen" returns to `/pos` | ✅ **PASS** |
+| **Kitchen Staff** (`kitchen`) | `kitchen@sample.vn` | **3 perms** | `/kitchen` (Auto-redirect) | Kitchen KDS Screen only (Dashboard, POS, Tables, Menu, Staff hidden) | Accessing `/` automatically redirects to `/kitchen`; All administrative routes blocked (403) | ✅ **PASS** |
+| **Waitstaff** (`waiter`) | `waiter@sample.vn` | **3 perms** | `/tables` (Auto-redirect) | Tables Overview, POS Orders, Menu Catalog (Dashboard, Kitchen, Reports, Staff hidden) | Accessing `/` automatically redirects to `/tables`; All administrative routes blocked (403) | ✅ **PASS** |
+
+### 5.2. Test Execution Verification (Backend 16 Cases + Browser E2E)
+```text
+✔ Backend Integration Test (npm run test:phase3):
+  16 passed, 0 failed (100% PASS)
+  - Super Admin synchronization & password hashing from ENV: PASS
+  - Sub-branch scoping & multi-tenant data isolation: PASS
+  - System role immutability & staff soft-delete protection: PASS
+  - Cross-branch mutation protection (403): PASS
+
+✔ Browser E2E Access & Redirect Test (http://localhost:3003):
+  - Cashier login -> Automatically redirects to /pos: PASS
+  - Cashier sidebar -> 'Dashboard' ('/') and 'Staff' hidden: PASS
+  - Cashier direct navigation to /staff -> 403 Forbidden Access Guard triggered: PASS
+  - 'Return to Primary Screen' button -> Successfully navigates back to /pos: PASS
+  - Owner login -> Lands on '/' (Dashboard) with 100% full sidebar links: PASS
+  - Owner direct navigation to /staff -> Full staff directory and role matrix displayed: PASS
+```

@@ -98,6 +98,34 @@ export const ALL_SYSTEM_PERMISSION_IDS: string[] = Array.from(
 );
 
 /**
+ * 17 quyen han he thong chuan cua UI iMenu duoc dong bo 1:1 voi ma tran phan quyen frontend
+ */
+export const CANONICAL_UI_PERMISSION_IDS: string[] = [
+  // 1. Thuc don (4)
+  'perm-menu-view',
+  'perm-menu-create',
+  'perm-menu-status',
+  'perm-menu-category',
+  // 2. So do ban & POS (4)
+  'perm-pos-view',
+  'perm-pos-order',
+  'perm-pos-pay',
+  'perm-pos-table',
+  // 3. Bep KDS (3)
+  'perm-kds-view',
+  'perm-kds-cook',
+  'perm-kds-out',
+  // 4. Bao cao (2)
+  'perm-rep-view',
+  'perm-rep-export',
+  // 5. Nhan su & He thong (4)
+  'perm-staff-manage',
+  'perm-role-manage',
+  'perm-qr-print',
+  'perm-settings',
+];
+
+/**
  * Dinh nghia chi tiet quyen han he thong theo chuan Blueprint
  */
 export interface PermissionDefinition {

@@ -262,7 +262,7 @@ npm run start:prod
 | `npm run test:watch` | Chạy kiểm thử tự động và theo dõi file thay đổi |
 | `npm run test:cov` | Báo cáo độ bao phủ mã nguồn của kiểm thử (Test Coverage) |
 | `npm run test:phase2:all` | Chạy toàn bộ 22 kịch bản tích hợp E2E Phase 2 (Auth + Restaurant + Multi-Branch) |
-| `npm run test:phase3` | Chạy toàn bộ 16 kịch bản tích hợp E2E Phase 3 (Super Admin, Soft Delete, Phân lập Chi nhánh con, VietQR & RBAC) |
+| `npm run test:phase3` | Chạy toàn bộ 16 kịch bản tích hợp E2E Phase 3 (Super Admin, Soft Delete, Phân lập Chi nhánh con, VietQR & RBAC). Xem chi tiết tại [`tests/phase-03-staff-rbac/README.md`](tests/phase-03-staff-rbac/README.md) |
 
 ---
 
@@ -527,7 +527,7 @@ npm run start:prod
 | `npm run test:watch` | Runs unit tests in continuous watch mode |
 | `npm run test:cov` | Generates code coverage reports for tests |
 | `npm run test:phase2:all` | Runs all 22 Phase 2 E2E integration tests (Auth + Multi-Branch) |
-| `npm run test:phase3` | Runs all 16 Phase 3 E2E integration tests (Super Admin, Soft Delete, Sub-branch Scoping, VietQR & RBAC) |
+| `npm run test:phase3` | Runs all 16 Phase 3 E2E integration tests (Super Admin, Soft Delete, Sub-branch Scoping, VietQR & RBAC). See [`tests/phase-03-staff-rbac/README_en.md`](tests/phase-03-staff-rbac/README_en.md) |
 
 ---
 

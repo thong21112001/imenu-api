@@ -63,3 +63,42 @@ Mỗi lần chạy kiểm thử, script `test.ts` sẽ tự động:
 2. Thực thi tuần tự 16 kịch bản.
 3. Trong khối `finally`: Tự động tìm kiếm và xóa toàn bộ các nhà hàng, chi nhánh, người dùng, và vai trò thử nghiệm có tiền tố `owner.p3.`, `staff.p3.`, `subadmin.`, `cashier.q7.`, `custom_pos_`.
 4. Đảm bảo cơ sở dữ liệu kiểm thử luôn sạch sẽ, không để lại rác dữ liệu sau khi hoàn thành.
+
+---
+
+## 5. 🛡️ Ma Trận Phân Quyền 5 Vai Trò Hệ Thống & Kiểm Thử E2E Trình Duyệt
+
+Hệ thống Phase 3 chuẩn hóa **Single Source of Truth** với **17 quyền chuẩn nghiệp vụ** chia theo 5 nhóm:
+* **Thực đơn (4):** `perm-menu-view`, `perm-menu-create`, `perm-menu-status`, `perm-menu-category`
+* **Sơ đồ bàn & POS (4):** `perm-pos-view`, `perm-pos-order`, `perm-pos-pay`, `perm-pos-table`
+* **Bếp KDS (3):** `perm-kds-view`, `perm-kds-cook`, `perm-kds-out`
+* **Báo cáo (2):** `perm-rep-view`, `perm-rep-export`
+* **Nhân sự & Hệ thống (4):** `perm-staff-manage`, `perm-role-manage`, `perm-qr-print`, `perm-settings`
+
+### 5.1. Bảng Đối Soát 5 Vai Trò Mặc Định & Điều Hướng
+
+| Vai trò (Role) | Tài khoản Demo | Quyền DB & Fallback | Điều hướng mặc định | Menu hiển thị trên Sidebar | Kiểm soát bảo vệ (Guard) | Kết quả kiểm thử |
+| :--- | :--- | :---: | :--- | :--- | :--- | :---: |
+| **Chủ Quán** (`restaurant_admin`) | `owner@sample.vn` | **17 quyền** (Full) | `/` (Dashboard Tổng quan) | Toàn bộ menu: Tổng quan, Bàn, POS, Bếp, Thực đơn, QR, Hóa đơn, Báo cáo, **Nhân viên & Phân quyền**, Chi nhánh, **Cài đặt Nhà Hàng** | Truy cập toàn bộ module chi nhánh; toàn quyền cấu hình nhân sự & phân quyền | ✅ **PASS** |
+| **Quản Lý** (`restaurant_manager`) | `manager@sample.vn` | **13 quyền** | `/` (Dashboard Tổng quan) | Tổng quan, Sơ đồ Bàn, POS, Bếp KDS, Thực đơn, Mã QR, Hóa đơn, Báo cáo (Ẩn Nhân viên, Cài đặt) | Chặn truy cập `/staff`, `/settings` (403 Forbidden) | ✅ **PASS** |
+| **Thu Ngân** (`cashier`) | `cashier@sample.vn` | **6 quyền** | `/pos` (Auto-redirect) | POS Bán hàng, Sơ đồ Bàn, Quản lý Thực đơn, Hóa đơn & In Bill, Báo cáo & Doanh thu (Ẩn Tổng quan, Nhân viên) | Truy cập `/` tự động chuyển về `/pos`; Chặn truy cập `/staff` (403 Forbidden); Bấm "Quay về trang làm việc chính" trở lại `/pos` | ✅ **PASS** |
+| **Bếp KDS** (`kitchen`) | `kitchen@sample.vn` | **3 quyền** | `/kitchen` (Auto-redirect) | Duy nhất Màn hình Bếp KDS (Ẩn Tổng quan, POS, Bàn, Menu, Nhân viên) | Truy cập `/` tự động chuyển về `/kitchen`; Chặn truy cập tất cả route quản trị | ✅ **PASS** |
+| **Phục Vụ** (`waiter`) | `waiter@sample.vn` | **3 quyền** | `/tables` (Auto-redirect) | Sơ đồ Bàn, POS Bán hàng, Quản lý Thực đơn (Ẩn Tổng quan, Bếp, Báo cáo, Nhân viên) | Truy cập `/` tự động chuyển về `/tables`; Chặn truy cập tất cả route quản trị | ✅ **PASS** |
+
+### 5.2. Kết Quả Kiểm Thử Thực Tế (Backend 16 ca + Trình Duyệt E2E)
+```text
+✔ Backend Integration Test (npm run test:phase3):
+  16 passed, 0 failed (100% PASS)
+  - Khởi tạo & ghi đè Super Admin từ ENV: PASS
+  - Phân lập chi nhánh con & Scoping: PASS
+  - Bảo vệ vai trò hệ thống & Soft Delete: PASS
+  - Bảo vệ toàn vẹn nhân sự chi nhánh (403): PASS
+
+✔ Browser E2E Access & Redirect Test (http://localhost:3003):
+  - Thu Ngân đăng nhập -> Tự động chuyển hướng sang /pos: PASS
+  - Sidebar Thu Ngân -> Ẩn menu 'Tổng quan' ('/'), ẩn 'Nhân viên': PASS
+  - Thu Ngân nhập trực tiếp URL /staff -> Màn hình 403 Forbidden bảo vệ: PASS
+  - Nút 'Quay về trang làm việc chính' -> Quay lại /pos chuẩn xác: PASS
+  - Chủ Quán đăng nhập -> Vào Dashboard ('/'), thấy đủ 100% menu: PASS
+  - Chủ Quán truy cập /staff -> Xem đầy đủ danh sách nhân viên & vai trò: PASS
+```

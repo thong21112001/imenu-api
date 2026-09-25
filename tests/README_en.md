@@ -21,10 +21,10 @@ tests/
 │   ├── README.md                  # Vietnamese documentation
 │   └── README_en.md               # English documentation
 │
-├── phase-03-staff-rbac/           # [COMPLETED] Phase 3: Staff & Role-Based Access Control
-│   ├── test.ts                    # E2E runner: Super Admin ENV, Soft Delete, Cross-Tenant Staff & Roles (12 cases)
-│   ├── README.md                  # Vietnamese documentation
-│   └── README_en.md               # English documentation
+├── phase-03-staff-rbac/           # [FULLY COMPLETED] Phase 3: Staff Management, RBAC & Auto-Redirect
+│   ├── test.ts                    # E2E runner: Super Admin ENV, Soft Delete, Cross-Tenant Staff & Roles, VietQR Scoping (16 cases)
+│   ├── README.md                  # Vietnamese documentation & test log
+│   └── README_en.md               # English documentation & test log
 │
 ├── phase-04-menu/                 # [ROADMAP] Phase 4: Menu, Categories & Options
 │   ├── README.md
