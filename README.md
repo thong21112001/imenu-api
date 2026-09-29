@@ -263,6 +263,7 @@ npm run start:prod
 | `npm run test:cov` | Báo cáo độ bao phủ mã nguồn của kiểm thử (Test Coverage) |
 | `npm run test:phase2:all` | Chạy toàn bộ 22 kịch bản tích hợp E2E Phase 2 (Auth + Restaurant + Multi-Branch) |
 | `npm run test:phase3` | Chạy toàn bộ 16 kịch bản tích hợp E2E Phase 3 (Super Admin, Soft Delete, Phân lập Chi nhánh con, VietQR & RBAC). Xem chi tiết tại [`tests/phase-03-staff-rbac/README.md`](tests/phase-03-staff-rbac/README.md) |
+| `npm run test:phase4` | Chạy toàn bộ 13 kịch bản tích hợp E2E Phase 4 (Danh mục, Món ăn, Toppings, Thu ngân toggle Còn/Hết, Ràng buộc xóa an toàn, Public QR). Xem chi tiết tại [`tests/phase-04-menu/README.md`](tests/phase-04-menu/README.md) |
 
 ---
 
@@ -528,6 +529,7 @@ npm run start:prod
 | `npm run test:cov` | Generates code coverage reports for tests |
 | `npm run test:phase2:all` | Runs all 22 Phase 2 E2E integration tests (Auth + Multi-Branch) |
 | `npm run test:phase3` | Runs all 16 Phase 3 E2E integration tests (Super Admin, Soft Delete, Sub-branch Scoping, VietQR & RBAC). See [`tests/phase-03-staff-rbac/README_en.md`](tests/phase-03-staff-rbac/README_en.md) |
+| `npm run test:phase4` | Runs all 13 Phase 4 E2E integration tests (Categories, Dishes, Toppings, Cashier toggle, Safe delete constraint, Public QR). See [`tests/phase-04-menu/README_en.md`](tests/phase-04-menu/README_en.md) |
 
 ---
 

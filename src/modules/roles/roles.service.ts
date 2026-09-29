@@ -109,7 +109,7 @@ export class RolesService {
           { resource: ResourceType.TABLE, actions: [ActionType.VIEW] },
           { resource: ResourceType.POS, actions: [ActionType.VIEW, ActionType.CREATE, ActionType.CONFIRM] },
           { resource: ResourceType.BILL, actions: [ActionType.VIEW, ActionType.PRINT] },
-          { resource: ResourceType.MENU, actions: [ActionType.VIEW] },
+          { resource: ResourceType.MENU, actions: [ActionType.VIEW, ActionType.UPDATE] },
           { resource: ResourceType.BRANCH, actions: [ActionType.VIEW] },
         ],
         permissionIds: [
@@ -126,7 +126,7 @@ export class RolesService {
         description: 'Theo dõi hàng đợi gọi món KDS và cập nhật trạng thái chế biến',
         permissions: [
           { resource: ResourceType.KITCHEN, actions: [ActionType.VIEW, ActionType.UPDATE] },
-          { resource: ResourceType.MENU, actions: [ActionType.VIEW] },
+          { resource: ResourceType.MENU, actions: [ActionType.VIEW, ActionType.UPDATE] },
         ],
         permissionIds: [
           'perm-kds-view', 'perm-kds-cook', 'perm-kds-out',

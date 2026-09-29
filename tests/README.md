@@ -26,9 +26,10 @@ tests/
 │   ├── README.md                  # Hướng dẫn & Nhật ký kiểm thử Phase 3 chi tiết (Tiếng Việt)
 │   └── README_en.md               # Detailed Phase 3 test guide & verification log (English)
 │
-├── phase-04-menu/                 # [LỘ TRÌNH] Phase 4: Thực đơn, Danh mục & Topping
-│   ├── README.md
-│   └── README_en.md
+├── phase-04-menu/                 # [HOÀN THÀNH TOÀN DIỆN] Phase 4: Thực đơn, Danh mục & Topping
+│   ├── test.ts                    # Kịch bản E2E: Danh mục, Món ăn, Toppings, Thu ngân toggle, Safe delete, Public QR (13 ca)
+│   ├── README.md                  # Hướng dẫn kiểm thử Phase 4 chi tiết (Tiếng Việt)
+│   └── README_en.md               # Detailed Phase 4 test guide (English)
 │
 ├── phase-05-zone-table-qr/        # [LỘ TRÌNH] Phase 5: Bàn, Khu vực & Mã QR
 │   ├── README.md
@@ -66,7 +67,8 @@ Các lệnh kiểm thử được đăng ký trực tiếp trong `package.json` 
 | **Phase 2 - Phần 1** | `npm run test:phase2` | `npx ts-node tests/phase-02-auth-restaurant/test.ts` | Auth, Restaurant & Branch CRUD | **12/12 PASSED** |
 | **Phase 2 - Phần 2** | `npm run test:multibranch` | `npx ts-node tests/phase-02-auth-restaurant/test-multi-branch.ts` | Multi-Branch Lifecycle & Isolation | **10/10 PASSED** |
 | **Phase 2 - Toàn bộ** | `npm run test:phase2:all` | Chạy tuần tự cả 2 file trên | 22 kịch bản tích hợp Phase 2 | **22/22 PASSED** |
-| **Phase 3 - Staff & RBAC** | `npm run test:phase3` | `npx ts-node tests/phase-03-staff-rbac/test.ts` | Super Admin, Soft Delete, Staff & RBAC | **12/12 PASSED** |
+| **Phase 3 - Staff & RBAC** | `npm run test:phase3` | `npx ts-node tests/phase-03-staff-rbac/test.ts` | Super Admin, Soft Delete, Staff & RBAC | **16/16 PASSED** |
+| **Phase 4 - Menu & Toppings** | `npm run test:phase4` | `npx ts-node tests/phase-04-menu/test.ts` | Danh mục, Món ăn, Toppings, Thu ngân toggle, QR | **13/13 PASSED** |
 | **Toàn bộ hệ thống** | `npm test` | `jest` | Unit tests toàn dự án | Đang cấu hình |
 
 ---

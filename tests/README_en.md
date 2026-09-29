@@ -26,9 +26,10 @@ tests/
 │   ├── README.md                  # Vietnamese documentation & test log
 │   └── README_en.md               # English documentation & test log
 │
-├── phase-04-menu/                 # [ROADMAP] Phase 4: Menu, Categories & Options
-│   ├── README.md
-│   └── README_en.md
+├── phase-04-menu/                 # [FULLY COMPLETED] Phase 4: Menu, Categories & Options
+│   ├── test.ts                    # E2E runner: Categories, Dishes, Options, Cashier fast toggle, Constraints, Public QR (13 cases)
+│   ├── README.md                  # Detailed Phase 4 test guide (Vietnamese)
+│   └── README_en.md               # Detailed Phase 4 test guide (English)
 │
 ├── phase-05-zone-table-qr/        # [ROADMAP] Phase 5: Tables, Zones & QR Codes
 │   ├── README.md
@@ -66,7 +67,8 @@ Convenient test scripts are registered directly in `imenu-api/package.json`:
 | **Phase 2 - Part 1** | `npm run test:phase2` | `npx ts-node tests/phase-02-auth-restaurant/test.ts` | Auth, Restaurant & Branch CRUD | **12/12 PASSED** |
 | **Phase 2 - Part 2** | `npm run test:multibranch` | `npx ts-node tests/phase-02-auth-restaurant/test-multi-branch.ts` | Multi-Branch Lifecycle & Isolation | **10/10 PASSED** |
 | **Phase 2 - Complete** | `npm run test:phase2:all` | Sequentially runs both test files above | All 22 Phase 2 Integration Tests | **22/22 PASSED** |
-| **Phase 3 - Staff & RBAC** | `npm run test:phase3` | `npx ts-node tests/phase-03-staff-rbac/test.ts` | Super Admin, Soft Delete, Staff & RBAC | **12/12 PASSED** |
+| **Phase 3 - Staff & RBAC** | `npm run test:phase3` | `npx ts-node tests/phase-03-staff-rbac/test.ts` | Super Admin, Soft Delete, Staff & RBAC | **16/16 PASSED** |
+| **Phase 4 - Menu & Toppings** | `npm run test:phase4` | `npx ts-node tests/phase-04-menu/test.ts` | Categories, Items, Toppings, Cashier toggle, Public QR | **13/13 PASSED** |
 | **Complete System (All)** | `npm test` | `jest` | Global unit tests | In setup |
 
 ---

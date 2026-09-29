@@ -76,3 +76,16 @@ export const MenuItemSchema = SchemaFactory.createForClass(MenuItem);
 
 MenuItemSchema.index({ restaurantId: 1, slug: 1 }, { unique: true });
 MenuItemSchema.index({ restaurantId: 1, category: 1, isAvailable: 1 });
+
+MenuItemSchema.virtual('id').get(function () {
+  return this._id.toHexString();
+});
+
+MenuItemSchema.virtual('categoryId').get(function () {
+  const cat = (this as any).category;
+  if (!cat) return null;
+  return cat._id ? cat._id.toHexString() : cat.toString();
+});
+
+MenuItemSchema.set('toJSON', { virtuals: true });
+MenuItemSchema.set('toObject', { virtuals: true });

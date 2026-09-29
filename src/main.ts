@@ -11,6 +11,8 @@ import { MorganLogService } from './shared/loggers/morgan.logger';
 import { RolesService } from './modules/roles/roles.service';
 import { UsersService } from './modules/users/users.service';
 import { AuthService } from './modules/auth/auth.service';
+import { RestaurantsService } from './modules/restaurants/restaurants.service';
+import { CategoriesService } from './modules/menu/categories.service';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -69,6 +71,13 @@ async function bootstrap() {
 
     const authService = app.get(AuthService);
     await authService.seedDemoOwner();
+
+    const restaurantsService = app.get(RestaurantsService);
+    const bepNha = await restaurantsService.findBySlug('bep-nha').catch(() => null);
+    if (bepNha) {
+      const categoriesService = app.get(CategoriesService);
+      await categoriesService.seedDefaultMenu((bepNha as any)._id.toString());
+    }
   } catch (err: any) {
     logger.error('Lỗi khi khởi tạo dữ liệu hệ thống ban đầu:', err.message);
   }

@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY, RequiredPermission } from '../decorators/require-permissions.decorator';
 import { isSuperAdminUser } from '../../../modules/auth/interface/jwtUser';
+import { convertPermissionIdsToSubdocs } from '../utils/permission-mapping.util';
 
 /**
  * RBAC Permissions Guard ke thua tu menu-bepthu-api
@@ -54,10 +55,18 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // 4. Kiem tra quyen cu the trong danh sach permissions cua Role
-    const hasPermission = role.permissions?.some((p: any) => {
+    let hasPermission = role.permissions?.some((p: any) => {
       if (p.resource !== required.resource) return false;
       return p.actions?.includes(required.action);
     });
+
+    if (!hasPermission && Array.isArray(role.permissionIds) && role.permissionIds.length > 0) {
+      const mappedSubdocs = convertPermissionIdsToSubdocs(role.permissionIds);
+      hasPermission = mappedSubdocs.some((p: any) => {
+        if (p.resource !== required.resource) return false;
+        return p.actions?.includes(required.action);
+      });
+    }
 
     if (!hasPermission) {
       throw new ForbiddenException(
