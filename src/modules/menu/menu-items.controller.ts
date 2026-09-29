@@ -24,6 +24,7 @@ export class MenuItemsController {
 
   @ApiOperation({ summary: 'Lấy danh sách món ăn công khai cho khách hàng quét mã QR' })
   @ApiQuery({ name: 'restaurantId', required: true, description: 'ID nhà hàng' })
+  @ApiQuery({ name: 'branchId', required: false, description: 'ID chi nhánh khách đang ngồi' })
   @Public()
   @Get('public')
   async findPublicItems(
@@ -34,12 +35,13 @@ export class MenuItemsController {
       ...query,
       isAvailable: 'true', // Khach hang chi xem mon con phuc vu
     };
-    const result = await this.menuItemsService.findAll(restaurantId, queryDto);
+    const result = await this.menuItemsService.findAll(restaurantId, queryDto, query.branchId);
     return new OkResponse({ data: result });
   }
 
   @ApiOperation({ summary: 'Lấy danh sách món ăn có phân trang và bộ lọc' })
   @ApiQuery({ name: 'restaurantId', required: false, description: 'Dành cho Super Admin' })
+  @ApiQuery({ name: 'branchId', required: false, description: 'Lọc giá và tình trạng theo chi nhánh' })
   @RequirePermissions(ResourceType.MENU, ActionType.VIEW)
   @Get()
   async findAll(
@@ -48,7 +50,8 @@ export class MenuItemsController {
     @CurrentUser() user: JwtUser,
   ) {
     const targetRestId = isSuperAdminUser(user) && query.restaurantId ? query.restaurantId : currentRestId;
-    const result = await this.menuItemsService.findAll(targetRestId, query);
+    const targetBranchId = query.branchId || user.branchId;
+    const result = await this.menuItemsService.findAll(targetRestId, query, targetBranchId);
     return new OkResponse({ data: result });
   }
 
@@ -108,15 +111,22 @@ export class MenuItemsController {
     @Query('restaurantId') queryRestId?: string,
   ) {
     const targetRestId = isSuperAdminUser(user) && queryRestId ? queryRestId : currentRestId;
-    const updated = await this.menuItemsService.toggleStatus(id, targetRestId, dto?.isAvailable);
-    const statusText = updated.isAvailable ? 'Còn món' : 'Hết món';
+    const updated = await this.menuItemsService.toggleStatus(
+      id,
+      targetRestId,
+      dto?.isAvailable,
+      user,
+      dto?.branchId,
+    );
+    const isAvail = updated.effectiveIsAvailable !== undefined ? updated.effectiveIsAvailable : updated.isAvailable;
+    const statusText = isAvail ? 'Còn món' : 'Hết món';
     return new OkResponse({
       message: `Đã cập nhật trạng thái món "${updated.name}" sang: ${statusText}`,
       data: updated,
     });
   }
 
-  @ApiOperation({ summary: 'Xóa món ăn khỏi thực đơn' })
+  @ApiOperation({ summary: 'Xóa món ăn khỏi thực đơn (Xóa mềm)' })
   @RequirePermissions(ResourceType.MENU, ActionType.DELETE)
   @UseGuards(DemoBlockGuard)
   @Delete(':id')
@@ -127,7 +137,7 @@ export class MenuItemsController {
     @Query('restaurantId') queryRestId?: string,
   ) {
     const targetRestId = isSuperAdminUser(user) && queryRestId ? queryRestId : currentRestId;
-    const result = await this.menuItemsService.delete(id, targetRestId);
+    const result = await this.menuItemsService.delete(id, targetRestId, user);
     return new OkResponse({ message: result.message, data: { success: true } });
   }
 }

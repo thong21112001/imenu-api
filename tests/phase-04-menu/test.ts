@@ -548,6 +548,250 @@ async function main() {
       failed++;
     }
 
+    // ----------------------------------------------------
+    // CA 14: Giá bán riêng và Deal riêng theo chi nhánh (Branch-Specific Pricing & Deals)
+    // ----------------------------------------------------
+    let branch2Id = '';
+    let multiBranchDishId = '';
+    let multiCatId = '';
+    try {
+      // Create dedicated category for multi-branch tests
+      const catMultiRes = await request('/categories', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          name: `Danh Mục Chi Nhánh ${timestamp}`,
+          icon: '🍲',
+          order: 9,
+        }),
+      });
+      multiCatId = catMultiRes.data?.data?._id || catMultiRes.data?.data?.id;
+
+      // Create Branch 2 for Restaurant A
+      const createBranchRes = await request('/branches', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          name: 'Chi nhánh Quận 7',
+          address: '456 Nguyễn Thị Thập, Q.7',
+          phone: '0981234567',
+        }),
+      });
+      branch2Id = createBranchRes.data?.data?._id || createBranchRes.data?.data?.id;
+
+      // Create dish with default price 60,000đ, deal originalPrice 75,000đ
+      // and Branch 2 override: price 68,000đ, deal originalPrice 85,000đ
+      const createDishRes = await request('/menu-items', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          categoryId: multiCatId,
+          name: `Cơm Chiên Dương Châu Đặc Biệt ${timestamp}`,
+          price: 60000,
+          originalPrice: 75000,
+          branchOverrides: [
+            {
+              branchId: branch2Id,
+              price: 68000,
+              originalPrice: 85000,
+              isAvailable: true,
+            },
+          ],
+        }),
+      });
+      multiBranchDishId = createDishRes.data?.data?._id || createDishRes.data?.data?.id;
+
+      // Query with branch2Id
+      const branch2Query = await request(`/menu-items?branchId=${branch2Id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+      });
+      const branch2Items = branch2Query.data?.data?.items || branch2Query.data?.data || [];
+      const itemAtBranch2 = branch2Items.find((i: any) => (i._id || i.id) === multiBranchDishId);
+
+      // Query with branchAId (Main Branch)
+      const branch1Query = await request(`/menu-items?branchId=${branchAId}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+      });
+      const branch1Items = branch1Query.data?.data?.items || branch1Query.data?.data || [];
+      const itemAtBranch1 = branch1Items.find((i: any) => (i._id || i.id) === multiBranchDishId);
+
+      if (
+        itemAtBranch2?.effectivePrice === 68000 &&
+        itemAtBranch2?.effectiveOriginalPrice === 85000 &&
+        itemAtBranch1?.effectivePrice === 60000 &&
+        itemAtBranch1?.effectiveOriginalPrice === 75000
+      ) {
+        pass('Ca 14: Giá bán riêng và Deal riêng theo chi nhánh', `CN Quận 7: ${itemAtBranch2.effectivePrice}đ (deal ${itemAtBranch2.effectiveOriginalPrice}đ) | CN Chính: ${itemAtBranch1.effectivePrice}đ (deal ${itemAtBranch1.effectiveOriginalPrice}đ)`);
+        passed++;
+      } else {
+        fail('Ca 14: Giá bán riêng và Deal riêng theo chi nhánh', `CN2: ${itemAtBranch2?.effectivePrice}/${itemAtBranch2?.effectiveOriginalPrice}, CN1: ${itemAtBranch1?.effectivePrice}/${itemAtBranch1?.effectiveOriginalPrice}`);
+        failed++;
+      }
+    } catch (e: any) {
+      fail('Ca 14: Giá bán riêng và Deal riêng theo chi nhánh', e.message);
+      failed++;
+    }
+
+    // ----------------------------------------------------
+    // CA 15: Thu ngân chi nhánh bật/tắt tạm hết món độc lập (Branch-Isolated Availability Toggle)
+    // ----------------------------------------------------
+    try {
+      // Toggle status to false for Branch 2
+      const toggleRes = await request(`/menu-items/${multiBranchDishId}/status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          isAvailable: false,
+          branchId: branch2Id,
+        }),
+      });
+
+      // Query Branch 2 -> should be false
+      const qBranch2 = await request(`/menu-items?branchId=${branch2Id}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+      });
+      const items2 = qBranch2.data?.data?.items || qBranch2.data?.data || [];
+      const itemInBranch2 = items2.find((i: any) => (i._id || i.id) === multiBranchDishId);
+
+      // Query Branch 1 (Main branch) -> should STILL be true!
+      const qBranch1 = await request(`/menu-items?branchId=${branchAId}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+      });
+      const items1 = qBranch1.data?.data?.items || qBranch1.data?.data || [];
+      const itemInBranch1 = items1.find((i: any) => (i._id || i.id) === multiBranchDishId);
+
+      if (
+        toggleRes.status === 200 &&
+        itemInBranch2?.effectiveIsAvailable === false &&
+        itemInBranch1?.effectiveIsAvailable === true
+      ) {
+        pass('Ca 15: Bật/tắt trạng thái tạm hết món độc lập theo chi nhánh', 'CN Quận 7: Tạm hết (effectiveIsAvailable=false) | CN Chính: Vẫn còn món (effectiveIsAvailable=true)');
+        passed++;
+      } else {
+        fail('Ca 15: Bật/tắt trạng thái tạm hết món độc lập theo chi nhánh', `CN2 avail: ${itemInBranch2?.effectiveIsAvailable} (kỳ vọng false), CN1 avail: ${itemInBranch1?.effectiveIsAvailable} (kỳ vọng true)`);
+        failed++;
+      }
+    } catch (e: any) {
+      fail('Ca 15: Bật/tắt trạng thái tạm hết món độc lập theo chi nhánh', e.message);
+      failed++;
+    }
+
+    // ----------------------------------------------------
+    // CA 16: Tìm kiếm regex tiếng Việt thông minh có dấu & không dấu (Smart Vietnamese Regex Search)
+    // ----------------------------------------------------
+    try {
+      // Create dishes with accents
+      await request('/menu-items', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          categoryId: multiCatId,
+          name: `Phở Bò Tái Nạm Truyền Thống ${timestamp}`,
+          price: 55000,
+        }),
+      });
+
+      await request('/menu-items', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          categoryId: multiCatId,
+          name: `Trà Đào Cam Sả Tươi Mát ${timestamp}`,
+          price: 35000,
+        }),
+      });
+
+      // Search unaccented "pho bo"
+      const searchPho = await request('/menu-items?search=pho+bo', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+      });
+      const phoItems = searchPho.data?.data?.items || searchPho.data?.data || [];
+      const hasPho = phoItems.some((i: any) => i.name.includes('Phở Bò'));
+      const notHasTraInPho = !phoItems.some((i: any) => i.name.includes('Trà Đào'));
+
+      // Search unaccented "tra dao"
+      const searchTra = await request('/menu-items?search=tra+dao', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+      });
+      const traItems = searchTra.data?.data?.items || searchTra.data?.data || [];
+      const hasTra = traItems.some((i: any) => i.name.includes('Trà Đào'));
+
+      if (hasPho && notHasTraInPho && hasTra) {
+        pass('Ca 16: Tìm kiếm regex tiếng Việt thông minh (gõ không dấu khớp có dấu)', `Từ khóa "pho bo" khớp "${phoItems[0]?.name}", "tra dao" khớp "${traItems[0]?.name}"`);
+        passed++;
+      } else {
+        fail('Ca 16: Tìm kiếm regex tiếng Việt thông minh (gõ không dấu khớp có dấu)', `hasPho: ${hasPho}, hasTra: ${hasTra}`);
+        failed++;
+      }
+    } catch (e: any) {
+      fail('Ca 16: Tìm kiếm regex tiếng Việt thông minh (gõ không dấu khớp có dấu)', e.message);
+      failed++;
+    }
+
+    // ----------------------------------------------------
+    // CA 17: Xóa mềm toàn hệ thống & chống va chạm slug (Soft Delete & Slug Preservation)
+    // ----------------------------------------------------
+    try {
+      // Create a dish to soft delete
+      const dishName = `Lẩu Nấm Hải Sản Xóa Mềm ${timestamp}`;
+      const dishToDelRes = await request('/menu-items', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          categoryId: multiCatId,
+          name: dishName,
+          price: 199000,
+        }),
+      });
+      const dishToDelId = dishToDelRes.data?.data?._id || dishToDelRes.data?.data?.id;
+
+      // Soft delete via API
+      const delRes = await request(`/menu-items/${dishToDelId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+      });
+
+      // Verify item is NOT returned in GET /menu-items
+      const listAfterDel = await request('/menu-items', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+      });
+      const itemsAfterDel = listAfterDel.data?.data?.items || listAfterDel.data?.data || [];
+      const isGoneFromList = !itemsAfterDel.some((i: any) => (i._id || i.id) === dishToDelId);
+
+      // Verify database record still exists with soft delete fields
+      const dbDoc = await connection.collection('menu_items').findOne({ _id: new Types.ObjectId(dishToDelId) });
+      const isSoftDeletedInDb = dbDoc && dbDoc.isDeleted === true && dbDoc.deletedAt != null && dbDoc.slug.includes('_deleted_');
+
+      // Re-create new dish with the EXACT same name (Slug collision test)
+      const recreateRes = await request('/menu-items', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerAToken}` },
+        body: JSON.stringify({
+          categoryId: multiCatId,
+          name: dishName,
+          price: 219000,
+        }),
+      });
+
+      if (delRes.status === 200 && isGoneFromList && isSoftDeletedInDb && (recreateRes.status === 200 || recreateRes.status === 201)) {
+        pass('Ca 17: Xóa mềm toàn hệ thống và ngăn chặn xung đột Unique Slug', `isDeleted=true, deletedAt!=null, slug đổi thành "${dbDoc.slug}", tạo lại món cùng tên thành công 201`);
+        passed++;
+      } else {
+        fail('Ca 17: Xóa mềm toàn hệ thống và ngăn chặn xung đột Unique Slug', `delStatus: ${delRes.status}, isGone: ${isGoneFromList}, isSoftDeletedInDb: ${!!isSoftDeletedInDb}, recreateStatus: ${recreateRes.status}`);
+        failed++;
+      }
+    } catch (e: any) {
+      fail('Ca 17: Xóa mềm toàn hệ thống và ngăn chặn xung đột Unique Slug', e.message);
+      failed++;
+    }
+
     console.log(`\n----------------------------------------------------------------`);
     console.log(`Kết quả kiểm thử Phase 4: ${colors.green}${passed} passed${colors.reset}, ${failed > 0 ? colors.red : colors.green}${failed} failed${colors.reset}`);
     console.log(`----------------------------------------------------------------\n`);
@@ -556,11 +800,13 @@ async function main() {
     try {
       if (restaurantAId) {
         await connection.collection('restaurants').deleteOne({ _id: new Types.ObjectId(restaurantAId) });
+        await connection.collection('branches').deleteMany({ restaurantId: new Types.ObjectId(restaurantAId) });
         await connection.collection('menu_categories').deleteMany({ restaurantId: new Types.ObjectId(restaurantAId) });
         await connection.collection('menu_items').deleteMany({ restaurantId: new Types.ObjectId(restaurantAId) });
       }
       if (restaurantBId) {
         await connection.collection('restaurants').deleteOne({ _id: new Types.ObjectId(restaurantBId) });
+        await connection.collection('branches').deleteMany({ restaurantId: new Types.ObjectId(restaurantBId) });
         await connection.collection('menu_categories').deleteMany({ restaurantId: new Types.ObjectId(restaurantBId) });
         await connection.collection('menu_items').deleteMany({ restaurantId: new Types.ObjectId(restaurantBId) });
       }

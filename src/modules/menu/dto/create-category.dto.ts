@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateCategoryDto {
   @ApiProperty({ example: 'Món Chính', description: 'Tên danh mục thực đơn' })
@@ -26,4 +26,10 @@ export class CreateCategoryDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ type: [String], description: 'Danh sách chi nhánh áp dụng (Rỗng = Tất cả)' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  branchIds?: string[];
 }

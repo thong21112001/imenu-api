@@ -41,6 +41,16 @@ export class Branch {
 
   @Prop({ default: '' })
   tagline: string;
+
+  // ===== SOFT DELETE & AUDIT =====
+  @Prop({ default: false })
+  isDeleted: boolean;
+
+  @Prop()
+  deletedAt?: Date;
+
+  @Prop()
+  deletedBy?: string;
 }
 
 export const BranchSchema = SchemaFactory.createForClass(Branch);

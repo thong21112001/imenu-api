@@ -56,6 +56,30 @@ export class MenuItemOptionGroupDto {
   values: MenuItemOptionValueDto[];
 }
 
+export class BranchPriceOverrideDto {
+  @ApiProperty({ example: 'branch-1' })
+  @IsString()
+  @IsNotEmpty()
+  branchId: string;
+
+  @ApiPropertyOptional({ example: 85000, description: 'Giá bán riêng tại chi nhánh này (VND)' })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  price?: number;
+
+  @ApiPropertyOptional({ example: 95000, description: 'Giá deal / khuyến mãi riêng tại chi nhánh' })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  originalPrice?: number;
+
+  @ApiPropertyOptional({ example: true, default: true })
+  @IsBoolean()
+  @IsOptional()
+  isAvailable?: boolean;
+}
+
 export class CreateMenuItemDto {
   @ApiProperty({ example: 'Cơm Chiên Hải Sản Hoàng Gia' })
   @IsString()
@@ -114,4 +138,18 @@ export class CreateMenuItemDto {
   @ValidateNested({ each: true })
   @Type(() => MenuItemOptionGroupDto)
   options?: MenuItemOptionGroupDto[];
+
+  // Multi-branch properties
+  @ApiPropertyOptional({ type: [String], description: 'Danh sách ID chi nhánh áp dụng (Rỗng = Tất cả chi nhánh)' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  branchIds?: string[];
+
+  @ApiPropertyOptional({ type: [BranchPriceOverrideDto], description: 'Cấu hình giá và tình trạng theo chi nhánh' })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => BranchPriceOverrideDto)
+  branchOverrides?: BranchPriceOverrideDto[];
 }

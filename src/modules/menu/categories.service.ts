@@ -19,15 +19,28 @@ export class CategoriesService {
   /**
    * Lay danh sach tat ca danh muc kem so luong mon an (itemsCount)
    */
-  async findAll(restaurantId: string, onlyActive = false): Promise<any[]> {
+  async findAll(restaurantId: string, onlyActive = false, branchId?: string): Promise<any[]> {
     if (!restaurantId || !Types.ObjectId.isValid(restaurantId)) {
       return [];
     }
 
     const restObjId = new Types.ObjectId(restaurantId);
-    const filter: any = { restaurantId: restObjId };
+    const filter: any = {
+      restaurantId: restObjId,
+      isDeleted: { $ne: true },
+    };
+
     if (onlyActive) {
       filter.isActive = true;
+    }
+
+    // Loc theo chi nhanh (mon ap dung cho tat ca hoac chua branchId)
+    if (branchId && branchId !== 'all') {
+      filter.$or = [
+        { branchIds: { $size: 0 } },
+        { branchIds: { $exists: false } },
+        { branchIds: branchId },
+      ];
     }
 
     const categories = await this.categoryModel
@@ -35,9 +48,21 @@ export class CategoriesService {
       .sort({ order: 1, createdAt: 1 })
       .exec();
 
-    // Tinh so luong mon an theo tung danh muc
+    // Tinh so luong mon an chua bi xoa theo tung danh muc
+    const itemMatch: any = {
+      restaurantId: restObjId,
+      isDeleted: { $ne: true },
+    };
+    if (branchId && branchId !== 'all') {
+      itemMatch.$or = [
+        { branchIds: { $size: 0 } },
+        { branchIds: { $exists: false } },
+        { branchIds: branchId },
+      ];
+    }
+
     const counts = await this.itemModel.aggregate([
-      { $match: { restaurantId: restObjId } },
+      { $match: itemMatch },
       { $group: { _id: '$category', count: { $sum: 1 } } },
     ]);
 
@@ -63,7 +88,7 @@ export class CategoriesService {
       throw new BadRequestException('ID danh mục không hợp lệ');
     }
 
-    const filter: any = { _id: new Types.ObjectId(id) };
+    const filter: any = { _id: new Types.ObjectId(id), isDeleted: { $ne: true } };
     if (restaurantId && Types.ObjectId.isValid(restaurantId)) {
       filter.restaurantId = new Types.ObjectId(restaurantId);
     }
@@ -88,8 +113,12 @@ export class CategoriesService {
     let slug = dto.slug ? generateSlug(dto.slug) : generateSlug(dto.name);
     if (!slug) slug = 'danh-muc';
 
-    // Kiem tra trung lap slug trong cung mot nha hang
-    const existing = await this.categoryModel.findOne({ restaurantId: restObjId, slug });
+    // Kiem tra trung lap slug trong cung mot nha hang (bo qua cac danh muc da bi xoa mem)
+    const existing = await this.categoryModel.findOne({
+      restaurantId: restObjId,
+      slug,
+      isDeleted: { $ne: true },
+    });
     if (existing) {
       slug = `${slug}-${Date.now().toString().slice(-4)}`;
     }
@@ -98,7 +127,7 @@ export class CategoriesService {
     let order = dto.order;
     if (order === undefined || order === null) {
       const maxOrderCat = await this.categoryModel
-        .findOne({ restaurantId: restObjId })
+        .findOne({ restaurantId: restObjId, isDeleted: { $ne: true } })
         .sort({ order: -1 })
         .exec();
       order = maxOrderCat && maxOrderCat.order !== undefined ? maxOrderCat.order + 1 : 1;
@@ -110,7 +139,9 @@ export class CategoriesService {
       icon: dto.icon || '🍲',
       order,
       isActive: dto.isActive !== undefined ? dto.isActive : true,
+      branchIds: dto.branchIds || [],
       restaurantId: restObjId,
+      isDeleted: false,
     });
 
     const resObj: any = created.toJSON ? created.toJSON() : created.toObject();
@@ -135,6 +166,7 @@ export class CategoriesService {
           restaurantId: category.restaurantId,
           slug: newSlug,
           _id: { $ne: category._id },
+          isDeleted: { $ne: true },
         });
         if (duplicate) {
           throw new ConflictException('Đường dẫn danh mục (slug) đã tồn tại');
@@ -155,11 +187,16 @@ export class CategoriesService {
       category.isActive = dto.isActive;
     }
 
+    if (dto.branchIds !== undefined) {
+      category.branchIds = dto.branchIds;
+    }
+
     await category.save();
 
     const count = await this.itemModel.countDocuments({
       category: category._id,
       restaurantId: category.restaurantId,
+      isDeleted: { $ne: true },
     });
 
     const resObj: any = category.toJSON ? category.toJSON() : category.toObject();
@@ -168,14 +205,15 @@ export class CategoriesService {
   }
 
   /**
-   * Xoa danh muc thuc don (Kiem tra rang buoc mon an con ton tai)
+   * Xoa danh muc thuc don bang SOFT DELETE (Kiem tra rang buoc mon an con hoat dong)
    */
-  async delete(id: string, restaurantId: string): Promise<{ success: boolean; message: string }> {
+  async delete(id: string, restaurantId: string, caller?: any): Promise<{ success: boolean; message: string }> {
     const category = await this.findById(id, restaurantId);
 
     const itemCount = await this.itemModel.countDocuments({
       category: category._id,
       restaurantId: category.restaurantId,
+      isDeleted: { $ne: true },
     });
 
     if (itemCount > 0) {
@@ -184,7 +222,18 @@ export class CategoriesService {
       );
     }
 
-    await this.categoryModel.deleteOne({ _id: category._id }).exec();
+    const timestamp = Date.now();
+    category.isDeleted = true;
+    category.deletedAt = new Date();
+    category.isActive = false;
+    category.slug = `${category.slug}_deleted_${timestamp}`; // Giai phong slug cho danh muc moi
+
+    if (caller?.userId && Types.ObjectId.isValid(caller.userId)) {
+      category.deletedBy = new Types.ObjectId(caller.userId);
+    }
+
+    await category.save();
+
     return {
       success: true,
       message: `Đã xóa danh mục "${category.name}" thành công`,

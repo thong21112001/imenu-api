@@ -48,12 +48,12 @@ export class AuditLogInterceptor implements NestInterceptor {
 
     let module = ActivityModule.SYSTEM;
     if (url.includes('/orders')) module = ActivityModule.ORDER;
-    else if (url.includes('/menu')) module = ActivityModule.MENU;
+    else if (url.includes('/categories') || url.includes('/menu-items') || url.includes('/menu')) module = ActivityModule.MENU;
     else if (url.includes('/tables')) module = ActivityModule.TABLE;
     else if (url.includes('/bills')) module = ActivityModule.BILL;
     else if (url.includes('/users') || url.includes('/staff')) module = ActivityModule.STAFF;
     else if (url.includes('/roles')) module = ActivityModule.ROLE;
-    else if (url.includes('/settings')) module = ActivityModule.SETTING;
+    else if (url.includes('/branches') || url.includes('/restaurants') || url.includes('/settings')) module = ActivityModule.SETTING;
 
     let action = ActivityAction.UPDATE;
     if (method === 'POST') action = ActivityAction.CREATE;

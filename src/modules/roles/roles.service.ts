@@ -190,7 +190,7 @@ export class RolesService {
   }
 
   async findAll(restaurantId?: string, isSuperAdmin = false): Promise<any[]> {
-    const filter: any = { isActive: true };
+    const filter: any = { isActive: true, isDeleted: { $ne: true } };
     if (restaurantId) {
       filter.$or = [{ isSystem: true }, { restaurantId }];
     }
@@ -359,7 +359,16 @@ export class RolesService {
       throw new BadRequestException(`Không thể xóa vai trò này vì đang có ${userCount} nhân viên được gán vai trò`);
     }
 
-    await this.roleModel.findByIdAndDelete(id);
+    const timestamp = Date.now();
+    role.isDeleted = true;
+    role.deletedAt = new Date();
+    role.isActive = false;
+    role.slug = `${role.slug}_deleted_${timestamp}`;
+    if (caller?.userId && Types.ObjectId.isValid(caller.userId)) {
+      role.deletedBy = new Types.ObjectId(caller.userId);
+    }
+    await role.save();
+
     return {
       success: true,
       message: 'Đã xóa vai trò thành công',

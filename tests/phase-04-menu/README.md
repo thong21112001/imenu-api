@@ -1,10 +1,10 @@
-# Kiểm Thử Tích Hợp Phase 4: Quản Lý Thực Đơn & Nhóm Tùy Chọn (Toppings)
+# Kiểm Thử Tích Hợp Phase 4: Quản Lý Thực Đơn Đa Chi Nhánh, Tìm Kiếm Regex Tiếng Việt, POS & Xóa Mềm
 
-Bộ kiểm thử tự động toàn diện dành cho Phase 4 của hệ thống **iMenu API**, bao gồm: Quản lý danh mục món ăn (Categories), Món ăn (Menu Items), Nhóm tùy chọn/Toppings (Option Groups & Values), Bật/Tắt trạng thái Còn/Hết nhanh dành cho Thu ngân, Ràng buộc an toàn khi xóa danh mục, Phân lập dữ liệu đa người thuê (Multi-Tenant Isolation) và Truy cập thực đơn công khai cho khách hàng quét mã QR.
+Bộ kiểm thử tự động toàn diện dành cho Phase 4 của hệ thống **iMenu API**, bao gồm: Quản lý danh mục món ăn (Categories), Món ăn (Menu Items), Nhóm tùy chọn/Toppings (Option Groups & Values), Bật/Tắt trạng thái Còn/Hết nhanh dành cho Thu ngân, Ràng buộc an toàn khi xóa danh mục, Phân lập dữ liệu đa người thuê (Multi-Tenant Isolation), Truy cập thực đơn công khai cho khách hàng quét mã QR, Cơ chế giá bán và deal riêng theo chi nhánh (Branch Overrides), Tìm kiếm Regex tiếng Việt thông minh và Xóa mềm (Soft Delete) bảo vệ dữ liệu lịch sử hóa đơn.
 
 ---
 
-## 📋 Danh Sách 13 Ca Kiểm Thử (13 Test Cases)
+## 📋 Danh Sách 17 Ca Kiểm Thử (17 Test Cases)
 
 | STT | Mã Ca Kiểm Thử | Tên Nghiệp Vụ Kiểm Thử | Mục Tiêu & Kỳ Vọng | Trạng Thái |
 |:---:|:---|:---|:---|:---:|
@@ -21,6 +21,10 @@ Bộ kiểm thử tự động toàn diện dành cho Phase 4 của hệ thống
 | 11 | `TC-MENU-11` | Phân lập dữ liệu đa người thuê (Multi-Tenant) | Nhà hàng B không thể truy cập, sửa đổi hoặc xóa danh mục/món ăn của Nhà hàng A (HTTP 404/403) | ✅ PASS |
 | 12 | `TC-MENU-12` | Thực đơn công khai cho khách quét mã QR | Khách hàng quét mã QR gọi món có thể xem danh mục và món ăn đang mở bán mà không cần mã xác thực JWT, HTTP 200 OK | ✅ PASS |
 | 13 | `TC-MENU-13` | Tự động Seed thực đơn mẫu chuẩn nhà hàng Việt qua API | Chủ quán gọi endpoint `POST /categories/seed-default`, tự động tạo 4 danh mục và 8 món ăn phong phú (Món chính, Khai vị, Món nước, Đồ uống) kèm nhóm tùy chọn (Toppings), HTTP 200 OK | ✅ PASS |
+| 14 | `TC-MENU-14` | Giá bán riêng và Deal riêng theo chi nhánh (Multi-Branch Pricing) | Cho phép chi nhánh con có giá bán riêng và giá deal khuyến mãi riêng (`branchOverrides`). Khi truy vấn kèm `branchId`, API tính toán `effectivePrice` và `effectiveOriginalPrice` chính xác, HTTP 200 OK | ✅ PASS |
+| 15 | `TC-MENU-15` | Thu ngân bật/tắt tạm hết món độc lập giữa các chi nhánh | Thu ngân của Chi nhánh con bật/tắt Còn/Hết món qua endpoint `/status?branchId=...`, trạng thái `effectiveIsAvailable` chỉ áp dụng riêng cho chi nhánh đó, các chi nhánh khác và trụ sở chính hoàn toàn không bị ảnh hưởng, HTTP 200 OK | ✅ PASS |
+| 16 | `TC-MENU-16` | Tìm kiếm regex tiếng Việt thông minh có dấu & không dấu | Hỗ trợ tìm kiếm tiếng Việt không dấu (gõ `pho bo` khớp `Phở Bò`, `tra dao` khớp `Trà Đào`) bằng cơ chế biểu thức chính quy (Regex Pattern), chuẩn xác tuyệt đối, HTTP 200 OK | ✅ PASS |
+| 17 | `TC-MENU-17` | Xóa mềm toàn hệ thống & chống va chạm slug (Soft Delete) | Thay thế xóa cứng bằng xóa mềm (`isDeleted: true`, `deletedAt`). Đồng thời tự động đổi slug sang dạng `${slug}_deleted_${timestamp}` để người dùng có thể tạo lại món ăn cùng tên mới mà không bị lỗi trùng khóa Unique Index, HTTP 200 OK | ✅ PASS |
 
 ---
 
@@ -53,5 +57,6 @@ npm run test:phase4
 Sau khi kiểm thử hoàn tất (dù thành công hay gặp lỗi), khối lệnh `finally` sẽ tự động dọn dẹp sạch sẽ:
 - Toàn bộ danh mục món ăn (`menu_categories`) được tạo trong đợt test.
 - Toàn bộ món ăn (`menu_items`) được tạo trong đợt test.
+- Toàn bộ chi nhánh (`branches`) phụ được tạo trong đợt test.
 - Các tài khoản và nhà hàng thử nghiệm (`owner.p4.*`, `cashier.p4.*`).
 - Đóng kết nối HTTP và MongoDB an toàn, không để lại bất kỳ dữ liệu rác nào.

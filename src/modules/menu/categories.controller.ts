@@ -22,24 +22,31 @@ export class CategoriesController {
 
   @ApiOperation({ summary: 'Lấy danh mục thực đơn công khai cho khách hàng quét mã QR' })
   @ApiQuery({ name: 'restaurantId', required: true, description: 'ID nhà hàng' })
+  @ApiQuery({ name: 'branchId', required: false, description: 'ID chi nhánh' })
   @Public()
   @Get('public')
-  async findPublicCategories(@Query('restaurantId') restaurantId: string) {
-    const categories = await this.categoriesService.findAll(restaurantId, true);
+  async findPublicCategories(
+    @Query('restaurantId') restaurantId: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    const categories = await this.categoriesService.findAll(restaurantId, true, branchId);
     return new OkResponse({ data: categories });
   }
 
   @ApiOperation({ summary: 'Lấy danh sách danh mục thực đơn của nhà hàng' })
   @ApiQuery({ name: 'restaurantId', required: false, description: 'Dành cho Super Admin' })
+  @ApiQuery({ name: 'branchId', required: false, description: 'Lọc theo chi nhánh' })
   @RequirePermissions(ResourceType.MENU, ActionType.VIEW)
   @Get()
   async findAll(
     @CurrentRestaurant() currentRestId: string,
     @CurrentUser() user: JwtUser,
     @Query('restaurantId') queryRestId?: string,
+    @Query('branchId') queryBranchId?: string,
   ) {
     const targetRestId = isSuperAdminUser(user) && queryRestId ? queryRestId : currentRestId;
-    const categories = await this.categoriesService.findAll(targetRestId);
+    const targetBranchId = queryBranchId || user.branchId;
+    const categories = await this.categoriesService.findAll(targetRestId, false, targetBranchId);
     return new OkResponse({ data: categories });
   }
 
@@ -115,7 +122,7 @@ export class CategoriesController {
     @Query('restaurantId') queryRestId?: string,
   ) {
     const targetRestId = isSuperAdminUser(user) && queryRestId ? queryRestId : currentRestId;
-    const result = await this.categoriesService.delete(id, targetRestId);
+    const result = await this.categoriesService.delete(id, targetRestId, user);
     return new OkResponse({ message: result.message, data: { success: true } });
   }
 }

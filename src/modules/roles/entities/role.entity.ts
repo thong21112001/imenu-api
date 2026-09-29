@@ -33,11 +33,20 @@ export class Role {
   // Khoa vai tro theo nha hang (null neu la vai tro toan he thong)
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: false })
   restaurantId?: Types.ObjectId;
+
+  // ===== SOFT DELETE & AUDIT =====
+  @Prop({ default: false, index: true })
+  isDeleted: boolean;
+
+  @Prop()
+  deletedAt?: Date;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
+  deletedBy?: Types.ObjectId;
 }
 
 export type RoleDocument = Role & Document;
 export const RoleSchema = SchemaFactory.createForClass(Role);
 
-
-RoleSchema.index({ isSystem: 1, isActive: 1 });
-RoleSchema.index({ restaurantId: 1 });
+RoleSchema.index({ isSystem: 1, isActive: 1, isDeleted: 1 });
+RoleSchema.index({ restaurantId: 1, isDeleted: 1 });

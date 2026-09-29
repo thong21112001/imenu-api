@@ -1,46 +1,49 @@
-# Phase 4 Integration Testing: Menu Management & Topping Groups
+# Phase 4 Integration Tests: Multi-Branch Menu, Vietnamese Regex Search, POS & Soft Delete
 
-Comprehensive automated test suite for Phase 4 of the **iMenu API** platform, covering: Menu Categories, Menu Items, Option Groups & Toppings (Nested Option Groups & Values), Cashier Fast Toggle (Available/Unavailable), Category Deletion Safety Constraint, Multi-Tenant Data Isolation, and Public QR Menu Access for customers.
+Comprehensive automated test suite for Phase 4 of **iMenu API**, including: Categories, Menu Items, Option Groups & Toppings, Fast Availability Toggle for Cashiers, Category Deletion Safety Constraints, Multi-Tenant Data Isolation, Public QR Menu Access, Branch Price/Deal Overrides, Smart Vietnamese Regex Search, and System-Wide Soft Delete.
 
 ---
 
-## 📋 13 Automated Test Cases
+## 📋 List of 17 Test Cases
 
-| # | Test Case Code | Test Scenario | Objectives & Expectations | Status |
+| No. | Test Case ID | Test Case Name | Objective & Expected Outcome | Status |
 |:---:|:---|:---|:---|:---:|
-| 1 | `TC-MENU-01` | Create new menu category | Restaurant owner creates category, automatic SEO-friendly slug generation (`mon-nuong-bbq-dac-sac`), HTTP 201 Created | ✅ PASS |
-| 2 | `TC-MENU-02` | Automatic slug collision resolution | Duplicate category names in the same restaurant auto-append a unique random suffix, HTTP 201 Created | ✅ PASS |
-| 3 | `TC-MENU-03` | Update category information | Update category name, emoji icon, and display sort order, HTTP 200 OK | ✅ PASS |
-| 4 | `TC-MENU-04` | Create menu item with Option Groups & Toppings | Item with multiple option groups (Size, Spicy level, Extra toppings with price deltas), stores nested option structure, HTTP 201 Created | ✅ PASS |
-| 5 | `TC-MENU-05` | Filter and paginate menu items | Filter by category, popular status (`isPopular=true`), pagination (`limit=10`), returns accurate item list and total count | ✅ PASS |
-| 6 | `TC-MENU-06` | Edit menu item details | Update item name, selling price, and discount pricing, HTTP 200 OK | ✅ PASS |
-| 7 | `TC-MENU-07` | Cashier fast status toggle (Available/Unavailable) | Cashier toggles `isAvailable: false -> true` via `/status` endpoint with proper RBAC permission enforcement, HTTP 200 OK | ✅ PASS |
-| 8 | `TC-MENU-08` | Safe deletion constraint for categories | Prevents deleting categories that still contain active dishes, returns HTTP 400 Bad Request with a descriptive error message | ✅ PASS |
-| 9 | `TC-MENU-09` | Delete menu item | Restaurant owner permanently deletes an item from the menu, HTTP 200 OK | ✅ PASS |
-| 10 | `TC-MENU-10` | Delete empty category | Successfully deletes category once all dishes have been removed or re-assigned, HTTP 200 OK | ✅ PASS |
-| 11 | `TC-MENU-11` | Multi-Tenant Data Isolation | Cross-tenant access between Restaurant A & B is strictly blocked (HTTP 404/403) | ✅ PASS |
-| 12 | `TC-MENU-12` | Public QR Menu Access without Token | Dine-in guests scanning table QR codes can query active categories and dishes publicly without JWT authentication, HTTP 200 OK | ✅ PASS |
-| 13 | `TC-MENU-13` | Seed Standard Vietnamese Default Menu via API | Owner invokes `POST /categories/seed-default` to seed 4 standard categories and 8 dishes with toppings into an empty restaurant, HTTP 200 OK | ✅ PASS |
+| 1 | `TC-MENU-01` | Create new menu category | Owner creates category, auto-generates clean SEO slug (`mon-nuong-bbq-dac-sac`), HTTP 201 Created | ✅ PASS |
+| 2 | `TC-MENU-02` | Automatic slug collision resolution | When creating duplicate category names in the same restaurant, system appends unique suffix, HTTP 201 Created | ✅ PASS |
+| 3 | `TC-MENU-03` | Update category information | Update category name, emoji icon, and display order, HTTP 200 OK | ✅ PASS |
+| 4 | `TC-MENU-04` | Create dish with Option Groups & Toppings | Create dish with nested options (Size, Spiciness, Toppings with delta pricing), HTTP 201 Created | ✅ PASS |
+| 5 | `TC-MENU-05` | Query menu items with filter & pagination | Filter by category, popular status (`isPopular=true`), pagination (`limit=10`), HTTP 200 OK | ✅ PASS |
+| 6 | `TC-MENU-06` | Edit menu item details | Update dish name, price, and original promotional price, HTTP 200 OK | ✅ PASS |
+| 7 | `TC-MENU-07` | Cashier fast availability toggle | Cashier toggles `isAvailable: false -> true` via `/status`, RBAC permissions verified, HTTP 200 OK | ✅ PASS |
+| 8 | `TC-MENU-08` | Safe deletion constraint for categories | Prevents deleting categories containing items, returns HTTP 400 Bad Request with descriptive message | ✅ PASS |
+| 9 | `TC-MENU-09` | Delete dish from menu | Owner deletes a dish, HTTP 200 OK | ✅ PASS |
+| 10 | `TC-MENU-10` | Delete empty category | Allows deleting empty categories, HTTP 200 OK | ✅ PASS |
+| 11 | `TC-MENU-11` | Multi-Tenant data isolation | Restaurant B cannot access, modify, or delete Restaurant A's menu data (HTTP 404/403) | ✅ PASS |
+| 12 | `TC-MENU-12` | Public QR customer menu access | Customers scanning QR code can view active categories and dishes without JWT authentication, HTTP 200 OK | ✅ PASS |
+| 13 | `TC-MENU-13` | Seed default Vietnamese menu via API | Owner invokes `POST /categories/seed-default`, auto-generates 4 categories and 8 dishes with toppings, HTTP 200 OK | ✅ PASS |
+| 14 | `TC-MENU-14` | Branch-specific pricing & promotional deals | Allows sub-branches to have custom prices and deals (`branchOverrides`). Resolves `effectivePrice` and `effectiveOriginalPrice` when queried with `branchId`, HTTP 200 OK | ✅ PASS |
+| 15 | `TC-MENU-15` | Branch-isolated cashier availability toggle | Branch cashier toggles availability via `/status?branchId=...`, flipping `effectiveIsAvailable` only for their branch, other branches remain unaffected, HTTP 200 OK | ✅ PASS |
+| 16 | `TC-MENU-16` | Smart Vietnamese & English regex search | Unaccented typing (`pho bo`, `tra dao`) matches accented Vietnamese titles via regex character class mapping, HTTP 200 OK | ✅ PASS |
+| 17 | `TC-MENU-17` | Comprehensive soft delete & slug collision prevention | Replaces hard delete with soft delete (`isDeleted: true`, `deletedAt`). Renames slug to `${slug}_deleted_${timestamp}` to allow re-creating dishes with identical names without MongoDB unique key errors, HTTP 200 OK | ✅ PASS |
 
 ---
 
-## 🚀 How to Run the Tests
+## 🚀 Execution Instructions
 
-### 1. Prerequisites
+### 1. Requirements
 - Node.js >= 18
-- MongoDB Server running on `mongodb://localhost:27017`
-- Automated test runs use an isolated database: `imenu-db-test`
+- MongoDB Server running at `mongodb://localhost:27017`
+- Automated test runs against isolated database: `imenu-db-test`
 
-### 2. Execution Commands
+### 2. Commands
 
 ```bash
-# Navigate to backend directory
 cd imenu-api
 
-# Run Phase 4 menu test suite
+# Run Phase 4 suite
 npm run test:phase4
 
-# Run all regression test suites
+# Run regression test suites
 npm run test:phase2:all
 npm run test:phase3
 npm run test:phase4
@@ -48,10 +51,11 @@ npm run test:phase4
 
 ---
 
-## 🛡️ Zero Garbage Teardown Guarantee
+## 🛡️ Zero Garbage Teardown
 
-After test execution completes (whether passing or failing), the `finally` teardown block cleans up all test resources:
+Upon test suite completion, the `finally` teardown block automatically removes:
 - All generated menu categories (`menu_categories`).
 - All generated menu items (`menu_items`).
-- All test accounts and restaurants (`owner.p4.*`, `cashier.p4.*`).
-- Closes HTTP server and MongoDB connections safely, leaving zero leftover test data.
+- All test branches (`branches`).
+- Test accounts and restaurants (`owner.p4.*`, `cashier.p4.*`).
+- Closes HTTP and database connections cleanly.

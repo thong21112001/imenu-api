@@ -20,13 +20,28 @@ export class MenuCategory {
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: true, index: true })
   restaurantId: Types.ObjectId;
+
+  // ===== MULTI-BRANCH SUPPORT =====
+  @Prop({ type: [String], default: [] })
+  branchIds: string[]; // Danh sach chi nhanh ap dung (Rong = Ap dung tat ca chi nhanh)
+
+  // ===== SOFT DELETE & AUDIT =====
+  @Prop({ default: false, index: true })
+  isDeleted: boolean;
+
+  @Prop()
+  deletedAt?: Date;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
+  deletedBy?: Types.ObjectId;
 }
 
 export type MenuCategoryDocument = MenuCategory & Document;
 export const MenuCategorySchema = SchemaFactory.createForClass(MenuCategory);
 
 MenuCategorySchema.index({ restaurantId: 1, slug: 1 }, { unique: true });
-MenuCategorySchema.index({ restaurantId: 1, order: 1 });
+MenuCategorySchema.index({ restaurantId: 1, isDeleted: 1, order: 1 });
+MenuCategorySchema.index({ restaurantId: 1, branchIds: 1 });
 
 MenuCategorySchema.virtual('id').get(function () {
   return this._id.toHexString();

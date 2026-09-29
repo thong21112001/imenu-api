@@ -8,6 +8,16 @@ export class QueryMenuItemDto extends PaginateDto {
   @IsOptional()
   categoryId?: string;
 
+  @ApiPropertyOptional({ description: 'Lọc theo ID chi nhánh áp dụng để tính giá và trạng thái hiệu lực' })
+  @IsString()
+  @IsOptional()
+  branchId?: string;
+
+  @ApiPropertyOptional({ description: 'Từ khóa tìm kiếm (hỗ trợ tiếng Việt không dấu, có dấu và tiếng Anh)' })
+  @IsString()
+  @IsOptional()
+  search?: string;
+
   @ApiPropertyOptional({ description: 'Lọc món theo trạng thái Còn món (true) hoặc Hết món (false)' })
   @IsBooleanString()
   @IsOptional()
