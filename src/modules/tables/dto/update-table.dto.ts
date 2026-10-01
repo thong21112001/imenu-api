@@ -49,6 +49,21 @@ export class UpdateTableDto {
   @IsOptional()
   @IsString()
   wifiPassword?: string;
+
+  @ApiPropertyOptional({ description: 'Trạng thái mã QR', enum: ['active', 'revoked'] })
+  @IsOptional()
+  @IsEnum(['active', 'revoked'], { message: 'Trạng thái mã QR không hợp lệ' })
+  qrStatus?: 'active' | 'revoked';
+
+  @ApiPropertyOptional({ description: 'Token bảo mật của mã QR' })
+  @IsOptional()
+  @IsString()
+  qrToken?: string;
+
+  @ApiPropertyOptional({ description: 'URL trực tiếp của mã QR' })
+  @IsOptional()
+  @IsString()
+  qrCodeUrl?: string;
 }
 
 export class UpdateTableStatusDto {

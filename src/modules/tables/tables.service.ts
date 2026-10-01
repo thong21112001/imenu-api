@@ -121,6 +121,9 @@ export class TablesService {
       branchId: dto.branchId,
       wifiSsid: dto.wifiSsid || '',
       wifiPassword: dto.wifiPassword || '',
+      qrStatus: dto.qrStatus || 'active',
+      qrToken: dto.qrToken || Math.random().toString(36).substring(2, 10),
+      qrCodeUrl: dto.qrCodeUrl || '',
       isDeleted: false,
     });
 
@@ -159,6 +162,9 @@ export class TablesService {
     if (dto.capacity !== undefined) table.capacity = dto.capacity;
     if (dto.wifiSsid !== undefined) table.wifiSsid = dto.wifiSsid;
     if (dto.wifiPassword !== undefined) table.wifiPassword = dto.wifiPassword;
+    if (dto.qrStatus !== undefined) table.qrStatus = dto.qrStatus;
+    if (dto.qrToken !== undefined) table.qrToken = dto.qrToken;
+    if (dto.qrCodeUrl !== undefined) table.qrCodeUrl = dto.qrCodeUrl;
 
     if (dto.status && dto.status !== table.status) {
       table.status = dto.status;
@@ -491,6 +497,8 @@ export class TablesService {
         status: 'Available',
         restaurantId: new Types.ObjectId(restaurantId),
         branchId,
+        qrStatus: 'active',
+        qrToken: Math.random().toString(36).substring(2, 10),
         isDeleted: false,
       });
       await table.save();
