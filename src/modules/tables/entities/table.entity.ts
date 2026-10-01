@@ -53,11 +53,23 @@ export class Table {
 
   @Prop({ trim: true })
   branchId?: string;
+
+  @Prop()
+  activeSince?: Date;
+
+  @Prop({ default: false, index: true })
+  isDeleted: boolean;
+
+  @Prop()
+  deletedAt?: Date;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
+  deletedBy?: Types.ObjectId;
 }
 
 export type TableDocument = Table & Document;
 export const TableSchema = SchemaFactory.createForClass(Table);
 
-TableSchema.index({ restaurantId: 1, branchId: 1, code: 1 }, { unique: true });
-TableSchema.index({ restaurantId: 1, branchId: 1, status: 1 });
+TableSchema.index({ restaurantId: 1, branchId: 1, code: 1, isDeleted: 1 });
+TableSchema.index({ restaurantId: 1, branchId: 1, isDeleted: 1, status: 1 });
 TableSchema.index({ qrToken: 1 });

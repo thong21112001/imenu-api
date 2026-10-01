@@ -13,6 +13,7 @@ import { UsersService } from './modules/users/users.service';
 import { AuthService } from './modules/auth/auth.service';
 import { RestaurantsService } from './modules/restaurants/restaurants.service';
 import { CategoriesService } from './modules/menu/categories.service';
+import { TablesService } from './modules/tables/tables.service';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -75,8 +76,12 @@ async function bootstrap() {
     const restaurantsService = app.get(RestaurantsService);
     const bepNha = await restaurantsService.findBySlug('bep-nha').catch(() => null);
     if (bepNha) {
+      const bepNhaId = (bepNha as any)._id.toString();
       const categoriesService = app.get(CategoriesService);
-      await categoriesService.seedDefaultMenu((bepNha as any)._id.toString());
+      await categoriesService.seedDefaultMenu(bepNhaId);
+
+      const tablesService = app.get(TablesService);
+      await tablesService.seedDefaultTables(bepNhaId);
     }
   } catch (err: any) {
     logger.error('Lỗi khi khởi tạo dữ liệu hệ thống ban đầu:', err.message);
