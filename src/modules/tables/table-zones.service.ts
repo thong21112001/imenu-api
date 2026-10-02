@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -10,6 +11,7 @@ import { Model, Types } from 'mongoose';
 import { TableZone, TableZoneDocument } from './entities/table-zone.entity';
 import { Table, TableDocument } from './entities/table.entity';
 import { CreateTableZoneDto, UpdateTableZoneDto } from './dto/create-zone.dto';
+import { JwtUser } from '../auth/interface/jwtUser';
 
 @Injectable()
 export class TableZonesService {
@@ -20,20 +22,28 @@ export class TableZonesService {
     @InjectModel(Table.name) private readonly tableModel: Model<TableDocument>,
   ) {}
 
-  async findAll(restaurantId: string, branchId?: string): Promise<TableZone[]> {
+  async findAll(restaurantId: string, branchId?: string, caller?: JwtUser): Promise<TableZone[]> {
     const filter: any = {
       restaurantId: new Types.ObjectId(restaurantId),
       isDeleted: { $ne: true },
     };
 
-    if (branchId) {
-      filter.$or = [{ branchId }, { branchId: { $exists: false } }, { branchId: '' }, { branchId: null }];
+    let effectiveBranchId = branchId;
+    if (caller && !caller.isMainBranch && caller.branchId) {
+      if (branchId && branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền truy cập khu vực bàn của chi nhánh khác');
+      }
+      effectiveBranchId = caller.branchId;
+    }
+
+    if (effectiveBranchId) {
+      filter.branchId = effectiveBranchId;
     }
 
     return this.zoneModel.find(filter).sort({ createdAt: 1 }).exec();
   }
 
-  async findById(id: string, restaurantId: string): Promise<TableZone> {
+  async findById(id: string, restaurantId: string, caller?: JwtUser): Promise<TableZone> {
     const zone = await this.zoneModel.findOne({
       _id: new Types.ObjectId(id),
       restaurantId: new Types.ObjectId(restaurantId),
@@ -44,23 +54,38 @@ export class TableZonesService {
       throw new NotFoundException('Không tìm thấy khu vực bàn');
     }
 
+    if (caller && !caller.isMainBranch && caller.branchId) {
+      if (zone.branchId && zone.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền truy cập khu vực bàn của chi nhánh khác');
+      }
+    }
+
     return zone;
   }
 
-  async create(dto: CreateTableZoneDto, restaurantId: string): Promise<TableZone> {
+  async create(dto: CreateTableZoneDto, restaurantId: string, caller?: JwtUser): Promise<TableZone> {
+    let branchId = dto.branchId;
+    if (caller && !caller.isMainBranch && caller.branchId) {
+      if (dto.branchId && dto.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn chỉ có quyền tạo khu vực cho chi nhánh của mình');
+      }
+      branchId = caller.branchId;
+    }
+
     const existing = await this.zoneModel.findOne({
       name: { $regex: new RegExp(`^${dto.name.trim()}$`, 'i') },
       restaurantId: new Types.ObjectId(restaurantId),
       isDeleted: { $ne: true },
-      ...(dto.branchId ? { branchId: dto.branchId } : {}),
+      ...(branchId ? { branchId } : {}),
     });
 
     if (existing) {
-      throw new ConflictException(`Khu vực "${dto.name}" đã tồn tại trong nhà hàng`);
+      throw new ConflictException(`Khu vực "${dto.name}" đã tồn tại trong ${branchId ? 'chi nhánh' : 'nhà hàng'}`);
     }
 
     const zone = new this.zoneModel({
       ...dto,
+      branchId,
       restaurantId: new Types.ObjectId(restaurantId),
       isDeleted: false,
     });
@@ -68,8 +93,8 @@ export class TableZonesService {
     return zone.save();
   }
 
-  async update(id: string, dto: UpdateTableZoneDto, restaurantId: string): Promise<TableZone> {
-    const zone = await this.findById(id, restaurantId);
+  async update(id: string, dto: UpdateTableZoneDto, restaurantId: string, caller?: JwtUser): Promise<TableZone> {
+    const zone: any = await this.findById(id, restaurantId, caller);
 
     if (dto.name && dto.name.trim() !== zone.name) {
       const existing = await this.zoneModel.findOne({
@@ -77,6 +102,7 @@ export class TableZonesService {
         name: { $regex: new RegExp(`^${dto.name.trim()}$`, 'i') },
         restaurantId: new Types.ObjectId(restaurantId),
         isDeleted: { $ne: true },
+        ...(zone.branchId ? { branchId: zone.branchId } : {}),
       });
       if (existing) {
         throw new ConflictException(`Khu vực "${dto.name}" đã tồn tại`);
@@ -91,8 +117,8 @@ export class TableZonesService {
     return (zone as any).save();
   }
 
-  async delete(id: string, restaurantId: string): Promise<{ success: boolean; message: string }> {
-    const zone = await this.findById(id, restaurantId);
+  async delete(id: string, restaurantId: string, caller?: JwtUser): Promise<{ success: boolean; message: string }> {
+    const zone = await this.findById(id, restaurantId, caller);
 
     // Kiểm tra xem có bàn nào đang thuộc khu vực này không
     const tableCount = await this.tableModel.countDocuments({

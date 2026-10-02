@@ -45,14 +45,18 @@ export class TablesController {
     @Query('zoneId') zoneId?: string,
     @Query('status') status?: string,
     @Query('search') search?: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const tables = await this.tablesService.findAll({
-      restaurantId,
-      branchId,
-      zoneId,
-      status,
-      search,
-    });
+    const tables = await this.tablesService.findAll(
+      {
+        restaurantId,
+        branchId,
+        zoneId,
+        status,
+        search,
+      },
+      caller,
+    );
     return new OkResponse({ message: 'Lấy danh sách bàn thành công', data: tables });
   }
 
@@ -62,8 +66,9 @@ export class TablesController {
   async findOne(
     @Param('id') id: string,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const table = await this.tablesService.findById(id, restaurantId);
+    const table = await this.tablesService.findById(id, restaurantId, caller);
     return new OkResponse({ data: table });
   }
 
@@ -73,8 +78,9 @@ export class TablesController {
   async create(
     @Body() dto: CreateTableDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const table = await this.tablesService.create(dto, restaurantId);
+    const table = await this.tablesService.create(dto, restaurantId, caller);
     return new OkResponse({ message: 'Tạo bàn mới thành công', data: table });
   }
 
@@ -85,8 +91,9 @@ export class TablesController {
   async seedDefault(
     @CurrentRestaurant() restaurantId: string,
     @Query('branchId') branchId?: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const result = await this.tablesService.seedDefaultTables(restaurantId, branchId);
+    const result = await this.tablesService.seedDefaultTables(restaurantId, branchId, caller);
     return new OkResponse({ message: 'Khởi tạo sơ đồ bàn mẫu thành công', data: result });
   }
 
@@ -97,8 +104,9 @@ export class TablesController {
   async transfer(
     @Body() dto: TransferTableDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const result = await this.tablesService.transferTable(dto, restaurantId);
+    const result = await this.tablesService.transferTable(dto, restaurantId, caller);
     return new OkResponse({ message: result.message, data: result });
   }
 
@@ -109,8 +117,9 @@ export class TablesController {
   async merge(
     @Body() dto: MergeTablesDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const result = await this.tablesService.mergeTables(dto, restaurantId);
+    const result = await this.tablesService.mergeTables(dto, restaurantId, caller);
     return new OkResponse({ message: result.message, data: result });
   }
 
@@ -121,12 +130,14 @@ export class TablesController {
     @Param('id') id: string,
     @Body() dto: UpdateTableStatusDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
     const table = await this.tablesService.updateStatus(
       id,
       dto.status,
       dto.totalGuests,
       restaurantId,
+      caller,
     );
     return new OkResponse({ message: 'Cập nhật trạng thái bàn thành công', data: table });
   }
@@ -138,8 +149,9 @@ export class TablesController {
     @Param('id') id: string,
     @Body() dto: UpdateTableDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const table = await this.tablesService.update(id, dto, restaurantId);
+    const table = await this.tablesService.update(id, dto, restaurantId, caller);
     return new OkResponse({ message: 'Cập nhật bàn thành công', data: table });
   }
 
@@ -151,7 +163,7 @@ export class TablesController {
     @CurrentRestaurant() restaurantId: string,
     @CurrentUser() user: JwtUser,
   ) {
-    const result = await this.tablesService.delete(id, restaurantId, user);
+    const result = await this.tablesService.delete(id, restaurantId, user, user);
     return new OkResponse({ message: result.message, data: result });
   }
 }

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -14,6 +15,7 @@ import { Order, OrderDocument } from '../orders/entities/order.entity';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
 import { TransferTableDto, MergeTablesDto } from './dto/transfer-table.dto';
+import { JwtUser } from '../auth/interface/jwtUser';
 
 @Injectable()
 export class TablesService {
@@ -26,25 +28,31 @@ export class TablesService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async findAll(params: {
-    restaurantId: string;
-    branchId?: string;
-    zoneId?: string;
-    status?: string;
-    search?: string;
-  }): Promise<Table[]> {
+  async findAll(
+    params: {
+      restaurantId: string;
+      branchId?: string;
+      zoneId?: string;
+      status?: string;
+      search?: string;
+    },
+    caller?: JwtUser,
+  ): Promise<Table[]> {
     const filter: any = {
       restaurantId: new Types.ObjectId(params.restaurantId),
       isDeleted: { $ne: true },
     };
 
-    if (params.branchId) {
-      filter.$or = [
-        { branchId: params.branchId },
-        { branchId: { $exists: false } },
-        { branchId: '' },
-        { branchId: null },
-      ];
+    let effectiveBranchId = params.branchId;
+    if (caller && !caller.isMainBranch && caller.branchId) {
+      if (params.branchId && params.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền truy cập dữ liệu bàn của chi nhánh khác');
+      }
+      effectiveBranchId = caller.branchId;
+    }
+
+    if (effectiveBranchId) {
+      filter.branchId = effectiveBranchId;
     }
 
     if (params.zoneId && params.zoneId !== 'all') {
@@ -71,7 +79,7 @@ export class TablesService {
       .exec();
   }
 
-  async findById(id: string, restaurantId: string): Promise<Table> {
+  async findById(id: string, restaurantId: string, caller?: JwtUser): Promise<Table> {
     const table = await this.tableModel
       .findOne({
         _id: new Types.ObjectId(id),
@@ -86,10 +94,24 @@ export class TablesService {
       throw new NotFoundException('Không tìm thấy bàn ăn');
     }
 
+    if (caller && !caller.isMainBranch && caller.branchId) {
+      if (table.branchId && table.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền truy cập dữ liệu bàn của chi nhánh khác');
+      }
+    }
+
     return table;
   }
 
-  async create(dto: CreateTableDto, restaurantId: string): Promise<Table> {
+  async create(dto: CreateTableDto, restaurantId: string, caller?: JwtUser): Promise<Table> {
+    let branchId = dto.branchId;
+    if (caller && !caller.isMainBranch && caller.branchId) {
+      if (dto.branchId && dto.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn chỉ có quyền tạo bàn cho chi nhánh của mình');
+      }
+      branchId = caller.branchId;
+    }
+
     const zone = await this.zoneModel.findOne({
       _id: new Types.ObjectId(dto.zoneId),
       restaurantId: new Types.ObjectId(restaurantId),
@@ -100,15 +122,19 @@ export class TablesService {
       throw new NotFoundException('Khu vực bàn (Zone) không tồn tại');
     }
 
+    if (branchId && zone.branchId && zone.branchId !== branchId) {
+      throw new BadRequestException('Khu vực được chọn không thuộc chi nhánh này');
+    }
+
     const existingCode = await this.tableModel.findOne({
       code: { $regex: new RegExp(`^${dto.code.trim()}$`, 'i') },
       restaurantId: new Types.ObjectId(restaurantId),
       isDeleted: { $ne: true },
-      ...(dto.branchId ? { branchId: dto.branchId } : {}),
+      ...(branchId ? { branchId } : {}),
     });
 
     if (existingCode) {
-      throw new ConflictException(`Mã bàn "${dto.code}" đã tồn tại trong nhà hàng`);
+      throw new ConflictException(`Mã bàn "${dto.code}" đã tồn tại trong ${branchId ? 'chi nhánh' : 'nhà hàng'}`);
     }
 
     const table = new this.tableModel({
@@ -118,7 +144,7 @@ export class TablesService {
       capacity: dto.capacity || 4,
       status: 'Available',
       restaurantId: new Types.ObjectId(restaurantId),
-      branchId: dto.branchId,
+      branchId,
       wifiSsid: dto.wifiSsid || '',
       wifiPassword: dto.wifiPassword || '',
       qrStatus: dto.qrStatus || 'active',
@@ -131,8 +157,8 @@ export class TablesService {
     return this.findById(saved._id.toString(), restaurantId);
   }
 
-  async update(id: string, dto: UpdateTableDto, restaurantId: string): Promise<Table> {
-    const table = await this.findById(id, restaurantId);
+  async update(id: string, dto: UpdateTableDto, restaurantId: string, caller?: JwtUser): Promise<Table> {
+    const table: any = await this.findById(id, restaurantId, caller);
 
     if (dto.code && dto.code.trim() !== table.code) {
       const existing = await this.tableModel.findOne({
@@ -140,6 +166,7 @@ export class TablesService {
         code: { $regex: new RegExp(`^${dto.code.trim()}$`, 'i') },
         restaurantId: new Types.ObjectId(restaurantId),
         isDeleted: { $ne: true },
+        ...(table.branchId ? { branchId: table.branchId } : {}),
       });
       if (existing) {
         throw new ConflictException(`Mã bàn "${dto.code}" đã được sử dụng`);
@@ -156,6 +183,9 @@ export class TablesService {
         isDeleted: { $ne: true },
       });
       if (!zone) throw new NotFoundException('Khu vực bàn không hợp lệ');
+      if (table.branchId && zone.branchId && zone.branchId !== table.branchId) {
+        throw new BadRequestException('Khu vực bàn không thuộc cùng chi nhánh với bàn này');
+      }
       table.zone = zone._id as any;
     }
 
@@ -198,7 +228,10 @@ export class TablesService {
     status: TableStatus,
     totalGuests: number | undefined,
     restaurantId: string,
+    caller?: JwtUser,
   ): Promise<Table> {
+    await this.findById(id, restaurantId, caller);
+
     const updateQuery: any = {
       $set: { status },
     };
@@ -237,12 +270,20 @@ export class TablesService {
   /**
    * Đổi bàn / Chuyển bàn: Chuyển Order từ bàn cũ sang bàn mới
    */
-  async transferTable(dto: TransferTableDto, restaurantId: string): Promise<{ success: boolean; message: string; fromTable: Table; toTable: Table }> {
-    const fromTable: any = await this.findById(dto.fromTableId, restaurantId);
-    const toTable: any = await this.findById(dto.toTableId, restaurantId);
+  async transferTable(
+    dto: TransferTableDto,
+    restaurantId: string,
+    caller?: JwtUser,
+  ): Promise<{ success: boolean; message: string; fromTable: Table; toTable: Table }> {
+    const fromTable: any = await this.findById(dto.fromTableId, restaurantId, caller);
+    const toTable: any = await this.findById(dto.toTableId, restaurantId, caller);
 
     if (dto.fromTableId === dto.toTableId) {
       throw new BadRequestException('Bàn đích phải khác bàn hiện tại');
+    }
+
+    if (fromTable.branchId && toTable.branchId && fromTable.branchId !== toTable.branchId) {
+      throw new BadRequestException('Không thể chuyển bàn giữa các chi nhánh khác nhau');
     }
 
     if (!fromTable.currentOrderId && fromTable.status === 'Available') {
@@ -319,8 +360,12 @@ export class TablesService {
   /**
    * Gộp bàn: Gộp món từ nhiều bàn nguồn sang bàn đích
    */
-  async mergeTables(dto: MergeTablesDto, restaurantId: string): Promise<{ success: boolean; message: string }> {
-    const targetTable: any = await this.findById(dto.targetTableId, restaurantId);
+  async mergeTables(
+    dto: MergeTablesDto,
+    restaurantId: string,
+    caller?: JwtUser,
+  ): Promise<{ success: boolean; message: string }> {
+    const targetTable: any = await this.findById(dto.targetTableId, restaurantId, caller);
     const targetOrderId = targetTable.currentOrderId?._id || targetTable.currentOrderId;
     let targetOrder: any = targetOrderId
       ? await this.orderModel.findById(targetOrderId)
@@ -331,7 +376,12 @@ export class TablesService {
     for (const fromId of dto.fromTableIds) {
       if (fromId === dto.targetTableId) continue;
 
-      const fromTable: any = await this.findById(fromId, restaurantId);
+      const fromTable: any = await this.findById(fromId, restaurantId, caller);
+
+      if (fromTable.branchId && targetTable.branchId && fromTable.branchId !== targetTable.branchId) {
+        throw new BadRequestException('Không thể gộp bàn giữa các chi nhánh khác nhau');
+      }
+
       const fromOrderId = fromTable.currentOrderId?._id || fromTable.currentOrderId;
       if (fromOrderId) {
         const fromOrder: any = await this.orderModel.findById(fromOrderId);
@@ -402,8 +452,13 @@ export class TablesService {
     };
   }
 
-  async delete(id: string, restaurantId: string, user?: any): Promise<{ success: boolean; message: string }> {
-    const table: any = await this.findById(id, restaurantId);
+  async delete(
+    id: string,
+    restaurantId: string,
+    user?: any,
+    caller?: JwtUser,
+  ): Promise<{ success: boolean; message: string }> {
+    const table: any = await this.findById(id, restaurantId, caller);
 
     if (table.status === 'Occupied' || table.status === 'PaymentRequested') {
       throw new BadRequestException(
@@ -428,11 +483,28 @@ export class TablesService {
   /**
    * Tự động khởi tạo sơ đồ bàn mẫu (12 bàn chia 4 khu vực)
    */
-  async seedDefaultTables(restaurantId: string, branchId?: string): Promise<{ zones: number; tables: number }> {
-    const existingCount = await this.tableModel.countDocuments({
+  async seedDefaultTables(
+    restaurantId: string,
+    branchId?: string,
+    caller?: JwtUser,
+  ): Promise<{ zones: number; tables: number }> {
+    let targetBranchId = branchId;
+    if (caller && !caller.isMainBranch && caller.branchId) {
+      if (branchId && branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn chỉ có quyền khởi tạo bàn cho chi nhánh của mình');
+      }
+      targetBranchId = caller.branchId;
+    }
+
+    const countFilter: any = {
       restaurantId: new Types.ObjectId(restaurantId),
       isDeleted: { $ne: true },
-    });
+    };
+    if (targetBranchId) {
+      countFilter.branchId = targetBranchId;
+    }
+
+    const existingCount = await this.tableModel.countDocuments(countFilter);
 
     if (existingCount > 0) {
       return { zones: 0, tables: existingCount };
@@ -448,17 +520,19 @@ export class TablesService {
 
     const createdZones: any[] = [];
     for (const z of sampleZones) {
-      let zone = await this.zoneModel.findOne({
+      const zoneFilter: any = {
         name: z.name,
         restaurantId: new Types.ObjectId(restaurantId),
         isDeleted: { $ne: true },
-      });
+        ...(targetBranchId ? { branchId: targetBranchId } : {}),
+      };
+      let zone = await this.zoneModel.findOne(zoneFilter);
       if (!zone) {
         zone = new this.zoneModel({
           name: z.name,
           description: z.description,
           restaurantId: new Types.ObjectId(restaurantId),
-          branchId,
+          branchId: targetBranchId,
           isDeleted: false,
         });
         await zone.save();
@@ -496,7 +570,7 @@ export class TablesService {
         capacity: t.capacity,
         status: 'Available',
         restaurantId: new Types.ObjectId(restaurantId),
-        branchId,
+        branchId: targetBranchId,
         qrStatus: 'active',
         qrToken: Math.random().toString(36).substring(2, 10),
         isDeleted: false,

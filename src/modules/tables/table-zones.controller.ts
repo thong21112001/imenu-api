@@ -13,10 +13,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { TableZonesService } from './table-zones.service';
 import { CreateTableZoneDto, UpdateTableZoneDto } from './dto/create-zone.dto';
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
+import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../shared/common/decorators/require-permissions.decorator';
 import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
 import { ActionType, ResourceType } from '../../shared/common/constants/permission.const';
 import { OkResponse } from '../../shared/common/dto/okResponse';
+import { JwtUser } from '../auth/interface/jwtUser';
 
 @ApiTags('Table Zones (Khu Vực Bàn)')
 @ApiBearerAuth('JWT-auth')
@@ -32,8 +34,9 @@ export class TableZonesController {
   async findAll(
     @CurrentRestaurant() restaurantId: string,
     @Query('branchId') branchId?: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const zones = await this.zonesService.findAll(restaurantId, branchId);
+    const zones = await this.zonesService.findAll(restaurantId, branchId, caller);
     return new OkResponse({ message: 'Lấy danh sách khu vực thành công', data: zones });
   }
 
@@ -43,8 +46,9 @@ export class TableZonesController {
   async findOne(
     @Param('id') id: string,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const zone = await this.zonesService.findById(id, restaurantId);
+    const zone = await this.zonesService.findById(id, restaurantId, caller);
     return new OkResponse({ data: zone });
   }
 
@@ -54,8 +58,9 @@ export class TableZonesController {
   async create(
     @Body() dto: CreateTableZoneDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const zone = await this.zonesService.create(dto, restaurantId);
+    const zone = await this.zonesService.create(dto, restaurantId, caller);
     return new OkResponse({ message: 'Tạo khu vực bàn thành công', data: zone });
   }
 
@@ -66,8 +71,9 @@ export class TableZonesController {
     @Param('id') id: string,
     @Body() dto: UpdateTableZoneDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const zone = await this.zonesService.update(id, dto, restaurantId);
+    const zone = await this.zonesService.update(id, dto, restaurantId, caller);
     return new OkResponse({ message: 'Cập nhật khu vực bàn thành công', data: zone });
   }
 
@@ -77,8 +83,9 @@ export class TableZonesController {
   async delete(
     @Param('id') id: string,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
   ) {
-    const res = await this.zonesService.delete(id, restaurantId);
+    const res = await this.zonesService.delete(id, restaurantId, caller);
     return new OkResponse(res);
   }
 }
