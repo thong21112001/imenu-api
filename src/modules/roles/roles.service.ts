@@ -109,7 +109,7 @@ export class RolesService {
           { resource: ResourceType.TABLE, actions: [ActionType.VIEW] },
           { resource: ResourceType.POS, actions: [ActionType.VIEW, ActionType.CREATE, ActionType.CONFIRM] },
           { resource: ResourceType.BILL, actions: [ActionType.VIEW, ActionType.PRINT] },
-          { resource: ResourceType.MENU, actions: [ActionType.VIEW] },
+          { resource: ResourceType.MENU, actions: [ActionType.VIEW, ActionType.UPDATE] },
           { resource: ResourceType.BRANCH, actions: [ActionType.VIEW] },
         ],
         permissionIds: [
@@ -126,7 +126,7 @@ export class RolesService {
         description: 'Theo dõi hàng đợi gọi món KDS và cập nhật trạng thái chế biến',
         permissions: [
           { resource: ResourceType.KITCHEN, actions: [ActionType.VIEW, ActionType.UPDATE] },
-          { resource: ResourceType.MENU, actions: [ActionType.VIEW] },
+          { resource: ResourceType.MENU, actions: [ActionType.VIEW, ActionType.UPDATE] },
         ],
         permissionIds: [
           'perm-kds-view', 'perm-kds-cook', 'perm-kds-out',
@@ -190,7 +190,7 @@ export class RolesService {
   }
 
   async findAll(restaurantId?: string, isSuperAdmin = false): Promise<any[]> {
-    const filter: any = { isActive: true };
+    const filter: any = { isActive: true, isDeleted: { $ne: true } };
     if (restaurantId) {
       filter.$or = [{ isSystem: true }, { restaurantId }];
     }
@@ -359,7 +359,16 @@ export class RolesService {
       throw new BadRequestException(`Không thể xóa vai trò này vì đang có ${userCount} nhân viên được gán vai trò`);
     }
 
-    await this.roleModel.findByIdAndDelete(id);
+    const timestamp = Date.now();
+    role.isDeleted = true;
+    role.deletedAt = new Date();
+    role.isActive = false;
+    role.slug = `${role.slug}_deleted_${timestamp}`;
+    if (caller?.userId && Types.ObjectId.isValid(caller.userId)) {
+      role.deletedBy = new Types.ObjectId(caller.userId);
+    }
+    await role.save();
+
     return {
       success: true,
       message: 'Đã xóa vai trò thành công',

@@ -14,9 +14,15 @@ export class TableZone {
 
   @Prop({ trim: true })
   branchId?: string;
+
+  @Prop({ default: false, index: true })
+  isDeleted: boolean;
+
+  @Prop()
+  deletedAt?: Date;
 }
 
 export type TableZoneDocument = TableZone & Document;
 export const TableZoneSchema = SchemaFactory.createForClass(TableZone);
 
-TableZoneSchema.index({ restaurantId: 1, branchId: 1 });
+TableZoneSchema.index({ restaurantId: 1, branchId: 1, isDeleted: 1 });

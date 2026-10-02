@@ -31,7 +31,7 @@ export class BranchesService {
       throw new NotFoundException('Không tìm thấy nhà hàng');
     }
 
-    const branches = restaurant.branches || [];
+    const branches = (restaurant.branches || []).filter((b: any) => !b.isDeleted);
 
     // Nếu caller thuộc chi nhánh con và không phải main branch/admin -> Chỉ trả về chi nhánh của họ
     if (caller && !caller.isMainBranch && caller.branchId) {
@@ -420,9 +420,17 @@ export class BranchesService {
       );
     }
 
-    restaurant.branches = restaurant.branches.filter(
-      (b: any) => b._id.toString() !== branchId && b.id !== branchId,
+    const bIndex = restaurant.branches.findIndex(
+      (b: any) => b._id.toString() === branchId || b.id === branchId,
     );
+    if (bIndex > -1) {
+      restaurant.branches[bIndex].isDeleted = true;
+      restaurant.branches[bIndex].deletedAt = new Date();
+      restaurant.branches[bIndex].status = BranchStatus.INACTIVE;
+      if (caller?.userId) {
+        restaurant.branches[bIndex].deletedBy = caller.userId;
+      }
+    }
 
     await restaurant.save();
     return { success: true, message: 'Đã xóa chi nhánh thành công' };

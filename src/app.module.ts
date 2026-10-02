@@ -23,6 +23,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { BillsModule } from './modules/bills/bills.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ReportsModule } from './modules/reports/reports.module';
       delimiter: '.',
     }),
     LoggerModule,
+    RealtimeModule,
     RolesModule,
     UsersModule,
     AuthModule,

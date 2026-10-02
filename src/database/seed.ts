@@ -5,6 +5,8 @@ import { RolesService } from '../modules/roles/roles.service';
 import { UsersService } from '../modules/users/users.service';
 import { AuthService } from '../modules/auth/auth.service';
 import { RestaurantsService } from '../modules/restaurants/restaurants.service';
+import { CategoriesService } from '../modules/menu/categories.service';
+import { TablesService } from '../modules/tables/tables.service';
 
 const colors = {
   reset: '\x1b[0m',
@@ -36,6 +38,8 @@ async function runSeeder() {
     const usersService = app.get(UsersService);
     const authService = app.get(AuthService);
     const restaurantsService = app.get(RestaurantsService);
+    const categoriesService = app.get(CategoriesService);
+    const tablesService = app.get(TablesService);
 
     if (isClean) {
       console.log(`${colors.gray}[Clean] Đang dọn dẹp dữ liệu demo...${colors.reset}`);
@@ -71,6 +75,17 @@ async function runSeeder() {
     console.log(`\n${colors.bold}3. Khởi tạo Nhà hàng & Chủ quán trải nghiệm (Demo Owner)...${colors.reset}`);
     await authService.seedDemoOwner();
     console.log(`  ✔ ${colors.green}Nhà hàng "Bếp Nhà" & owner@sample.vn đã sẵn sàng${colors.reset}`);
+
+    // 4. Seed Demo Menu & Tables
+    const bepNha = await restaurantsService.findBySlug('bep-nha').catch(() => null);
+    if (bepNha) {
+      const bepNhaId = (bepNha as any)._id.toString();
+      console.log(`\n${colors.bold}4. Khởi tạo Thực đơn & Sơ đồ bàn cho Nhà hàng Bếp Nhà...${colors.reset}`);
+      await categoriesService.seedDefaultMenu(bepNhaId);
+      console.log(`  ✔ ${colors.green}Thực đơn: Đã khởi tạo 4 danh mục và các món ăn mẫu${colors.reset}`);
+      const tableRes = await tablesService.seedDefaultTables(bepNhaId);
+      console.log(`  ✔ ${colors.green}Sơ đồ bàn: ${tableRes.zones} khu vực, ${tableRes.tables} bàn ăn${colors.reset}`);
+    }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`\n${colors.bold}${colors.green}====================================================${colors.reset}`);
