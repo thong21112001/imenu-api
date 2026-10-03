@@ -957,12 +957,25 @@ async function main() {
       failed++;
     }
 
-    // 12.2: Hủy Round ở trạng thái WaitingConfirmation (Tạo order QR mới)
+    // 12.2: Hủy Round ở trạng thái WaitingConfirmation (Tạo order QR mới trên bàn độc lập nhằm tuân thủ Invariant I-05)
+    const createTableWaitingRes = await request('/tables', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        code: `TB-SM-WAIT-${timestamp}`,
+        name: 'Bàn SM Waiting',
+        zoneId,
+        capacity: 4,
+      }),
+    });
+    const tableWaitingId =
+      createTableWaitingRes.data?.data?._id || createTableWaitingRes.data?.data?.id;
+
     const qrOrder3Res = await request('/orders', {
       method: 'POST',
       headers: { Authorization: `Bearer ${cashierToken}` },
       body: JSON.stringify({
-        tableId,
+        tableId: tableWaitingId,
         orderSource: 'QR_CUSTOMER',
         branchId,
         items: [{ menuItemId, quantity: 1 }],
