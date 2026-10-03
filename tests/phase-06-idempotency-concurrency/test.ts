@@ -7,6 +7,7 @@ import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
+import { OrdersService } from '../../src/modules/orders/orders.service';
 
 const TEST_PORT = 3098;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -80,6 +81,7 @@ async function main() {
   const table2Id = new Types.ObjectId();
   const table3Id = new Types.ObjectId();
   const table4Id = new Types.ObjectId();
+  const table5Id = new Types.ObjectId();
 
   const menuItem1Id = new Types.ObjectId();
   const menuItem2Id = new Types.ObjectId();
@@ -88,6 +90,7 @@ async function main() {
   const qrTokenT2 = `token-t2-${timestamp}`;
   const qrTokenT3 = `token-t3-${timestamp}`;
   const qrTokenT4 = `token-t4-${timestamp}`;
+  const qrTokenT5 = `token-t5-${timestamp}`;
 
   try {
     // 1. Tạo Nhà hàng kiểm thử
@@ -166,6 +169,18 @@ async function main() {
         branchId,
         status: 'Available',
         qrToken: qrTokenT4,
+        qrStatus: 'active',
+        isDeleted: false,
+      },
+      {
+        _id: table5Id,
+        code: 'ban-05',
+        name: 'Bàn 05',
+        zone: zoneId,
+        restaurantId: restId,
+        branchId,
+        status: 'Available',
+        qrToken: qrTokenT5,
         qrStatus: 'active',
         isDeleted: false,
       },
@@ -645,6 +660,212 @@ async function main() {
       passed++;
     } else {
       fail('TC-09: Request không key thất bại', resNoKey.data);
+      failed++;
+    }
+
+    // ========================================================================
+    // PHẦN 5: TTL, SCHEMA INDEX, ISOLATION & PROCESSING STATE TESTS
+    // ========================================================================
+    console.log(`\n${colors.bold}--- PHẦN 5: TTL, SCHEMA INDEX, ISOLATION & PROCESSING STATE ---${colors.reset}`);
+
+    // TC-10.1: IdempotencyKey composite unique index { restaurantId: 1, key: 1 }
+    const idempIndexes = await connection.collection('idempotency_keys').indexes();
+    const hasUniqueComposite = idempIndexes.some(
+      (idx: any) => idx.key?.restaurantId === 1 && idx.key?.key === 1 && idx.unique === true,
+    );
+    if (hasUniqueComposite) {
+      pass('TC-10.1: IdempotencyKey composite unique index { restaurantId: 1, key: 1 } tồn tại chính xác');
+      passed++;
+    } else {
+      fail('TC-10.1: Không tìm thấy unique index { restaurantId: 1, key: 1 }', idempIndexes);
+      failed++;
+    }
+
+    // TC-10.2: IdempotencyKey TTL index on createdAt with expireAfterSeconds: 86400
+    const hasTtl86400 = idempIndexes.some(
+      (idx: any) => idx.key?.createdAt === 1 && idx.expireAfterSeconds === 86400,
+    );
+    if (hasTtl86400) {
+      pass('TC-10.2: IdempotencyKey TTL index createdAt có expireAfterSeconds = 86400 (24h)');
+      passed++;
+    } else {
+      fail('TC-10.2: Không tìm thấy TTL index 86400 trên createdAt', idempIndexes);
+      failed++;
+    }
+
+    // TC-10.3: Multi-tenant / Restaurant Isolation
+    // Thiết lập Nhà hàng 2 để kiểm chứng cùng Idempotency-Key tại 2 nhà hàng độc lập hoàn toàn
+    const rest2Id = new Types.ObjectId();
+    const rest2Slug = `rest-iso-${timestamp}`;
+    const branch2Id = 'branch-iso-main';
+    const zone2Id = new Types.ObjectId();
+    const tableIsoId = new Types.ObjectId();
+    const qrTokenIso = `token-iso-${timestamp}`;
+    const catIsoId = new Types.ObjectId();
+    const menuItemIsoId = new Types.ObjectId();
+
+    await connection.collection('restaurants').insertOne({
+      _id: rest2Id,
+      name: 'Nhà Hàng Isolation Test',
+      slug: rest2Slug,
+      email: `rest_iso_${timestamp}@test.com`,
+      phone: '0909999999',
+      status: 'Active',
+      branches: [{ _id: branch2Id, name: 'Chi Nhánh ISO', isMainBranch: true, status: 'Active' }],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await connection.collection('table_zones').insertOne({
+      _id: zone2Id,
+      name: 'Khu vực ISO',
+      restaurantId: rest2Id,
+      branchId: branch2Id,
+      isDeleted: false,
+    });
+
+    await connection.collection('tables').insertOne({
+      _id: tableIsoId,
+      code: 'ban-iso-01',
+      name: 'Bàn ISO 01',
+      zone: zone2Id,
+      restaurantId: rest2Id,
+      branchId: branch2Id,
+      status: 'Available',
+      qrToken: qrTokenIso,
+      qrStatus: 'active',
+      isDeleted: false,
+    });
+
+    await connection.collection('menu_categories').insertOne({
+      _id: catIsoId,
+      name: 'Món ISO',
+      slug: 'mon-iso',
+      restaurantId: rest2Id,
+      branches: [branch2Id],
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await connection.collection('menu_items').insertOne({
+      _id: menuItemIsoId,
+      name: 'Cà phê ISO',
+      slug: 'ca-phe-iso',
+      price: 30000,
+      category: catIsoId,
+      restaurantId: rest2Id,
+      branches: [branch2Id],
+      isAvailable: true,
+      isDeleted: false,
+      options: [],
+    });
+
+    const sharedKeyIsolation = `key-shared-iso-${timestamp}`;
+    const [resIso1, resIso2] = await Promise.all([
+      request('/orders/customer', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': sharedKeyIsolation },
+        body: JSON.stringify({
+          restaurantSlug: restSlug,
+          tableCode: 'ban-05',
+          qrToken: qrTokenT5,
+          customerNote: 'Đơn Nhà hàng 1 cùng key',
+          items: [{ menuItemId: menuItem2Id.toString(), quantity: 1 }],
+        }),
+      }),
+      request('/orders/customer', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': sharedKeyIsolation },
+        body: JSON.stringify({
+          restaurantSlug: rest2Slug,
+          tableCode: 'ban-iso-01',
+          qrToken: qrTokenIso,
+          customerNote: 'Đơn Nhà hàng 2 cùng key',
+          items: [{ menuItemId: menuItemIsoId.toString(), quantity: 1 }],
+        }),
+      }),
+    ]);
+
+    const isIso1Replay = resIso1.headers.get('x-idempotent-replay') === 'true';
+    const isIso2Replay = resIso2.headers.get('x-idempotent-replay') === 'true';
+
+    if (resIso1.status === 201 && resIso2.status === 201 && !isIso1Replay && !isIso2Replay) {
+      pass('TC-10.3: Multi-tenant Isolation: Cùng Idempotency-Key tại 2 nhà hàng hoạt động độc lập (cả 2 đều HTTP 201 Created)');
+      passed++;
+    } else {
+      fail('TC-10.3: Restaurant Isolation vi phạm', {
+        status1: resIso1.status,
+        status2: resIso2.status,
+        isIso1Replay,
+        isIso2Replay,
+      });
+      failed++;
+    }
+
+    // Dọn dẹp tài nguyên Nhà hàng 2
+    await connection.collection('restaurants').deleteOne({ _id: rest2Id });
+    await connection.collection('table_zones').deleteOne({ _id: zone2Id });
+    await connection.collection('tables').deleteMany({ restaurantId: rest2Id });
+    await connection.collection('menu_categories').deleteMany({ restaurantId: rest2Id });
+    await connection.collection('menu_items').deleteMany({ restaurantId: rest2Id });
+    await connection.collection('orders').deleteMany({ restaurantId: rest2Id });
+    await connection.collection('idempotency_keys').deleteMany({ restaurantId: rest2Id });
+
+    // TC-11: Explicit PROCESSING state -> HTTP 409 Conflict
+    const explicitProcessingKey = `key-explicit-processing-${timestamp}`;
+    const canonicalPayloadHash = (app.get(OrdersService) as any).generateRequestFingerprint(
+      'POST /orders/customer',
+      baseCreatePayload,
+    );
+
+    await connection.collection('idempotency_keys').insertOne({
+      restaurantId: restId,
+      key: explicitProcessingKey,
+      endpoint: 'POST /orders/customer',
+      requestHash: canonicalPayloadHash,
+      status: 'PROCESSING',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const resExplicitProcessing = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': explicitProcessingKey },
+      body: JSON.stringify(baseCreatePayload),
+    });
+
+    if (
+      resExplicitProcessing.status === 409 &&
+      resExplicitProcessing.data?.error === 'Conflict' &&
+      resExplicitProcessing.data?.message?.includes('đang được xử lý')
+    ) {
+      pass('TC-11: Idempotency-Key ở trạng thái PROCESSING trả về HTTP 409 Conflict với thông điệp chuẩn');
+      passed++;
+    } else {
+      fail('TC-11: PROCESSING state không trả về HTTP 409 Conflict chuẩn', resExplicitProcessing.data);
+      failed++;
+    }
+
+    // TC-12: E11000 Response Contract & No Leaked Raw MongoDB Error
+    const hasValidContract =
+      conflictRes.status === 409 &&
+      conflictRes.data?.statusCode === 409 &&
+      conflictRes.data?.error === 'Conflict' &&
+      typeof conflictRes.data?.message === 'string' &&
+      Boolean(conflictRes.data?.timestamp) &&
+      Boolean(conflictRes.data?.path);
+
+    const serializedConflict = JSON.stringify(conflictRes.data);
+    const noRawMongoLeak =
+      !serializedConflict.includes('MongoServerError') &&
+      !serializedConflict.includes('E11000') &&
+      !serializedConflict.includes('imenu-db-test');
+
+    if (hasValidContract && noRawMongoLeak) {
+      pass('TC-12: E11000 Response Contract chuẩn { statusCode: 409, error: "Conflict", message, path, timestamp } và không rò rỉ raw Mongo error');
+      passed++;
+    } else {
+      fail('TC-12: E11000 Response Contract không hợp lệ hoặc rò rỉ raw MongoDB error', conflictRes.data);
       failed++;
     }
 
