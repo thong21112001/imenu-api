@@ -25,8 +25,8 @@ export class Order {
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: true, index: true })
   restaurantId: Types.ObjectId;
 
-  @Prop({ trim: true, index: true })
-  branchId?: string; // Relational: Dong bo string voi cac module khac
+  @Prop({ required: true, trim: true, index: true })
+  branchId: string; // Relational: Dong bo string voi cac module khac (Required)
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Table', required: true, index: true })
   tableId: Types.ObjectId;

@@ -4,6 +4,7 @@ import { Order, OrderSchema } from './entities/order.entity';
 import { Table, TableSchema } from '../tables/entities/table.entity';
 import { MenuItem, MenuItemSchema } from '../menu/entities/menu-item.entity';
 import { IdempotencyKey, IdempotencyKeySchema } from './entities/idempotency-key.entity';
+import { Restaurant, RestaurantSchema } from '../restaurants/entities/restaurant.entity';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 
@@ -14,6 +15,7 @@ import { OrdersController } from './orders.controller';
       { name: Table.name, schema: TableSchema },
       { name: MenuItem.name, schema: MenuItemSchema },
       { name: IdempotencyKey.name, schema: IdempotencyKeySchema },
+      { name: Restaurant.name, schema: RestaurantSchema },
     ]),
   ],
   controllers: [OrdersController],

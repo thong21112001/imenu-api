@@ -14,7 +14,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, AddItemsToOrderDto } from './dto/create-order.dto';
 import { UpdateItemStatusDto } from './dto/update-item-status.dto';
-import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import {
+  UpdateOrderStatusDto,
+  CancelOrderDto,
+  CancelOrderItemDto,
+  CancelRoundDto,
+} from './dto/update-order-status.dto';
 import { PayOrderDto } from './dto/pay-order.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
@@ -50,8 +55,9 @@ export class OrdersController {
   async findAll(
     @Query() query: QueryOrderDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
   ) {
-    const result = await this.ordersService.findAll(query, restaurantId);
+    const result = await this.ordersService.findAll(query, restaurantId, user);
     return new OkResponse({ message: 'Lấy danh sách đơn hàng thành công', data: result });
   }
 
@@ -61,8 +67,9 @@ export class OrdersController {
   async findOne(
     @Param('id') id: string,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
   ) {
-    const order = await this.ordersService.findById(id, restaurantId);
+    const order = await this.ordersService.findById(id, restaurantId, user);
     return new OkResponse({ data: order });
   }
 
@@ -74,12 +81,13 @@ export class OrdersController {
     @Param('id') id: string,
     @Body() dto: AddItemsToOrderDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
   ) {
-    const order = await this.ordersService.addItems(id, dto, restaurantId);
+    const order = await this.ordersService.addItems(id, dto, restaurantId, user);
     return new OkResponse({ message: 'Gọi thêm món thành công', data: order });
   }
 
-  @ApiOperation({ summary: 'Bếp cập nhật trạng thái của món ăn (Cooking, Ready, Served)' })
+  @ApiOperation({ summary: 'Bếp cập nhật trạng thái của món ăn (Waiting, Cooking, Ready, Served)' })
   @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE)
   @Patch(':id/items/:itemId/status')
   async updateItemStatus(
@@ -87,14 +95,114 @@ export class OrdersController {
     @Param('itemId') itemId: string,
     @Body() dto: UpdateItemStatusDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
   ) {
     const order = await this.ordersService.updateItemStatus(
       id,
       itemId,
       dto.status,
       restaurantId,
+      user,
     );
     return new OkResponse({ message: 'Cập nhật trạng thái món thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Duyệt đợt gọi món (Confirm Round)' })
+  @RequirePermissions(ResourceType.POS, ActionType.CONFIRM)
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/rounds/:roundNumber/confirm')
+  async confirmRound(
+    @Param('id') id: string,
+    @Param('roundNumber') roundNumber: number,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const order = await this.ordersService.confirmRound(id, Number(roundNumber), restaurantId, user);
+    return new OkResponse({ message: 'Duyệt đợt gọi món thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Hủy/Từ chối đợt gọi món (Cancel Round)' })
+  @RequirePermissions(ResourceType.POS, ActionType.CONFIRM)
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/rounds/:roundNumber/cancel')
+  async cancelRound(
+    @Param('id') id: string,
+    @Param('roundNumber') roundNumber: number,
+    @Body() dto: CancelRoundDto,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const reason = dto?.reason || 'Hủy đợt gọi món';
+    const order = await this.ordersService.cancelRound(id, Number(roundNumber), reason, restaurantId, user);
+    return new OkResponse({ message: 'Hủy đợt gọi món thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Duyệt toàn bộ đơn hàng (Confirm Order)' })
+  @RequirePermissions(ResourceType.POS, ActionType.CONFIRM)
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/confirm')
+  async confirmOrder(
+    @Param('id') id: string,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const order = await this.ordersService.confirmOrder(id, restaurantId, user);
+    return new OkResponse({ message: 'Xác nhận đơn hàng thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Hủy đơn hàng' })
+  @RequirePermissions(ResourceType.POS, ActionType.UPDATE)
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/cancel')
+  async cancel(
+    @Param('id') id: string,
+    @Body() dto: CancelOrderDto,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const reason = dto?.reason || 'Hủy đơn hàng';
+    const order = await this.ordersService.cancelOrder(
+      id,
+      reason,
+      restaurantId,
+      user,
+    );
+    return new OkResponse({ message: 'Hủy đơn hàng thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Hủy món ăn trong đơn' })
+  @RequirePermissions(ResourceType.POS, ActionType.UPDATE)
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/items/:itemId/cancel')
+  async cancelItem(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() dto: CancelOrderItemDto,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const reason = dto?.reason || 'Hủy món ăn';
+    const order = await this.ordersService.cancelItem(
+      id,
+      itemId,
+      reason,
+      restaurantId,
+      user,
+    );
+    return new OkResponse({ message: 'Hủy món thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Yêu cầu thanh toán (Served -> PaymentRequested)' })
+  @RequirePermissions(ResourceType.POS, ActionType.CREATE)
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/request-payment')
+  async requestPayment(
+    @Param('id') id: string,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const order = await this.ordersService.requestPayment(id, restaurantId, user);
+    return new OkResponse({ message: 'Yêu cầu thanh toán thành công', data: order });
   }
 
   @ApiOperation({ summary: 'Cập nhật trạng thái toàn bộ đơn hàng' })
@@ -104,8 +212,9 @@ export class OrdersController {
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
     @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
   ) {
-    const order = await this.ordersService.updateOrderStatus(id, dto, restaurantId);
+    const order = await this.ordersService.updateOrderStatus(id, dto, restaurantId, user);
     return new OkResponse({ message: 'Cập nhật trạng thái đơn thành công', data: order });
   }
 
@@ -121,22 +230,5 @@ export class OrdersController {
   ) {
     const result = await this.ordersService.pay(id, dto, restaurantId, user);
     return new OkResponse({ message: 'Thanh toán đơn hàng thành công', data: result });
-  }
-
-  @ApiOperation({ summary: 'Hủy đơn hàng' })
-  @RequirePermissions(ResourceType.POS, ActionType.UPDATE)
-  @HttpCode(HttpStatus.OK)
-  @Post(':id/cancel')
-  async cancel(
-    @Param('id') id: string,
-    @Body('reason') reason: string,
-    @CurrentRestaurant() restaurantId: string,
-  ) {
-    const order = await this.ordersService.updateOrderStatus(
-      id,
-      { status: 'Cancelled', reason },
-      restaurantId,
-    );
-    return new OkResponse({ message: 'Hủy đơn hàng thành công', data: order });
   }
 }
