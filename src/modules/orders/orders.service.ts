@@ -1004,24 +1004,62 @@ export class OrdersService {
 
     const callerId = user?._id || user?.userId || user?.id;
     const validUserOid = callerId && Types.ObjectId.isValid(callerId) ? new Types.ObjectId(callerId) : undefined;
+    const closedAt = new Date();
 
-    order.subTotal = financial.subTotal;
-    order.discountAmount = financial.discountAmount;
-    order.serviceFee = financial.serviceFee;
-    order.vatAmount = financial.vatAmount;
-    order.totalAmount = financial.totalAmount;
-    order.paymentMethod = paymentMethod;
-    order.isPaid = true;
-    order.status = 'Paid';
-    order.closedAt = new Date();
-    order.paidBy = validUserOid;
-    await order.save();
+    // 4. ATOMIC PAYMENT CLAIM TẠI MONGODB:
+    // Thay thế mô hình read-modify-write order.save() bằng atomic conditional update.
+    // Đảm bảo: đúng _id, đúng restaurantId, đúng branchId, isPaid != true,
+    // status thuộc tập payment-eligible (Preparing | Ready | Served | PaymentRequested),
+    // và subTotal/updatedAt không bị thay đổi ngầm giữa lúc đọc/tính toán và lúc claim.
+    const claimFilter: any = {
+      _id: order._id,
+      restaurantId: order.restaurantId,
+      branchId: order.branchId,
+      isPaid: { $ne: true },
+      status: { $in: ['Preparing', 'Ready', 'Served', 'PaymentRequested'] },
+      subTotal: financial.subTotal,
+    };
+    if (order.updatedAt) {
+      claimFilter.updatedAt = order.updatedAt;
+    }
 
-    // Giải phóng bàn ăn về Available
+    const claimedOrder = await this.orderModel.findOneAndUpdate(
+      claimFilter,
+      {
+        $set: {
+          subTotal: financial.subTotal,
+          discountAmount: financial.discountAmount,
+          serviceFee: financial.serviceFee,
+          vatAmount: financial.vatAmount,
+          totalAmount: financial.totalAmount,
+          paymentMethod,
+          isPaid: true,
+          status: 'Paid',
+          closedAt,
+          paidBy: validUserOid,
+        },
+      },
+      { new: true },
+    );
+
+    // Nếu atomic claim trả về null: request khác đã thanh toán hoặc dữ liệu bị thay đổi đồng thời
+    if (!claimedOrder) {
+      throw new BadRequestException(
+        'Đơn hàng này đã được thanh toán hoặc trạng thái đã bị thay đổi bởi thao tác khác',
+      );
+    }
+
+    // 5. CHỈ KHI CLAIM THÀNH CÔNG MỚI GIẢI PHÓNG BÀN VÀ PHÁT SỰ KIỆN:
+    // Giải phóng bàn ăn về Available với ownership protection (bảo vệ tableId, restaurantId, currentOrderId)
     const table = await this.tableModel.findOneAndUpdate(
       {
-        _id: order.tableId,
-        restaurantId: order.restaurantId,
+        _id: claimedOrder.tableId,
+        restaurantId: claimedOrder.restaurantId,
+        $or: [
+          { currentOrderId: claimedOrder._id },
+          { currentOrderId: { $exists: false } },
+          { currentOrderId: null },
+        ],
       },
       {
         $set: { status: 'Available', totalGuests: 0 },
@@ -1038,16 +1076,17 @@ export class OrdersService {
       });
     }
 
+    // Sử dụng claimedOrder mới nhất từ DB làm nguồn sự kiện duy nhất
     this.eventEmitter.emit('order.payment_completed', {
-      order: order.toObject(),
-      tableId: order.tableId.toString(),
+      order: claimedOrder.toObject(),
+      tableId: claimedOrder.tableId.toString(),
       restaurantId,
-      branchId: order.branchId,
+      branchId: claimedOrder.branchId,
       changeAmount,
     });
 
     return {
-      order,
+      order: claimedOrder,
       table: table as any,
       ...(changeAmount !== undefined ? { changeAmount } : {}),
     };

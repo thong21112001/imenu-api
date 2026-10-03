@@ -888,6 +888,76 @@ async function main() {
       failed++;
     }
 
+    // ------------------------------------------------------------------------
+    // TEST 13: ATOMIC PAYMENT CLAIM UNDER CONCURRENCY (Promise.all concurrent pay requests)
+    // ------------------------------------------------------------------------
+    const tConcurrentRes = await request('/tables', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({ code: `CONC_${timestamp}`, name: 'Bàn Test Concurrent', zoneId, capacity: 4 }),
+    });
+    const concurrentTableId = tConcurrentRes.data?.data?._id;
+
+    // Tạo đơn hàng POS hợp lệ trên bàn (Status = Preparing)
+    const createConcurrentOrderRes = await request('/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cashierToken}` },
+      body: JSON.stringify({
+        tableId: concurrentTableId,
+        orderSource: 'STAFF_POS',
+        items: [{ menuItemId, quantity: 2 }],
+      }),
+    });
+    const concurrentOrderId = createConcurrentOrderRes.data?.data?._id;
+
+    // Bắn 2 request POST /orders/:id/pay đồng thời qua Promise.all
+    const payPayload = {
+      paymentMethod: 'VietQR',
+      discountPercent: 5,
+      vatPercent: 8,
+    };
+
+    const [payRes1, payRes2] = await Promise.all([
+      request(`/orders/${concurrentOrderId}/pay`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cashierToken}` },
+        body: JSON.stringify(payPayload),
+      }),
+      request(`/orders/${concurrentOrderId}/pay`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cashierToken}` },
+        body: JSON.stringify(payPayload),
+      }),
+    ]);
+
+    const successCount = [payRes1, payRes2].filter((r) => r.status === 200).length;
+    const failCount = [payRes1, payRes2].filter((r) => r.status >= 400).length;
+
+    // Kiểm tra Order và Table trong DB
+    const finalOrder = await connection.collection('orders').findOne({ _id: new Types.ObjectId(concurrentOrderId) });
+    const finalTable = await connection.collection('tables').findOne({ _id: new Types.ObjectId(concurrentTableId) });
+
+    if (
+      successCount === 1 &&
+      failCount === 1 &&
+      finalOrder?.isPaid === true &&
+      finalOrder?.status === 'Paid' &&
+      finalTable?.status === 'Available' &&
+      !finalTable?.currentOrderId
+    ) {
+      pass(
+        'TC-6.3-13: Atomic Payment Claim under Concurrency',
+        `2 request đồng thời qua Promise.all -> Chính xác 1 thành công (200), 1 thất bại (400), Order Paid 1 lần, Bàn giải phóng 1 lần`,
+      );
+      passed++;
+    } else {
+      fail(
+        'TC-6.3-13: Atomic Payment Claim under Concurrency',
+        `Success: ${successCount}, Fail: ${failCount}, Res1: ${payRes1.status}, Res2: ${payRes2.status}`,
+      );
+      failed++;
+    }
+
   } catch (err: any) {
     console.error('Lỗi nghiêm trọng trong quá trình kiểm thử:', err);
     failed++;
