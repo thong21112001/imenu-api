@@ -9,6 +9,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Headers,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
@@ -51,8 +53,15 @@ export class OrdersController {
   @ApiOperation({ summary: 'Khách hàng tạo đơn hàng qua mã QR bàn (Public)' })
   @Public()
   @Post(['customer', 'public/customer'])
-  async createCustomerOrder(@Body() dto: CustomerCreateOrderDto) {
-    const order = await this.ordersService.createCustomerOrder(dto);
+  async createCustomerOrder(
+    @Body() dto: CustomerCreateOrderDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+    @Res({ passthrough: true }) res?: any,
+  ) {
+    const order: any = await this.ordersService.createCustomerOrder(dto, idempotencyKey);
+    if (order?.isReplay && res && typeof res.setHeader === 'function') {
+      res.setHeader('X-Idempotent-Replay', 'true');
+    }
     return new OkResponse({ message: 'Tạo đơn hàng QR thành công', data: order });
   }
 
@@ -60,8 +69,15 @@ export class OrdersController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post(['customer/items', 'public/customer/items'])
-  async addCustomerItems(@Body() dto: CustomerAddItemsDto) {
-    const order = await this.ordersService.addItemsByCustomer(dto);
+  async addCustomerItems(
+    @Body() dto: CustomerAddItemsDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+    @Res({ passthrough: true }) res?: any,
+  ) {
+    const order: any = await this.ordersService.addItemsByCustomer(dto, undefined, idempotencyKey);
+    if (order?.isReplay && res && typeof res.setHeader === 'function') {
+      res.setHeader('X-Idempotent-Replay', 'true');
+    }
     return new OkResponse({ message: 'Gửi thêm món thành công', data: order });
   }
 
@@ -72,8 +88,13 @@ export class OrdersController {
   async addCustomerItemsWithId(
     @Param('id') id: string,
     @Body() dto: CustomerAddItemsDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+    @Res({ passthrough: true }) res?: any,
   ) {
-    const order = await this.ordersService.addItemsByCustomer(dto, id);
+    const order: any = await this.ordersService.addItemsByCustomer(dto, id, idempotencyKey);
+    if (order?.isReplay && res && typeof res.setHeader === 'function') {
+      res.setHeader('X-Idempotent-Replay', 'true');
+    }
     return new OkResponse({ message: 'Gửi thêm món thành công', data: order });
   }
 

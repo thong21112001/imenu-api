@@ -1,0 +1,677 @@
+import 'dotenv/config';
+process.env.MONGODB_URL = process.env.TEST_MONGODB_URL || 'mongodb://localhost:27017/imenu-db-test';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, INestApplication } from '@nestjs/common';
+import { getConnectionToken } from '@nestjs/mongoose';
+import { Connection, Types } from 'mongoose';
+import { AppModule } from '../../src/app.module';
+import { RolesService } from '../../src/modules/roles/roles.service';
+import { UsersService } from '../../src/modules/users/users.service';
+
+const TEST_PORT = 3098;
+const BASE_URL = `http://localhost:${TEST_PORT}/api`;
+
+let app: INestApplication;
+
+const colors = {
+  reset: '\x1b[0m',
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  yellow: '\x1b[33m',
+  cyan: '\x1b[36m',
+  bold: '\x1b[1m',
+};
+
+function pass(name: string, detail?: string) {
+  console.log(`  ${colors.green}✔ PASS:${colors.reset} ${name}${detail ? ` (${detail})` : ''}`);
+}
+
+function fail(name: string, error: any) {
+  console.error(`  ${colors.red}✖ FAIL:${colors.reset} ${name}`);
+  console.error(`    ${colors.red}${typeof error === 'object' ? JSON.stringify(error) : error}${colors.reset}`);
+}
+
+async function request(path: string, options: RequestInit = {}) {
+  const url = `${BASE_URL}${path.startsWith('/') ? path : '/' + path}`;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  const res = await fetch(url, { ...options, headers });
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, headers: res.headers, data };
+}
+
+async function main() {
+  console.log(`\n${colors.bold}${colors.cyan}========================================================================${colors.reset}`);
+  console.log(`${colors.bold}${colors.cyan}  iMenu API - Sub-phase 6.5: Idempotency Key & Concurrency Test Suite   ${colors.reset}`);
+  console.log(`${colors.bold}${colors.cyan}========================================================================${colors.reset}\n`);
+
+  let passed = 0;
+  let failed = 0;
+
+  console.log('Khởi động test server trên port', TEST_PORT, '...');
+  app = await NestFactory.create(AppModule, { logger: false });
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.setGlobalPrefix('api');
+
+  const connection: Connection = app.get(getConnectionToken());
+  const rolesService = app.get(RolesService);
+  await rolesService.seedDefaultRoles();
+
+  const usersService = app.get(UsersService);
+  await usersService.initAdmin();
+
+  // Đảm bảo các chỉ mục (Unique & Partial Unique Index) được tạo đầy đủ trên MongoDB
+  await connection.model('Order').syncIndexes();
+  await connection.model('IdempotencyKey').syncIndexes();
+
+  await app.listen(TEST_PORT);
+  console.log('Test server đã sẵn sàng!\n');
+
+  const timestamp = Date.now();
+  const restSlug = `rest-occ-${timestamp}`;
+  const restId = new Types.ObjectId();
+  const branchId = 'branch-occ-main';
+  const zoneId = new Types.ObjectId();
+
+  const table1Id = new Types.ObjectId();
+  const table2Id = new Types.ObjectId();
+  const table3Id = new Types.ObjectId();
+  const table4Id = new Types.ObjectId();
+
+  const menuItem1Id = new Types.ObjectId();
+  const menuItem2Id = new Types.ObjectId();
+
+  const qrTokenT1 = `token-t1-${timestamp}`;
+  const qrTokenT2 = `token-t2-${timestamp}`;
+  const qrTokenT3 = `token-t3-${timestamp}`;
+  const qrTokenT4 = `token-t4-${timestamp}`;
+
+  try {
+    // 1. Tạo Nhà hàng kiểm thử
+    await connection.collection('restaurants').insertOne({
+      _id: restId,
+      name: 'Nhà Hàng Concurrency & Idempotency',
+      slug: restSlug,
+      email: `rest_${timestamp}@test.com`,
+      phone: '0901234567',
+      status: 'Active',
+      branches: [
+        {
+          _id: branchId,
+          name: 'Chi Nhánh OCC',
+          isMainBranch: true,
+          status: 'Active',
+        },
+      ],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // 2. Tạo Khu vực bàn
+    await connection.collection('table_zones').insertOne({
+      _id: zoneId,
+      name: 'Khu vực Tầng 1',
+      restaurantId: restId,
+      branchId,
+      isDeleted: false,
+    });
+
+    // 3. Tạo Bàn ăn
+    await connection.collection('tables').insertMany([
+      {
+        _id: table1Id,
+        code: 'ban-01',
+        name: 'Bàn 01',
+        zone: zoneId,
+        restaurantId: restId,
+        branchId,
+        status: 'Available',
+        qrToken: qrTokenT1,
+        qrStatus: 'active',
+        isDeleted: false,
+      },
+      {
+        _id: table2Id,
+        code: 'ban-02',
+        name: 'Bàn 02',
+        zone: zoneId,
+        restaurantId: restId,
+        branchId,
+        status: 'Available',
+        qrToken: qrTokenT2,
+        qrStatus: 'active',
+        isDeleted: false,
+      },
+      {
+        _id: table3Id,
+        code: 'ban-03',
+        name: 'Bàn 03',
+        zone: zoneId,
+        restaurantId: restId,
+        branchId,
+        status: 'Available',
+        qrToken: qrTokenT3,
+        qrStatus: 'active',
+        isDeleted: false,
+      },
+      {
+        _id: table4Id,
+        code: 'ban-04',
+        name: 'Bàn 04',
+        zone: zoneId,
+        restaurantId: restId,
+        branchId,
+        status: 'Available',
+        qrToken: qrTokenT4,
+        qrStatus: 'active',
+        isDeleted: false,
+      },
+    ]);
+
+    // 4. Tạo Thực đơn
+    const catId = new Types.ObjectId();
+    await connection.collection('menu_categories').insertOne({
+      _id: catId,
+      name: 'Món Chính',
+      slug: 'mon-chinh',
+      restaurantId: restId,
+      branches: [branchId],
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await connection.collection('menu_items').insertMany([
+      {
+        _id: menuItem1Id,
+        name: 'Phở Bò Thượng Hạng',
+        slug: 'pho-bo-thuong-hang',
+        price: 60000,
+        category: catId,
+        restaurantId: restId,
+        branches: [branchId],
+        isAvailable: true,
+        isDeleted: false,
+        options: [
+          {
+            id: 'opt-meat',
+            name: 'Thịt thêm',
+            values: [
+              { id: 'extra-beef', name: 'Bò tái thêm', priceDelta: 15000 },
+            ],
+          },
+        ],
+      },
+      {
+        _id: menuItem2Id,
+        name: 'Trà Chanh Đào',
+        slug: 'tra-chanh-dao',
+        price: 25000,
+        category: catId,
+        restaurantId: restId,
+        branches: [branchId],
+        isAvailable: true,
+        isDeleted: false,
+        options: [],
+      },
+    ]);
+
+    console.log(`  ${colors.green}✔ Đã thiết lập môi trường kiểm thử Sub-phase 6.5 thành công${colors.reset}\n`);
+
+    // ========================================================================
+    // PHẦN 1: IDEMPOTENCY KEY ENGINE TESTS
+    // ========================================================================
+    console.log(`${colors.bold}--- PHẦN 1: KIỂM THỬ IDEMPOTENCY KEY ENGINE ---${colors.reset}`);
+
+    const baseCreatePayload = {
+      restaurantSlug: restSlug,
+      tableCode: 'ban-01',
+      qrToken: qrTokenT1,
+      customerNote: 'Khách bàn 01 tự đặt món',
+      items: [
+        {
+          menuItemId: menuItem1Id.toString(),
+          quantity: 2,
+          selectedOptions: [
+            {
+              groupId: 'opt-meat',
+              groupName: 'Thịt thêm',
+              valueId: 'extra-beef',
+              valueName: 'Bò tái thêm',
+              priceDelta: 15000,
+            },
+          ],
+          note: 'Nhiều hành',
+        },
+      ],
+    };
+
+    // TC-01.1: Tạo đơn lần đầu với Idempotency-Key
+    const idempotencyKeyCreate = `key-create-${timestamp}`;
+    const resCreate1 = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKeyCreate },
+      body: JSON.stringify(baseCreatePayload),
+    });
+
+    let createdOrderId: string = '';
+    let createdOrderCode: string = '';
+
+    if (resCreate1.status === 201) {
+      createdOrderId = resCreate1.data?.data?._id;
+      createdOrderCode = resCreate1.data?.data?.orderCode;
+      pass('TC-01.1: Tạo đơn thành công với Idempotency-Key hợp lệ (HTTP 201 Created)', `OrderCode: ${createdOrderCode}`);
+      passed++;
+    } else {
+      fail('TC-01.1: Tạo đơn thất bại', resCreate1.data);
+      failed++;
+    }
+
+    // TC-01.2: Retry cùng request với cùng Idempotency-Key -> Replay cached response
+    const resCreateRetry = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKeyCreate },
+      body: JSON.stringify(baseCreatePayload),
+    });
+
+    const isReplayHeader = resCreateRetry.headers.get('x-idempotent-replay') === 'true';
+    const sameOrderId = resCreateRetry.data?.data?._id === createdOrderId;
+    const sameOrderCode = resCreateRetry.data?.data?.orderCode === createdOrderCode;
+
+    // Kiểm tra trong DB: chỉ có duy nhất 1 order được tạo cho bàn 01
+    const orderCountTable1 = await connection.collection('orders').countDocuments({
+      restaurantId: restId,
+      tableId: table1Id,
+    });
+
+    if (resCreateRetry.status === 201 && isReplayHeader && sameOrderId && sameOrderCode && orderCountTable1 === 1) {
+      pass('TC-01.2: Retry cùng request nhận đúng cached response replay (X-Idempotent-Replay: true, không tạo duplicate order)');
+      passed++;
+    } else {
+      fail('TC-01.2: Replay thất bại hoặc tạo duplicate order', {
+        status: resCreateRetry.status,
+        isReplayHeader,
+        orderCount: orderCountTable1,
+      });
+      failed++;
+    }
+
+    // TC-02: Cùng Key nhưng khác payload -> HTTP 422 Unprocessable Entity
+    const mismatchedPayload = {
+      ...baseCreatePayload,
+      customerNote: 'Nội dung note đã bị thay đổi!',
+    };
+    const resMismatch = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKeyCreate },
+      body: JSON.stringify(mismatchedPayload),
+    });
+
+    if (resMismatch.status === 422) {
+      pass('TC-02: Cùng Idempotency-Key nhưng khác payload bị từ chối với HTTP 422 Unprocessable Entity');
+      passed++;
+    } else {
+      fail('TC-02: Mismatched payload không trả về 422', resMismatch.status);
+      failed++;
+    }
+
+    // TC-03.1: Gọi thêm món với Idempotency-Key
+    const idempotencyKeyAdd = `key-add-${timestamp}`;
+    const baseAddItemsPayload = {
+      restaurantSlug: restSlug,
+      tableCode: 'ban-01',
+      qrToken: qrTokenT1,
+      note: 'Thêm đồ uống',
+      items: [
+        {
+          menuItemId: menuItem2Id.toString(),
+          quantity: 2,
+        },
+      ],
+    };
+
+    const resAdd1 = await request('/orders/customer/items', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKeyAdd },
+      body: JSON.stringify(baseAddItemsPayload),
+    });
+
+    if (resAdd1.status === 200 && resAdd1.data?.data?.rounds?.length === 2) {
+      pass('TC-03.1: Gọi thêm món với Idempotency-Key thành công (Round 2 được tạo)');
+      passed++;
+    } else {
+      fail('TC-03.1: Gọi thêm món thất bại', resAdd1.data);
+      failed++;
+    }
+
+    // TC-03.2: Retry gọi thêm món với cùng Idempotency-Key -> Replay, không tạo Round 3
+    const resAddRetry = await request('/orders/customer/items', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKeyAdd },
+      body: JSON.stringify(baseAddItemsPayload),
+    });
+
+    const isAddReplay = resAddRetry.headers.get('x-idempotent-replay') === 'true';
+    const orderAfterAddRetry = await connection.collection('orders').findOne({ _id: new Types.ObjectId(createdOrderId) });
+    const roundsCount = orderAfterAddRetry?.rounds?.length;
+
+    if (resAddRetry.status === 200 && isAddReplay && roundsCount === 2) {
+      pass('TC-03.2: Retry gọi thêm món nhận cached response replay (không tạo duplicate round, rounds = 2)');
+      passed++;
+    } else {
+      fail('TC-03.2: Retry gọi thêm món tạo duplicate round', { status: resAddRetry.status, roundsCount });
+      failed++;
+    }
+
+    // TC-04: Validate Idempotency-Key format (Empty string, Whitespace, > 255 chars)
+    const resEmptyKey = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': '' },
+      body: JSON.stringify(baseCreatePayload),
+    });
+    if (resEmptyKey.status === 400) {
+      pass('TC-04.1: Chặn Idempotency-Key rỗng (HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-04.1: Không chặn key rỗng', resEmptyKey.status);
+      failed++;
+    }
+
+    const resWhitespaceKey = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': '     ' },
+      body: JSON.stringify(baseCreatePayload),
+    });
+    if (resWhitespaceKey.status === 400) {
+      pass('TC-04.2: Chặn Idempotency-Key chỉ có khoảng trắng (HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-04.2: Không chặn key khoảng trắng', resWhitespaceKey.status);
+      failed++;
+    }
+
+    const resOversizedKey = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': 'k'.repeat(256) },
+      body: JSON.stringify(baseCreatePayload),
+    });
+    if (resOversizedKey.status === 400) {
+      pass('TC-04.3: Chặn Idempotency-Key vượt quá 255 ký tự (HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-04.3: Không chặn key > 255 chars', resOversizedKey.status);
+      failed++;
+    }
+
+    // ========================================================================
+    // PHẦN 2: CONCURRENCY & OCC (OPTIMISTIC CONCURRENCY CONTROL) TESTS
+    // ========================================================================
+    console.log(`\n${colors.bold}--- PHẦN 2: KIỂM THỬ CONCURRENCY & ATOMIC CONDITIONAL UPDATE ---${colors.reset}`);
+
+    // Chuẩn bị Bàn 02 với đơn hàng ban đầu
+    const initOrderPayload = {
+      restaurantSlug: restSlug,
+      tableCode: 'ban-02',
+      qrToken: qrTokenT2,
+      customerNote: 'Đơn ban đầu Bàn 02',
+      items: [
+        {
+          menuItemId: menuItem1Id.toString(),
+          quantity: 1,
+        },
+      ],
+    };
+
+    const resInitTable2 = await request('/orders/customer', {
+      method: 'POST',
+      body: JSON.stringify(initOrderPayload),
+    });
+
+    const table2OrderId = resInitTable2.data?.data?._id;
+
+    // TC-05: CONCURRENT ADD-ITEMS VỚI KHÁC KEY (OCC RETRY & ZERO LOST UPDATES)
+    // Giả lập 2 khách tại Bàn 02 cùng bấm nút gửi thêm món tại cùng một thời điểm bằng Promise.all thực sự
+    const addPayloadCustA = {
+      restaurantSlug: restSlug,
+      tableCode: 'ban-02',
+      qrToken: qrTokenT2,
+      note: 'Khách A gọi thêm Món 1',
+      items: [{ menuItemId: menuItem1Id.toString(), quantity: 1 }],
+    };
+
+    const addPayloadCustB = {
+      restaurantSlug: restSlug,
+      tableCode: 'ban-02',
+      qrToken: qrTokenT2,
+      note: 'Khách B gọi thêm Món 2',
+      items: [{ menuItemId: menuItem2Id.toString(), quantity: 2 }],
+    };
+
+    console.log('  -> Kích hoạt 2 request gọi thêm món đồng thời bằng Promise.all...');
+    const [resConcurrentA, resConcurrentB] = await Promise.all([
+      request('/orders/customer/items', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': `key-occ-a-${timestamp}` },
+        body: JSON.stringify(addPayloadCustA),
+      }),
+      request('/orders/customer/items', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': `key-occ-b-${timestamp}` },
+        body: JSON.stringify(addPayloadCustB),
+      }),
+    ]);
+
+    const bothSuccess = resConcurrentA.status === 200 && resConcurrentB.status === 200;
+
+    // Kiểm tra tính toàn vẹn dữ liệu trong MongoDB
+    const orderTable2 = await connection.collection('orders').findOne({ _id: new Types.ObjectId(table2OrderId) });
+    const roundsTable2 = orderTable2?.rounds || [];
+    const itemsTable2 = orderTable2?.items || [];
+
+    // Mong đợi:
+    // - Cả 2 request đều thành công (HTTP 200) nhờ OCC retry tự động
+    // - Tổng số rounds = 3 (Round 1 ban đầu + Round 2 + Round 3)
+    // - roundNumber tuần tự: [1, 2, 3] không bị trùng lặp
+    // - Tổng số items: 1 (gốc) + 1 (khách A) + 2 (khách B) = 4 items
+    // - subTotal chính xác: 60,000 + 60,000 + 25,000 * 2 = 170,000 đ
+    const expectedSubTotalT2 = 60000 + 60000 + 25000 * 2;
+    const roundNumbers = roundsTable2.map((r: any) => r.roundNumber).sort();
+    const sequentialRounds = JSON.stringify(roundNumbers) === JSON.stringify([1, 2, 3]);
+    const itemsCountCorrect = itemsTable2.length === 3;
+    const totalQuantity = itemsTable2.reduce((sum: number, it: any) => sum + (it.quantity || 1), 0);
+    const quantityCorrect = totalQuantity === 4;
+    const subTotalCorrect = orderTable2?.subTotal === expectedSubTotalT2;
+
+    if (bothSuccess && sequentialRounds && itemsCountCorrect && quantityCorrect && subTotalCorrect) {
+      pass('TC-05.1: 2 request gọi thêm món đồng thời đều thành công (HTTP 200)');
+      pass('TC-05.2: OCC tự động tính lại roundNumber tuần tự [1, 2, 3] (Zero Duplicate Rounds)');
+      pass('TC-05.3: Giữ nguyên toàn bộ items từ cả hai khách (4 items, Zero Lost Updates)');
+      pass('TC-05.4: Tài chính hóa đơn subTotal chính xác tuyệt đối sau concurrent updates', `${orderTable2?.subTotal} đ`);
+      passed += 4;
+    } else {
+      fail('TC-05: Concurrent add-items vi phạm tính toàn vẹn', {
+        resAStatus: resConcurrentA.status,
+        resBStatus: resConcurrentB.status,
+        rounds: roundNumbers,
+        itemsCount: itemsTable2.length,
+        subTotal: orderTable2?.subTotal,
+        expectedSubTotal: expectedSubTotalT2,
+      });
+      failed += 4;
+    }
+
+    // ========================================================================
+    // PHẦN 3: DEF-6.5-002: CONCURRENT ORDER CREATION & MONGODB E11000 -> HTTP 409
+    // ========================================================================
+    console.log(`\n${colors.bold}--- PHẦN 3: DEF-6.5-002: CONCURRENT ORDER CREATION & E11000 MAPPING ---${colors.reset}`);
+
+    // Bàn 03 hiện đang Available (chưa có đơn). 2 khách cùng quét QR và bấm Tạo đơn đồng thời
+    const raceOrderPayloadCust1 = {
+      restaurantSlug: restSlug,
+      tableCode: 'ban-03',
+      qrToken: qrTokenT3,
+      customerNote: 'Khách 1 tạo đơn Bàn 03',
+      items: [{ menuItemId: menuItem1Id.toString(), quantity: 1 }],
+    };
+
+    const raceOrderPayloadCust2 = {
+      restaurantSlug: restSlug,
+      tableCode: 'ban-03',
+      qrToken: qrTokenT3,
+      customerNote: 'Khách 2 tạo đơn Bàn 03',
+      items: [{ menuItemId: menuItem2Id.toString(), quantity: 1 }],
+    };
+
+    console.log('  -> Kích hoạt 2 request tạo đơn đồng thời tại cùng Bàn 03 bằng Promise.all...');
+    const [resRace1, resRace2] = await Promise.all([
+      request('/orders/customer', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': `key-race-1-${timestamp}` },
+        body: JSON.stringify(raceOrderPayloadCust1),
+      }),
+      request('/orders/customer', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': `key-race-2-${timestamp}` },
+        body: JSON.stringify(raceOrderPayloadCust2),
+      }),
+    ]);
+
+    const statuses = [resRace1.status, resRace2.status].sort();
+    // Một request thành công (201), một request phải nhận HTTP 409 Conflict
+    const hasOneCreated = statuses[0] === 201;
+    const hasOneConflict = statuses[1] === 409;
+
+    // Kiểm tra trong DB: Bàn 03 chỉ có duy nhất 1 đơn hàng hoạt động
+    const activeOrdersTable3 = await connection.collection('orders').countDocuments({
+      restaurantId: restId,
+      tableId: table3Id,
+      status: { $in: ['WaitingConfirmation', 'Confirmed', 'Preparing', 'Ready', 'Served', 'PaymentRequested'] },
+    });
+
+    if (hasOneCreated && hasOneConflict && activeOrdersTable3 === 1) {
+      pass('TC-06.1: Concurrent Order Creation: Đúng 1 request thành công (HTTP 201), 1 request xung đột (HTTP 409)');
+      pass('TC-06.2: MongoDB Partial Unique Index bảo vệ: Chỉ có duy nhất 1 active order tại bàn');
+      passed += 2;
+    } else {
+      fail('TC-06: Concurrent Order Creation vi phạm invariant', {
+        statuses,
+        activeOrdersTable3,
+        res1: resRace1.data,
+        res2: resRace2.data,
+      });
+      failed += 2;
+    }
+
+    // TC-07: Xác minh lỗi xung đột duplicate key trả về HTTP 409 Conflict (chứ KHÔNG PHẢI HTTP 500)
+    const conflictRes = resRace1.status === 409 ? resRace1 : resRace2;
+    if (conflictRes.status === 409 && conflictRes.data?.error === 'Conflict') {
+      pass('TC-07: E11000 Duplicate Key Error được map chuẩn xác thành HTTP 409 Conflict (Zero HTTP 500)');
+      passed++;
+    } else {
+      fail('TC-07: E11000 không được map thành 409 Conflict', conflictRes);
+      failed++;
+    }
+
+    // ========================================================================
+    // PHẦN 4: IN-FLIGHT DUPLICATE PREVENTION & OPTIONALITY
+    // ========================================================================
+    console.log(`\n${colors.bold}--- PHẦN 4: IN-FLIGHT DUPLICATE PREVENTION & OPTIONALITY ---${colors.reset}`);
+
+    // TC-08: 2 request gửi đồng thời với CÙNG một Idempotency-Key
+    // Chỉ có 1 request thực thi business, request còn lại phải bị 409 (PROCESSING) hoặc nhận replay
+    const identicalKey = `key-same-concurrent-${timestamp}`;
+    const [resSameKey1, resSameKey2] = await Promise.all([
+      request('/orders/customer', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': identicalKey },
+        body: JSON.stringify({
+          restaurantSlug: restSlug,
+          tableCode: 'ban-04',
+          qrToken: qrTokenT4,
+          customerNote: 'Đơn Bàn 04 cùng key',
+          items: [{ menuItemId: menuItem1Id.toString(), quantity: 1 }],
+        }),
+      }),
+      request('/orders/customer', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': identicalKey },
+        body: JSON.stringify({
+          restaurantSlug: restSlug,
+          tableCode: 'ban-04',
+          qrToken: qrTokenT4,
+          customerNote: 'Đơn Bàn 04 cùng key',
+          items: [{ menuItemId: menuItem1Id.toString(), quantity: 1 }],
+        }),
+      }),
+    ]);
+
+    const sameKeyStatuses = [resSameKey1.status, resSameKey2.status];
+    // Phải có đúng 1 order được tạo ở bàn 04
+    const ordersTable4 = await connection.collection('orders').countDocuments({
+      restaurantId: restId,
+      tableId: table4Id,
+    });
+
+    const oneExecuted = sameKeyStatuses.includes(201);
+    const otherHandled = sameKeyStatuses.includes(409) || (sameKeyStatuses[0] === 201 && sameKeyStatuses[1] === 201);
+
+    if (oneExecuted && otherHandled && ordersTable4 === 1) {
+      pass('TC-08: Concurrent duplicate requests cùng Idempotency-Key: Chỉ 1 đơn hàng được tạo, không sinh duplicate');
+      passed++;
+    } else {
+      fail('TC-08: Cùng key concurrent bị duplicate hoặc lỗi', {
+        sameKeyStatuses,
+        ordersTable4,
+      });
+      failed++;
+    }
+
+    // TC-09: Request bình thường KHÔNG có Idempotency-Key header (Optionality)
+    const resNoKey = await request('/orders/customer/items', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug: restSlug,
+        tableCode: 'ban-04',
+        qrToken: qrTokenT4,
+        note: 'Gọi thêm không truyền key',
+        items: [{ menuItemId: menuItem2Id.toString(), quantity: 1 }],
+      }),
+    });
+
+    if (resNoKey.status === 200 && resNoKey.data?.data?.rounds?.length === 2) {
+      pass('TC-09: Khách hàng không gửi Idempotency-Key: Hoạt động bình thường theo chuẩn Mobile-first (Optionality)');
+      passed++;
+    } else {
+      fail('TC-09: Request không key thất bại', resNoKey.data);
+      failed++;
+    }
+
+  } catch (err) {
+    console.error('Lỗi nghiêm trọng trong quá trình chạy kiểm thử:', err);
+    failed++;
+  } finally {
+    console.log(`\n${colors.bold}----------------------------------------------------------------${colors.reset}`);
+    console.log(`${colors.bold}Kết quả kiểm thử Sub-phase 6.5: ${colors.green}${passed} passed${colors.reset}, ${colors.red}${failed} failed${colors.reset}`);
+    console.log(`${colors.bold}----------------------------------------------------------------${colors.reset}\n`);
+
+    console.log('[Teardown] Dọn dẹp tài nguyên kiểm thử Sub-phase 6.5...');
+    await connection.collection('restaurants').deleteOne({ _id: restId });
+    await connection.collection('table_zones').deleteOne({ _id: zoneId });
+    await connection.collection('tables').deleteMany({ restaurantId: restId });
+    await connection.collection('menu_categories').deleteMany({ restaurantId: restId });
+    await connection.collection('menu_items').deleteMany({ restaurantId: restId });
+    await connection.collection('orders').deleteMany({ restaurantId: restId });
+    await connection.collection('idempotency_keys').deleteMany({ restaurantId: restId });
+    console.log(`  ${colors.green}✔ Đã dọn dẹp sạch sẽ toàn bộ dữ liệu kiểm thử (Zero Garbage)${colors.reset}\n`);
+
+    await app.close();
+  }
+
+  if (failed > 0) {
+    process.exit(1);
+  }
+}
+
+main();

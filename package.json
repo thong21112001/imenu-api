@@ -25,6 +25,7 @@
     "test:phase6:transitions": "ts-node tests/phase-06-state-machine/test.ts",
     "test:phase6:pos": "ts-node tests/phase-06-pos-cashier/test.ts",
     "test:phase6:customer-qr": "ts-node tests/phase-06-customer-qr/test.ts",
+    "test:phase6:concurrency": "ts-node tests/phase-06-idempotency-concurrency/test.ts",
     "seed": "ts-node src/database/seed.ts",
     "seed:clean": "ts-node src/database/seed.ts --clean"
   },

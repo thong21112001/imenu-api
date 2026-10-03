@@ -4,8 +4,12 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  UnprocessableEntityException,
+  HttpException,
+  HttpStatus,
   Logger,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -13,6 +17,7 @@ import { Order, OrderDocument, OrderStatus } from './entities/order.entity';
 import { Table, TableDocument } from '../tables/entities/table.entity';
 import { MenuItem, MenuItemDocument } from '../menu/entities/menu-item.entity';
 import { Restaurant, RestaurantDocument } from '../restaurants/entities/restaurant.entity';
+import { IdempotencyKey, IdempotencyKeyDocument } from './entities/idempotency-key.entity';
 import { OrderItem, OrderItemStatus } from './entities/order-item.schema';
 import { OrderRound, RoundStatus } from './entities/order-round.schema';
 import { OrderStateValidator } from './domain/order-state.validator';
@@ -46,6 +51,7 @@ export class OrdersService {
     @InjectModel(Table.name) private readonly tableModel: Model<TableDocument>,
     @InjectModel(MenuItem.name) private readonly menuItemModel: Model<MenuItemDocument>,
     @InjectModel(Restaurant.name) private readonly restaurantModel: Model<RestaurantDocument>,
+    @InjectModel(IdempotencyKey.name) private readonly idempotencyKeyModel: Model<IdempotencyKeyDocument>,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -225,7 +231,154 @@ export class OrdersService {
   }
 
   /**
-   * SUB-PHASE 6.4: Khách hàng tạo đơn qua mã QR công khai (Mobile-First Self-Service)
+   * Sinh mã băm SHA-256 chuẩn hóa xác định (deterministic request fingerprint)
+   * cho payload và endpoint nhằm nhận diện idempotency request.
+   */
+  private generateRequestFingerprint(endpoint: string, payload: any): string {
+    const canonicalJson = (obj: any): string => {
+      if (obj === null || typeof obj !== 'object') {
+        return JSON.stringify(obj);
+      }
+      if (Array.isArray(obj)) {
+        return '[' + obj.map((item) => canonicalJson(item)).join(',') + ']';
+      }
+      const sortedKeys = Object.keys(obj).sort();
+      const parts = sortedKeys
+        .filter((k) => obj[k] !== undefined)
+        .map((k) => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`);
+      return '{' + parts.join(',') + '}';
+    };
+
+    const normalizedPayloadStr = canonicalJson(payload);
+    return crypto
+      .createHash('sha256')
+      .update(`${endpoint}:${normalizedPayloadStr}`)
+      .digest('hex');
+  }
+
+  /**
+   * Khung điều phối Idempotency Key Engine:
+   * - Hỗ trợ Key tùy chọn (Optional)
+   * - Claim atomic tại database thông qua unique index { restaurantId: 1, key: 1 }
+   * - Xử lý xung đột in-flight (PROCESSING -> 409 Conflict)
+   * - Xử lý sai lệch payload (mismatch hash -> 422 Unprocessable Entity)
+   * - Replay kết quả đã hoàn thành (COMPLETED -> cached replay)
+   * - Cập nhật FAILED khi lỗi xảy ra để không treo PROCESSING vĩnh viễn
+   */
+  private async executeWithIdempotency<T>(
+    restaurantId: Types.ObjectId,
+    rawKey: string | undefined,
+    endpoint: string,
+    payload: any,
+    statusCode: number,
+    operation: () => Promise<T>,
+  ): Promise<T & { isReplay?: boolean }> {
+    if (rawKey === undefined || rawKey === null) {
+      const result: any = await operation();
+      if (result && typeof result === 'object') {
+        result.isReplay = false;
+      }
+      return result;
+    }
+
+    const key = rawKey.trim();
+    if (key.length === 0) {
+      throw new BadRequestException('Idempotency-Key không được để trống khi được truyền lên');
+    }
+    if (key.length > 255) {
+      throw new BadRequestException('Idempotency-Key không được vượt quá 255 ký tự');
+    }
+
+    const requestHash = this.generateRequestFingerprint(endpoint, payload);
+
+    try {
+      await this.idempotencyKeyModel.create({
+        restaurantId,
+        key,
+        endpoint,
+        requestHash,
+        status: 'PROCESSING',
+      });
+    } catch (err: any) {
+      if (err?.code === 11000) {
+        // Bản ghi Idempotency-Key đã tồn tại cho nhà hàng này
+        const existing = await this.idempotencyKeyModel.findOne({ restaurantId, key });
+        if (!existing) {
+          throw new ConflictException('Xung đột Idempotency-Key, vui lòng thử lại');
+        }
+
+        // Cùng Key nhưng khác endpoint hoặc khác payload fingerprint -> HTTP 422
+        if (existing.requestHash !== requestHash || existing.endpoint !== endpoint) {
+          throw new UnprocessableEntityException(
+            'Idempotency-Key đã được sử dụng cho một yêu cầu khác với nội dung khác nhau',
+          );
+        }
+
+        // Cùng Key đang trong trạng thái PROCESSING -> HTTP 409 Conflict
+        if (existing.status === 'PROCESSING') {
+          throw new ConflictException(
+            'Yêu cầu với Idempotency-Key này đang được xử lý, vui lòng không gửi trùng lặp',
+          );
+        }
+
+        // Cùng Key đã COMPLETED -> Replay kết quả đã lưu trữ
+        if (existing.status === 'COMPLETED') {
+          const replayed: any = existing.responseBody;
+          if (replayed && typeof replayed === 'object') {
+            replayed.isReplay = true;
+          }
+          return replayed;
+        }
+
+        // Cùng Key nhưng trước đó FAILED
+        if (existing.status === 'FAILED') {
+          throw new ConflictException(
+            'Yêu cầu trước đó với Idempotency-Key này đã thất bại, vui lòng sử dụng Idempotency-Key mới',
+          );
+        }
+      }
+      throw err;
+    }
+
+    // Nếu đã claim PROCESSING thành công: thực thi nghiệp vụ chính
+    try {
+      const result: any = await operation();
+      const responseBody =
+        result && typeof result.toObject === 'function' ? result.toObject() : result;
+
+      await this.idempotencyKeyModel.updateOne(
+        { restaurantId, key, status: 'PROCESSING' },
+        {
+          $set: {
+            status: 'COMPLETED',
+            responseCode: statusCode,
+            responseBody,
+          },
+        },
+      );
+
+      if (result && typeof result === 'object') {
+        result.isReplay = false;
+      }
+      return result;
+    } catch (error: any) {
+      // Cập nhật trạng thái FAILED để không treo vĩnh viễn ở PROCESSING
+      await this.idempotencyKeyModel.updateOne(
+        { restaurantId, key, status: 'PROCESSING' },
+        {
+          $set: {
+            status: 'FAILED',
+            responseCode: error instanceof HttpException ? error.getStatus() : 500,
+            responseBody: { message: error.message },
+          },
+        },
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * SUB-PHASE 6.4 + 6.5: Khách hàng tạo đơn qua mã QR công khai (Mobile-First Self-Service)
    * Yêu cầu:
    * - Không cần JWT token nhân viên
    * - Xác thực bộ ba (restaurantSlug, tableCode, qrToken)
@@ -234,8 +387,13 @@ export class OrdersService {
    * - Toàn bộ OrderItems khởi tạo ở trạng thái WaitingConfirmation
    * - Order khởi tạo ở trạng thái WaitingConfirmation
    * - Bàn chuyển sang Occupied và gắn currentOrderId
+   * - Hỗ trợ Idempotency-Key (Optional, Fingerprint SHA-256, Replay, PROCESSING 409, Mismatch 422)
+   * - Xử lý MongoDB E11000 active order duplicate key thành HTTP 409 Conflict
    */
-  async createCustomerOrder(dto: CustomerCreateOrderDto): Promise<Order> {
+  async createCustomerOrder(
+    dto: CustomerCreateOrderDto,
+    idempotencyKey?: string,
+  ): Promise<Order & { isReplay?: boolean }> {
     // 1. Xác thực bộ ba bảo mật QR
     const { restaurant, table } = await this.validateQrSession(
       dto.restaurantSlug,
@@ -247,153 +405,11 @@ export class OrdersService {
       throw new BadRequestException('Đơn hàng phải chứa ít nhất 1 món ăn');
     }
 
-    // 2. Kiểm tra bàn đã có đơn hàng hoạt động chưa (bảo vệ Partial Unique Index)
-    const activeOrder = await this.orderModel.findOne({
-      tableId: table._id,
-      restaurantId: restaurant._id,
-      status: {
-        $in: [
-          'WaitingConfirmation',
-          'Confirmed',
-          'Preparing',
-          'Ready',
-          'Served',
-          'PaymentRequested',
-        ],
-      },
-    });
+    const endpoint = 'POST /orders/customer';
 
-    if (activeOrder) {
-      throw new ConflictException(
-        `Bàn "${table.name}" hiện đang có đơn hàng hoạt động (${activeOrder.orderCode}). Vui lòng chọn tính năng gọi thêm món.`,
-      );
-    }
-
-    // 3. Xác định branchId: bắt buộc string
-    let resolvedBranchId = table.branchId;
-    if (!resolvedBranchId) {
-      const mainBranch = restaurant.branches?.find((b: any) => b.isMainBranch && !b.isDeleted);
-      resolvedBranchId = (mainBranch as any)?._id
-        ? (mainBranch as any)._id.toString()
-        : (restaurant.branches?.[0] as any)?._id?.toString() || 'default';
-    }
-
-    // 4. Snapshot giá và danh sách món từ DB thực đơn
-    // TẤT CẢ OrderItems tạo qua QR Customer khởi tạo ở trạng thái WaitingConfirmation
-    const processedItems = await this.processOrderItems(
-      dto.items,
-      restaurant._id.toString(),
-      resolvedBranchId,
-      1,
-      'WaitingConfirmation',
-    );
-
-    const subTotal = processedItems.reduce((sum, it) => sum + it.itemTotal, 0);
-    const totalAmount = subTotal;
-
-    // 5. Tự động sinh mã đơn hàng chuẩn quy cách ORD-YYMMDD-XXXX
-    const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const orderCode = `ORD-${dateStr}-${randomSuffix}`;
-
-    // Khởi tạo Round 1 ở trạng thái WaitingConfirmation
-    const round1: OrderRound = {
-      roundNumber: 1,
-      source: 'QR_CUSTOMER',
-      status: 'WaitingConfirmation',
-      createdAt: new Date(),
-      roundSubTotal: subTotal,
-    };
-
-    // Khởi tạo Order ở trạng thái WaitingConfirmation
-    const order = new this.orderModel({
-      orderCode,
-      tableId: table._id,
-      tableName: table.name,
-      restaurantId: restaurant._id,
-      branchId: resolvedBranchId,
-      rounds: [round1],
-      items: processedItems,
-      subTotal,
-      discountAmount: 0,
-      serviceFee: 0,
-      vatAmount: 0,
-      totalAmount,
-      status: 'WaitingConfirmation',
-      isPaid: false,
-      orderSource: 'QR_CUSTOMER',
-      customerNote: dto.customerNote || '',
-      openedAt: new Date(),
-    });
-
-    const savedOrder = await order.save();
-
-    // 6. Cập nhật trạng thái bàn sang Occupied
-    table.status = 'Occupied';
-    table.currentOrderId = savedOrder._id as any;
-    if (!table.activeSince) {
-      table.activeSince = new Date();
-    }
-    await table.save();
-
-    // 7. Phát sóng sự kiện Realtime qua WebSocket
-    this.eventEmitter.emit('order.created', {
-      order: savedOrder.toObject(),
-      restaurantId: restaurant._id.toString(),
-      branchId: savedOrder.branchId,
-      isCustomerOrder: true,
-    });
-
-    this.eventEmitter.emit('table.status_updated', {
-      table: table.toObject(),
-      restaurantId: restaurant._id.toString(),
-      branchId: table.branchId,
-    });
-
-    return savedOrder;
-  }
-
-  /**
-   * SUB-PHASE 6.4: Khách hàng gọi thêm món qua mã QR công khai (Mobile-First Self-Service)
-   * Yêu cầu:
-   * - Tạo OrderRound tiếp theo ở trạng thái WaitingConfirmation
-   * - Các OrderItems mới khởi tạo ở trạng thái WaitingConfirmation
-   * - Giữ nguyên các bất biến tài chính và snapshot giá
-   */
-  async addItemsByCustomer(
-    dto: CustomerAddItemsDto,
-    orderIdParam?: string,
-  ): Promise<Order> {
-    // 1. Xác thực bộ ba bảo mật QR
-    const { restaurant, table } = await this.validateQrSession(
-      dto.restaurantSlug,
-      dto.tableCode,
-      dto.qrToken,
-    );
-
-    if (!dto.items || dto.items.length === 0) {
-      throw new BadRequestException('Danh sách món gọi thêm phải chứa ít nhất 1 món');
-    }
-
-    // 2. Xác định đơn hàng mục tiêu
-    const targetOrderId = orderIdParam || dto.orderId;
-    let order: any;
-
-    if (targetOrderId) {
-      if (!Types.ObjectId.isValid(targetOrderId)) {
-        throw new BadRequestException('Mã đơn hàng không hợp lệ');
-      }
-      order = await this.orderModel.findOne({
-        _id: new Types.ObjectId(targetOrderId),
-        restaurantId: restaurant._id,
-        tableId: table._id,
-      });
-      if (!order) {
-        throw new NotFoundException('Không tìm thấy đơn hàng');
-      }
-    } else {
-      // Tự động tìm đơn hàng đang hoạt động của bàn
-      order = await this.orderModel.findOne({
+    const executeBusinessLogic = async (): Promise<Order> => {
+      // 2. Kiểm tra bàn đã có đơn hàng hoạt động chưa (bảo vệ Partial Unique Index)
+      const activeOrder = await this.orderModel.findOne({
         tableId: table._id,
         restaurantId: restaurant._id,
         status: {
@@ -408,80 +424,329 @@ export class OrdersService {
         },
       });
 
-      if (!order) {
-        throw new NotFoundException(
-          `Bàn "${table.name}" hiện không có đơn hàng hoạt động nào để gọi thêm món`,
+      if (activeOrder) {
+        throw new ConflictException(
+          `Bàn "${table.name}" hiện đang có đơn hàng hoạt động (${activeOrder.orderCode}). Vui lòng chọn tính năng gọi thêm món.`,
         );
       }
-    }
 
-    // 3. Chặn thêm món vào đơn đã kết thúc (Terminal States)
-    if (order.isPaid || order.status === 'Paid' || order.status === 'Cancelled') {
-      throw new BadRequestException('Không thể thêm món vào đơn hàng đã thanh toán hoặc đã hủy');
-    }
+      // 3. Xác định branchId: bắt buộc string
+      let resolvedBranchId = table.branchId;
+      if (!resolvedBranchId) {
+        const mainBranch = restaurant.branches?.find((b: any) => b.isMainBranch && !b.isDeleted);
+        resolvedBranchId = (mainBranch as any)?._id
+          ? (mainBranch as any)._id.toString()
+          : (restaurant.branches?.[0] as any)?._id?.toString() || 'default';
+      }
 
-    // 4. Xác định roundNumber tiếp theo
-    const nextRoundNumber =
-      order.rounds && order.rounds.length > 0
-        ? Math.max(...order.rounds.map((r: any) => r.roundNumber)) + 1
-        : 2;
+      // 4. Snapshot giá và danh sách món từ DB thực đơn
+      // TẤT CẢ OrderItems tạo qua QR Customer khởi tạo ở trạng thái WaitingConfirmation
+      const processedItems = await this.processOrderItems(
+        dto.items,
+        restaurant._id.toString(),
+        resolvedBranchId,
+        1,
+        'WaitingConfirmation',
+      );
 
-    // 5. Snapshot giá DB cho các món gọi thêm, khởi tạo trạng thái WaitingConfirmation
-    const processedItems = await this.processOrderItems(
-      dto.items,
-      restaurant._id.toString(),
-      order.branchId,
-      nextRoundNumber,
-      'WaitingConfirmation',
-    );
+      const subTotal = processedItems.reduce((sum, it) => sum + it.itemTotal, 0);
+      const totalAmount = subTotal;
 
-    const roundSubTotal = processedItems.reduce((sum, it) => sum + it.itemTotal, 0);
+      // 5. Tự động sinh mã đơn hàng chuẩn quy cách ORD-YYMMDD-XXXX
+      const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+      const orderCode = `ORD-${dateStr}-${randomSuffix}`;
 
-    // 6. Tạo OrderRound mới ở trạng thái WaitingConfirmation (Chờ thu ngân duyệt)
-    const newRound: OrderRound = {
-      roundNumber: nextRoundNumber,
-      source: 'QR_CUSTOMER',
-      status: 'WaitingConfirmation',
-      roundSubTotal,
-      createdAt: new Date(),
+      // Khởi tạo Round 1 ở trạng thái WaitingConfirmation
+      const round1: OrderRound = {
+        roundNumber: 1,
+        source: 'QR_CUSTOMER',
+        status: 'WaitingConfirmation',
+        createdAt: new Date(),
+        roundSubTotal: subTotal,
+      };
+
+      // Khởi tạo Order ở trạng thái WaitingConfirmation
+      const order = new this.orderModel({
+        orderCode,
+        tableId: table._id,
+        tableName: table.name,
+        restaurantId: restaurant._id,
+        branchId: resolvedBranchId,
+        rounds: [round1],
+        items: processedItems,
+        subTotal,
+        discountAmount: 0,
+        serviceFee: 0,
+        vatAmount: 0,
+        totalAmount,
+        status: 'WaitingConfirmation',
+        isPaid: false,
+        orderSource: 'QR_CUSTOMER',
+        customerNote: dto.customerNote || '',
+        openedAt: new Date(),
+      });
+
+      let savedOrder: OrderDocument;
+      try {
+        savedOrder = await order.save();
+      } catch (err: any) {
+        // DEF-6.5-002: Bắt lỗi E11000 từ MongoDB partial unique index (active order per table)
+        if (err?.code === 11000) {
+          throw new ConflictException(
+            `Bàn "${table.name}" hiện đang có đơn hàng hoạt động vừa được khởi tạo bởi khách khác hoặc yêu cầu tạo đơn bị trùng lặp.`,
+          );
+        }
+        throw err;
+      }
+
+      // 6. Cập nhật trạng thái bàn sang Occupied
+      table.status = 'Occupied';
+      table.currentOrderId = savedOrder._id as any;
+      if (!table.activeSince) {
+        table.activeSince = new Date();
+      }
+      await table.save();
+
+      // 7. Phát sóng sự kiện Realtime qua WebSocket
+      this.eventEmitter.emit('order.created', {
+        order: savedOrder.toObject(),
+        restaurantId: restaurant._id.toString(),
+        branchId: savedOrder.branchId,
+        isCustomerOrder: true,
+      });
+
+      this.eventEmitter.emit('table.status_updated', {
+        table: table.toObject(),
+        restaurantId: restaurant._id.toString(),
+        branchId: table.branchId,
+      });
+
+      return savedOrder;
     };
 
-    order.rounds.push(newRound);
-    order.items.push(...processedItems);
+    return this.executeWithIdempotency(
+      restaurant._id,
+      idempotencyKey,
+      endpoint,
+      dto,
+      HttpStatus.CREATED,
+      executeBusinessLogic,
+    );
+  }
 
-    // 7. Tính lại tài chính hóa đơn
-    order.subTotal = order.items
-      .filter((it: any) => it.status !== 'Cancelled')
-      .reduce((sum: number, it: any) => sum + it.itemTotal, 0);
-
-    order.totalAmount = Math.max(
-      0,
-      order.subTotal - (order.discountAmount || 0) + (order.serviceFee || 0) + (order.vatAmount || 0),
+  /**
+   * SUB-PHASE 6.4 + 6.5: Khách hàng gọi thêm món qua mã QR công khai (Mobile-First Self-Service)
+   * Yêu cầu:
+   * - Hỗ trợ Idempotency-Key (Optional, Fingerprint SHA-256, Replay, PROCESSING 409, Mismatch 422)
+   * - Concurrency: DEF-6.5-001 OCC Atomic Conditional Update dựa trên updatedAt với tối đa 3 lần retry
+   * - Tạo OrderRound tiếp theo ở trạng thái WaitingConfirmation
+   * - Các OrderItems mới khởi tạo ở trạng thái WaitingConfirmation
+   * - Giữ nguyên các bất biến tài chính và snapshot giá
+   */
+  async addItemsByCustomer(
+    dto: CustomerAddItemsDto,
+    orderIdParam?: string,
+    idempotencyKey?: string,
+  ): Promise<Order & { isReplay?: boolean }> {
+    // 1. Xác thực bộ ba bảo mật QR
+    const { restaurant, table } = await this.validateQrSession(
+      dto.restaurantSlug,
+      dto.tableCode,
+      dto.qrToken,
     );
 
-    // 8. Đánh giá trạng thái tổng thể qua Reducer
-    const nextStatus = calculateOrderStatus(order.items, order.status);
-    if (nextStatus !== order.status) {
-      OrderStateValidator.validateOrderTransition(order.status, nextStatus);
-      order.status = nextStatus;
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('Danh sách món gọi thêm phải chứa ít nhất 1 món');
     }
 
-    if (dto.note) {
-      order.customerNote = order.customerNote ? `${order.customerNote} | ${dto.note}` : dto.note;
+    const targetOrderId = orderIdParam || dto.orderId;
+    if (targetOrderId && !Types.ObjectId.isValid(targetOrderId)) {
+      throw new BadRequestException('Mã đơn hàng không hợp lệ');
     }
 
-    const saved = await order.save();
+    const endpoint = targetOrderId
+      ? `POST /orders/customer/${targetOrderId}/items`
+      : 'POST /orders/customer/items';
 
-    // 9. Phát sự kiện WebSocket thông báo có đợt gọi món mới chờ duyệt
-    this.eventEmitter.emit('order.round_added', {
-      order: saved.toObject(),
-      restaurantId: restaurant._id.toString(),
-      branchId: saved.branchId,
-      roundNumber: nextRoundNumber,
-      isCustomer: true,
-    });
+    const executeBusinessLogic = async (): Promise<Order> => {
+      // DEF-6.5-001: OCC ATOMIC CONDITIONAL UPDATE VỚI RETRY
+      const MAX_OCC_RETRIES = 3;
 
-    return saved;
+      for (let attempt = 1; attempt <= MAX_OCC_RETRIES; attempt++) {
+        // A. Tìm đơn hàng mục tiêu từ snapshot DB mới nhất
+        let order: any;
+        if (targetOrderId) {
+          order = await this.orderModel.findOne({
+            _id: new Types.ObjectId(targetOrderId),
+            restaurantId: restaurant._id,
+            tableId: table._id,
+          });
+          if (!order) {
+            throw new NotFoundException('Không tìm thấy đơn hàng');
+          }
+        } else {
+          // Tự động tìm đơn hàng đang hoạt động của bàn
+          order = await this.orderModel.findOne({
+            tableId: table._id,
+            restaurantId: restaurant._id,
+            status: {
+              $in: [
+                'WaitingConfirmation',
+                'Confirmed',
+                'Preparing',
+                'Ready',
+                'Served',
+                'PaymentRequested',
+              ],
+            },
+          });
+
+          if (!order) {
+            throw new NotFoundException(
+              `Bàn "${table.name}" hiện không có đơn hàng hoạt động nào để gọi thêm món`,
+            );
+          }
+        }
+
+        // B. Chặn thêm món vào đơn đã kết thúc (Terminal States)
+        if (order.isPaid || order.status === 'Paid' || order.status === 'Cancelled') {
+          throw new BadRequestException('Không thể thêm món vào đơn hàng đã thanh toán hoặc đã hủy');
+        }
+
+        // Ghi nhận updatedAt hiện tại để làm điều kiện OCC
+        const currentUpdatedAt = order.updatedAt;
+
+        // C. Xác định roundNumber tiếp theo từ snapshot mới nhất
+        const nextRoundNumber =
+          order.rounds && order.rounds.length > 0
+            ? Math.max(...order.rounds.map((r: any) => r.roundNumber)) + 1
+            : 2;
+
+        // D. Snapshot giá DB cho các món gọi thêm, khởi tạo trạng thái WaitingConfirmation
+        const processedItems = await this.processOrderItems(
+          dto.items,
+          restaurant._id.toString(),
+          order.branchId,
+          nextRoundNumber,
+          'WaitingConfirmation',
+        );
+
+        const roundSubTotal = processedItems.reduce((sum, it) => sum + it.itemTotal, 0);
+
+        // E. Tạo OrderRound mới ở trạng thái WaitingConfirmation
+        const newRound: OrderRound = {
+          roundNumber: nextRoundNumber,
+          source: 'QR_CUSTOMER',
+          status: 'WaitingConfirmation',
+          roundSubTotal,
+          createdAt: new Date(),
+        };
+
+        // F. Tính lại toàn bộ tài chính hóa đơn dựa trên danh sách món mới nhất + món vừa thêm
+        const simulatedActiveItems = [
+          ...(order.items || []).filter((it: any) => it.status !== 'Cancelled'),
+          ...processedItems,
+        ];
+        const derivedSubTotal = simulatedActiveItems.reduce(
+          (sum: number, it: any) => sum + it.itemTotal,
+          0,
+        );
+        const derivedTotal = Math.max(
+          0,
+          derivedSubTotal -
+            (order.discountAmount || 0) +
+            (order.serviceFee || 0) +
+            (order.vatAmount || 0),
+        );
+
+        // G. Đánh giá trạng thái tổng thể qua Reducer
+        const nextStatus = calculateOrderStatus(
+          [...(order.items || []), ...processedItems],
+          order.status,
+        );
+        if (nextStatus !== order.status) {
+          OrderStateValidator.validateOrderTransition(order.status, nextStatus);
+        }
+
+        let updatedNote = order.customerNote || '';
+        if (dto.note) {
+          updatedNote = updatedNote ? `${updatedNote} | ${dto.note}` : dto.note;
+        }
+
+        // H. THỰC HIỆN ATOMIC CONDITIONAL UPDATE QUA findOneAndUpdate
+        const occFilter: any = {
+          _id: order._id,
+          restaurantId: restaurant._id,
+          tableId: table._id,
+          status: {
+            $in: [
+              'WaitingConfirmation',
+              'Confirmed',
+              'Preparing',
+              'Ready',
+              'Served',
+              'PaymentRequested',
+            ],
+          },
+          updatedAt: currentUpdatedAt,
+        };
+
+        const updatedOrder = await this.orderModel.findOneAndUpdate(
+          occFilter,
+          {
+            $push: {
+              rounds: newRound,
+              items: { $each: processedItems },
+            },
+            $set: {
+              subTotal: derivedSubTotal,
+              totalAmount: derivedTotal,
+              status: nextStatus,
+              customerNote: updatedNote,
+            },
+          },
+          { new: true },
+        );
+
+        if (updatedOrder) {
+          // THÀNH CÔNG! Phát sự kiện WebSocket
+          this.eventEmitter.emit('order.round_added', {
+            order: updatedOrder.toObject(),
+            restaurantId: restaurant._id.toString(),
+            branchId: updatedOrder.branchId,
+            roundNumber: nextRoundNumber,
+            isCustomer: true,
+          });
+
+          return updatedOrder;
+        }
+
+        // NẾU update trả về null: Đã xảy ra OCC Conflict (document bị sửa bởi concurrent request)
+        this.logger.warn(
+          `[OCC CONFLICT] addItemsByCustomer attempt ${attempt}/${MAX_OCC_RETRIES} conflicted on order ${order._id}. Đọc lại snapshot mới nhất để retry...`,
+        );
+
+        if (attempt < MAX_OCC_RETRIES) {
+          // Jitter delay ngắn trước khi retry để giảm xung đột lặp lại
+          await new Promise((resolve) => setTimeout(resolve, 20 + Math.random() * 30));
+        }
+      }
+
+      // Đã vượt quá số lần retry tối đa mà vẫn xung đột
+      throw new ConflictException(
+        'Đã xảy ra xung đột khi gửi thêm món do bàn có nhiều thao tác đồng thời. Vui lòng thử lại.',
+      );
+    };
+
+    return this.executeWithIdempotency(
+      restaurant._id,
+      idempotencyKey,
+      endpoint,
+      dto,
+      HttpStatus.OK,
+      executeBusinessLogic,
+    );
   }
 
   /**
