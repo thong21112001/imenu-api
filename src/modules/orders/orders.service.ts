@@ -1455,9 +1455,14 @@ export class OrdersService {
     roundNumber = 1,
     defaultStatus: OrderItemStatus = 'Waiting',
   ): Promise<any[]> {
-    const itemIds = rawItems.map((it) => new Types.ObjectId(it.menuItemId));
+    const validItemIds: Types.ObjectId[] = [];
+    for (const it of rawItems) {
+      if (it.menuItemId && Types.ObjectId.isValid(it.menuItemId)) {
+        validItemIds.push(new Types.ObjectId(it.menuItemId));
+      }
+    }
     const menuItems = await this.menuItemModel.find({
-      _id: { $in: itemIds },
+      _id: { $in: validItemIds },
       restaurantId: new Types.ObjectId(restaurantId),
       isDeleted: { $ne: true },
     });
