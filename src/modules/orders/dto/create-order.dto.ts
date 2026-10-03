@@ -3,8 +3,10 @@ import {
   IsNotEmpty,
   IsString,
   IsArray,
+  ArrayNotEmpty,
   ValidateNested,
   IsNumber,
+  IsInt,
   Min,
   IsOptional,
   IsEnum,
@@ -32,8 +34,9 @@ export class SelectedOptionDto {
   @IsString()
   valueName: string;
 
-  @ApiProperty({ description: 'Phụ thu thêm' })
+  @ApiProperty({ description: 'Phụ thu thêm', minimum: 0, default: 0 })
   @IsNumber()
+  @Min(0, { message: 'Phụ thu tùy chọn (priceDelta) không được âm' })
   priceDelta: number;
 }
 
@@ -44,7 +47,7 @@ export class CreateOrderItemDto {
   menuItemId: string;
 
   @ApiProperty({ description: 'Số lượng món', default: 1 })
-  @IsNumber()
+  @IsInt({ message: 'Số lượng món phải là số nguyên' })
   @Min(1, { message: 'Số lượng tối thiểu là 1' })
   quantity: number;
 
@@ -84,6 +87,7 @@ export class CreateOrderDto {
 
   @ApiProperty({ description: 'Danh sách các món ăn trong đơn', type: [CreateOrderItemDto] })
   @IsArray()
+  @ArrayNotEmpty({ message: 'Danh sách món ăn không được để trống' })
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
@@ -92,6 +96,7 @@ export class CreateOrderDto {
 export class AddItemsToOrderDto {
   @ApiProperty({ description: 'Danh sách món ăn gọi thêm', type: [CreateOrderItemDto] })
   @IsArray()
+  @ArrayNotEmpty({ message: 'Danh sách món gọi thêm không được để trống' })
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];

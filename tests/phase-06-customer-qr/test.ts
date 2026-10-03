@@ -291,6 +291,17 @@ async function main() {
         price: 65000,
         isAvailable: true,
         isDeleted: false,
+        options: [
+          {
+            id: 'opt-meat',
+            name: 'Thịt thêm',
+            required: false,
+            multiple: true,
+            values: [
+              { id: 'extra-beef', name: 'Bò tái thêm', priceDelta: 15000 },
+            ],
+          },
+        ],
       },
       {
         _id: menuItem2Id,
@@ -787,9 +798,9 @@ async function main() {
       }),
     });
 
-    if (resOperateAnotherTable.status === 400) {
+    if (resOperateAnotherTable.status === 404) {
       pass(
-        'TC-26: Chặn thao tác thêm món vào đơn của bàn khác (Security: Another Table -> HTTP 400 Bad Request)',
+        'TC-26: Chặn thao tác thêm món vào đơn của bàn khác (F-02: Unified HTTP 404 Not Found chống Oracle lộ danh tính)',
         resOperateAnotherTable.data?.message,
       );
       passed++;
@@ -1042,6 +1053,225 @@ async function main() {
       }
     } else {
       fail('TC-35: POS tạo đơn trực tiếp tại quầy', resPosCreate.data);
+      failed++;
+    }
+
+    // ========================================================================
+    // SECTION 9: HARDENING TESTS FOR 4 OPEN AUDIT FINDINGS (F-01, F-02, F-03, F-04)
+    // ========================================================================
+    console.log(`\n${colors.bold}--- PHẦN 9: KIỂM THỬ HARDENING 4 OPEN FINDINGS (F-01, F-02, F-03, F-04) ---${colors.reset}`);
+
+    // H-01.1 (F-01): Chặn client gửi priceDelta âm
+    const resNegativePriceDelta = await request('/orders/customer', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug: restASlug,
+        tableCode: 'ban-02',
+        qrToken: qrTokenT2,
+        items: [
+          {
+            menuItemId: menuItem1Id.toString(),
+            quantity: 1,
+            selectedOptions: [
+              {
+                groupId: 'opt-meat',
+                groupName: 'Thịt thêm',
+                valueId: 'extra-beef',
+                valueName: 'Bò tái thêm',
+                priceDelta: -15000,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    if (resNegativePriceDelta.status === 400) {
+      pass('TC-H01.1: Chặn client gửi priceDelta âm (F-01 Price Integrity -> HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-H01.1: Chặn client gửi priceDelta âm', `Status: ${resNegativePriceDelta.status}`);
+      failed++;
+    }
+
+    // H-01.2 (F-01): Chặn client gửi priceDelta sai lệch so với DB (VD gửi 0đ cho topping 15,000đ)
+    const resTamperedPriceDelta = await request('/orders/customer', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug: restASlug,
+        tableCode: 'ban-02',
+        qrToken: qrTokenT2,
+        items: [
+          {
+            menuItemId: menuItem1Id.toString(),
+            quantity: 1,
+            selectedOptions: [
+              {
+                groupId: 'opt-meat',
+                groupName: 'Thịt thêm',
+                valueId: 'extra-beef',
+                valueName: 'Bò tái thêm',
+                priceDelta: 0,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    if (resTamperedPriceDelta.status === 400) {
+      pass('TC-H01.2: Chặn client gửi priceDelta sai lệch so với DB (F-01 Price Integrity -> HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-H01.2: Chặn client gửi priceDelta sai lệch so với DB', `Status: ${resTamperedPriceDelta.status}`);
+      failed++;
+    }
+
+    // H-01.3 (F-01): Chặn client gửi nhóm tùy chọn không tồn tại (Fake option group)
+    const resFakeGroup = await request('/orders/customer', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug: restASlug,
+        tableCode: 'ban-02',
+        qrToken: qrTokenT2,
+        items: [
+          {
+            menuItemId: menuItem1Id.toString(),
+            quantity: 1,
+            selectedOptions: [
+              {
+                groupId: 'fake-group',
+                groupName: 'Nhóm giả',
+                valueId: 'extra-beef',
+                valueName: 'Bò tái thêm',
+                priceDelta: 15000,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    if (resFakeGroup.status === 400) {
+      pass('TC-H01.3: Chặn client gửi nhóm tùy chọn không tồn tại trong DB (F-01 Price Integrity -> HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-H01.3: Chặn client gửi nhóm tùy chọn không tồn tại', `Status: ${resFakeGroup.status}`);
+      failed++;
+    }
+
+    // H-01.4 (F-01): Chặn client gửi giá trị tùy chọn không tồn tại (Fake option value)
+    const resFakeValue = await request('/orders/customer', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug: restASlug,
+        tableCode: 'ban-02',
+        qrToken: qrTokenT2,
+        items: [
+          {
+            menuItemId: menuItem1Id.toString(),
+            quantity: 1,
+            selectedOptions: [
+              {
+                groupId: 'opt-meat',
+                groupName: 'Thịt thêm',
+                valueId: 'fake-value',
+                valueName: 'Giá trị giả',
+                priceDelta: 15000,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    if (resFakeValue.status === 400) {
+      pass('TC-H01.4: Chặn client gửi giá trị tùy chọn không tồn tại trong DB (F-01 Price Integrity -> HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-H01.4: Chặn client gửi giá trị tùy chọn không tồn tại', `Status: ${resFakeValue.status}`);
+      failed++;
+    }
+
+    // H-01.5 (F-01): Chặn client gửi tùy chọn cho món không có tùy chọn nào (menuItem2 Trà đào)
+    const resOptionOnNoOptionItem = await request('/orders/customer', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug: restASlug,
+        tableCode: 'ban-02',
+        qrToken: qrTokenT2,
+        items: [
+          {
+            menuItemId: menuItem2Id.toString(),
+            quantity: 1,
+            selectedOptions: [
+              {
+                groupId: 'opt-meat',
+                groupName: 'Thịt thêm',
+                valueId: 'extra-beef',
+                valueName: 'Bò tái thêm',
+                priceDelta: 15000,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    if (resOptionOnNoOptionItem.status === 400) {
+      pass('TC-H01.5: Chặn client gửi tùy chọn cho món không có tùy chọn (F-01 Price Integrity -> HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-H01.5: Chặn client gửi tùy chọn cho món không có tùy chọn', `Status: ${resOptionOnNoOptionItem.status}`);
+      failed++;
+    }
+
+    // H-03 (F-03): Chặn số lượng món là số thực / số thập phân (quantity: 1.5)
+    const resFractionalQty = await request('/orders/customer', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug: restASlug,
+        tableCode: 'ban-02',
+        qrToken: qrTokenT2,
+        items: [{ menuItemId: menuItem1Id.toString(), quantity: 1.5 }],
+      }),
+    });
+    if (resFractionalQty.status === 400) {
+      pass('TC-H03: Chặn số lượng món là số thập phân (F-03 Quantity Validation -> HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-H03: Chặn số lượng món là số thập phân', `Status: ${resFractionalQty.status}`);
+      failed++;
+    }
+
+    // H-04.1 (F-04): Chặn mảng items rỗng ở DTO tạo đơn (CustomerCreateOrderDto items: [])
+    const resEmptyItemsCreate = await request('/orders/customer', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug: restASlug,
+        tableCode: 'ban-02',
+        qrToken: qrTokenT2,
+        items: [],
+      }),
+    });
+    if (resEmptyItemsCreate.status === 400) {
+      pass('TC-H04.1: Chặn mảng items rỗng tại DTO tạo đơn (F-04 ArrayNotEmpty -> HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-H04.1: Chặn mảng items rỗng tại DTO tạo đơn', `Status: ${resEmptyItemsCreate.status}`);
+      failed++;
+    }
+
+    // H-04.2 (F-04): Chặn mảng items rỗng ở DTO gọi thêm món (CustomerAddItemsDto items: [])
+    const resEmptyItemsAdd = await request('/orders/customer/items', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug: restASlug,
+        tableCode: 'ban-02',
+        qrToken: qrTokenT2,
+        items: [],
+      }),
+    });
+    if (resEmptyItemsAdd.status === 400) {
+      pass('TC-H04.2: Chặn mảng items rỗng tại DTO gọi thêm món (F-04 ArrayNotEmpty -> HTTP 400 Bad Request)');
+      passed++;
+    } else {
+      fail('TC-H04.2: Chặn mảng items rỗng tại DTO gọi thêm món', `Status: ${resEmptyItemsAdd.status}`);
       failed++;
     }
 

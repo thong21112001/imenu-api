@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsString,
   IsArray,
+  ArrayNotEmpty,
   ValidateNested,
   IsOptional,
 } from 'class-validator';
@@ -32,6 +33,7 @@ export class CustomerCreateOrderDto {
 
   @ApiProperty({ description: 'Danh sách các món ăn trong đơn', type: [CreateOrderItemDto] })
   @IsArray({ message: 'items phải là một mảng' })
+  @ArrayNotEmpty({ message: 'Danh sách món ăn không được để trống' })
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
@@ -65,6 +67,7 @@ export class CustomerAddItemsDto {
 
   @ApiProperty({ description: 'Danh sách món ăn gọi thêm', type: [CreateOrderItemDto] })
   @IsArray({ message: 'items phải là một mảng' })
+  @ArrayNotEmpty({ message: 'Danh sách món gọi thêm không được để trống' })
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];

@@ -386,13 +386,10 @@ export class OrdersService {
       order = await this.orderModel.findOne({
         _id: new Types.ObjectId(targetOrderId),
         restaurantId: restaurant._id,
+        tableId: table._id,
       });
       if (!order) {
         throw new NotFoundException('Không tìm thấy đơn hàng');
-      }
-      // Bảo đảm đơn hàng thuộc đúng bàn của QR session
-      if (order.tableId.toString() !== table._id.toString()) {
-        throw new BadRequestException('Đơn hàng không thuộc bàn ăn này');
       }
     } else {
       // Tự động tìm đơn hàng đang hoạt động của bàn
@@ -1487,18 +1484,53 @@ export class OrdersService {
         }
       }
 
-      // Tính phụ thu của các Selected Options / Toppings
+      // Tính phụ thu của các Selected Options / Toppings từ authoritative menuItem.options
       let toppingsDelta = 0;
       const selectedOptions: any[] = [];
       if (raw.selectedOptions && raw.selectedOptions.length > 0) {
+        const availableOptions = menuItem.options || [];
+
         for (const opt of raw.selectedOptions) {
-          toppingsDelta += opt.priceDelta || 0;
+          // 1. Kiểm tra món ăn có hỗ trợ tùy chọn không
+          if (availableOptions.length === 0) {
+            throw new BadRequestException(
+              `Món ăn "${menuItem.name}" không hỗ trợ tùy chọn hoặc topping`,
+            );
+          }
+
+          // 2. Tìm nhóm tùy chọn trong DB
+          const group = availableOptions.find((g) => g.id === opt.groupId);
+          if (!group) {
+            throw new BadRequestException(
+              `Nhóm tùy chọn "${opt.groupId}" không tồn tại cho món "${menuItem.name}"`,
+            );
+          }
+
+          // 3. Tìm giá trị tùy chọn trong nhóm
+          const val = group.values?.find((v) => v.id === opt.valueId);
+          if (!val) {
+            throw new BadRequestException(
+              `Tùy chọn "${opt.valueId}" không tồn tại trong nhóm "${group.name}"`,
+            );
+          }
+
+          // 4. Xác định giá phụ thu chuẩn từ authoritative DB data (chống client tự ý sửa giá)
+          const authoritativeDelta = Math.max(0, Number(val.priceDelta) || 0);
+
+          // Kiểm tra nếu client gửi priceDelta khác với DB
+          if (opt.priceDelta !== undefined && Number(opt.priceDelta) !== authoritativeDelta) {
+            throw new BadRequestException(
+              `Giá phụ thu tùy chọn "${val.name}" không hợp lệ (hệ thống: ${authoritativeDelta} đ, gửi lên: ${opt.priceDelta} đ)`,
+            );
+          }
+
+          toppingsDelta += authoritativeDelta;
           selectedOptions.push({
-            groupId: opt.groupId,
-            groupName: opt.groupName,
-            valueId: opt.valueId,
-            valueName: opt.valueName,
-            priceDelta: opt.priceDelta || 0,
+            groupId: group.id,
+            groupName: group.name,
+            valueId: val.id,
+            valueName: val.name,
+            priceDelta: authoritativeDelta,
           });
         }
       }
