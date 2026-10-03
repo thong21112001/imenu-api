@@ -19,6 +19,11 @@ import { OrderStateValidator } from './domain/order-state.validator';
 import { calculateOrderStatus } from './domain/order-status.reducer';
 import { OrderFinancialCalculator } from './domain/order-financial.calculator';
 import { CreateOrderDto, AddItemsToOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
+import {
+  CustomerCreateOrderDto,
+  CustomerAddItemsDto,
+  CustomerGetActiveOrderDto,
+} from './dto/customer-order.dto';
 import { UpdateItemStatusDto } from './dto/update-item-status.dto';
 import {
   UpdateOrderStatusDto,
@@ -160,6 +165,354 @@ export class OrdersService {
     });
 
     return savedOrder;
+  }
+
+  /**
+   * SUB-PHASE 6.4: Xác thực danh tính phiên quét mã QR của bàn:
+   * 1. restaurantSlug -> Tìm nhà hàng hợp lệ
+   * 2. tableCode -> Tìm bàn ăn thuộc nhà hàng đó (Bảo đảm Tenant Isolation & chặn Cross-restaurant)
+   * 3. qrToken -> Khớp mã bí mật của bàn
+   * 4. qrStatus -> Bắt buộc phải là ACTIVE
+   */
+  async validateQrSession(
+    restaurantSlug: string,
+    tableCode: string,
+    qrToken: string,
+  ): Promise<{ restaurant: RestaurantDocument; table: TableDocument }> {
+    if (!restaurantSlug || typeof restaurantSlug !== 'string' || !restaurantSlug.trim()) {
+      throw new BadRequestException('restaurantSlug không được để trống');
+    }
+    if (!tableCode || typeof tableCode !== 'string' || !tableCode.trim()) {
+      throw new BadRequestException('tableCode không được để trống');
+    }
+    if (!qrToken || typeof qrToken !== 'string' || !qrToken.trim()) {
+      throw new BadRequestException('qrToken không được để trống');
+    }
+
+    // 1. Tìm nhà hàng theo slug
+    const normalizedSlug = restaurantSlug.toLowerCase().trim();
+    const restaurant = await this.restaurantModel.findOne({ slug: normalizedSlug });
+    if (!restaurant) {
+      throw new NotFoundException(`Không tìm thấy nhà hàng với mã: ${restaurantSlug}`);
+    }
+
+    // 2. Tìm bàn ăn theo mã bàn thuộc nhà hàng (Cưỡng chế Restaurant Isolation)
+    const normalizedCode = tableCode.trim();
+    const table = await this.tableModel.findOne({
+      code: normalizedCode,
+      restaurantId: restaurant._id,
+      isDeleted: { $ne: true },
+    });
+    if (!table) {
+      throw new NotFoundException(
+        `Không tìm thấy bàn ăn "${tableCode}" thuộc nhà hàng "${restaurant.name}"`,
+      );
+    }
+
+    // 3. Khớp mã bí mật qrToken
+    if (!table.qrToken || table.qrToken.trim() !== qrToken.trim()) {
+      throw new BadRequestException('Mã xác thực QR bàn không hợp lệ (Invalid QR Token)');
+    }
+
+    // 4. Bắt buộc trạng thái mã QR phải là ACTIVE
+    if (!table.qrStatus || table.qrStatus.toLowerCase() !== 'active') {
+      throw new BadRequestException(
+        `Mã QR của bàn "${table.name}" hiện không hoạt động hoặc đã bị vô hiệu hóa (${table.qrStatus || 'inactive'})`,
+      );
+    }
+
+    return { restaurant, table };
+  }
+
+  /**
+   * SUB-PHASE 6.4: Khách hàng tạo đơn qua mã QR công khai (Mobile-First Self-Service)
+   * Yêu cầu:
+   * - Không cần JWT token nhân viên
+   * - Xác thực bộ ba (restaurantSlug, tableCode, qrToken)
+   * - qrStatus phải là ACTIVE
+   * - Round 1 khởi tạo ở trạng thái WaitingConfirmation
+   * - Toàn bộ OrderItems khởi tạo ở trạng thái WaitingConfirmation
+   * - Order khởi tạo ở trạng thái WaitingConfirmation
+   * - Bàn chuyển sang Occupied và gắn currentOrderId
+   */
+  async createCustomerOrder(dto: CustomerCreateOrderDto): Promise<Order> {
+    // 1. Xác thực bộ ba bảo mật QR
+    const { restaurant, table } = await this.validateQrSession(
+      dto.restaurantSlug,
+      dto.tableCode,
+      dto.qrToken,
+    );
+
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('Đơn hàng phải chứa ít nhất 1 món ăn');
+    }
+
+    // 2. Kiểm tra bàn đã có đơn hàng hoạt động chưa (bảo vệ Partial Unique Index)
+    const activeOrder = await this.orderModel.findOne({
+      tableId: table._id,
+      restaurantId: restaurant._id,
+      status: {
+        $in: [
+          'WaitingConfirmation',
+          'Confirmed',
+          'Preparing',
+          'Ready',
+          'Served',
+          'PaymentRequested',
+        ],
+      },
+    });
+
+    if (activeOrder) {
+      throw new ConflictException(
+        `Bàn "${table.name}" hiện đang có đơn hàng hoạt động (${activeOrder.orderCode}). Vui lòng chọn tính năng gọi thêm món.`,
+      );
+    }
+
+    // 3. Xác định branchId: bắt buộc string
+    let resolvedBranchId = table.branchId;
+    if (!resolvedBranchId) {
+      const mainBranch = restaurant.branches?.find((b: any) => b.isMainBranch && !b.isDeleted);
+      resolvedBranchId = (mainBranch as any)?._id
+        ? (mainBranch as any)._id.toString()
+        : (restaurant.branches?.[0] as any)?._id?.toString() || 'default';
+    }
+
+    // 4. Snapshot giá và danh sách món từ DB thực đơn
+    // TẤT CẢ OrderItems tạo qua QR Customer khởi tạo ở trạng thái WaitingConfirmation
+    const processedItems = await this.processOrderItems(
+      dto.items,
+      restaurant._id.toString(),
+      resolvedBranchId,
+      1,
+      'WaitingConfirmation',
+    );
+
+    const subTotal = processedItems.reduce((sum, it) => sum + it.itemTotal, 0);
+    const totalAmount = subTotal;
+
+    // 5. Tự động sinh mã đơn hàng chuẩn quy cách ORD-YYMMDD-XXXX
+    const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderCode = `ORD-${dateStr}-${randomSuffix}`;
+
+    // Khởi tạo Round 1 ở trạng thái WaitingConfirmation
+    const round1: OrderRound = {
+      roundNumber: 1,
+      source: 'QR_CUSTOMER',
+      status: 'WaitingConfirmation',
+      createdAt: new Date(),
+      roundSubTotal: subTotal,
+    };
+
+    // Khởi tạo Order ở trạng thái WaitingConfirmation
+    const order = new this.orderModel({
+      orderCode,
+      tableId: table._id,
+      tableName: table.name,
+      restaurantId: restaurant._id,
+      branchId: resolvedBranchId,
+      rounds: [round1],
+      items: processedItems,
+      subTotal,
+      discountAmount: 0,
+      serviceFee: 0,
+      vatAmount: 0,
+      totalAmount,
+      status: 'WaitingConfirmation',
+      isPaid: false,
+      orderSource: 'QR_CUSTOMER',
+      customerNote: dto.customerNote || '',
+      openedAt: new Date(),
+    });
+
+    const savedOrder = await order.save();
+
+    // 6. Cập nhật trạng thái bàn sang Occupied
+    table.status = 'Occupied';
+    table.currentOrderId = savedOrder._id as any;
+    if (!table.activeSince) {
+      table.activeSince = new Date();
+    }
+    await table.save();
+
+    // 7. Phát sóng sự kiện Realtime qua WebSocket
+    this.eventEmitter.emit('order.created', {
+      order: savedOrder.toObject(),
+      restaurantId: restaurant._id.toString(),
+      branchId: savedOrder.branchId,
+      isCustomerOrder: true,
+    });
+
+    this.eventEmitter.emit('table.status_updated', {
+      table: table.toObject(),
+      restaurantId: restaurant._id.toString(),
+      branchId: table.branchId,
+    });
+
+    return savedOrder;
+  }
+
+  /**
+   * SUB-PHASE 6.4: Khách hàng gọi thêm món qua mã QR công khai (Mobile-First Self-Service)
+   * Yêu cầu:
+   * - Tạo OrderRound tiếp theo ở trạng thái WaitingConfirmation
+   * - Các OrderItems mới khởi tạo ở trạng thái WaitingConfirmation
+   * - Giữ nguyên các bất biến tài chính và snapshot giá
+   */
+  async addItemsByCustomer(
+    dto: CustomerAddItemsDto,
+    orderIdParam?: string,
+  ): Promise<Order> {
+    // 1. Xác thực bộ ba bảo mật QR
+    const { restaurant, table } = await this.validateQrSession(
+      dto.restaurantSlug,
+      dto.tableCode,
+      dto.qrToken,
+    );
+
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('Danh sách món gọi thêm phải chứa ít nhất 1 món');
+    }
+
+    // 2. Xác định đơn hàng mục tiêu
+    const targetOrderId = orderIdParam || dto.orderId;
+    let order: any;
+
+    if (targetOrderId) {
+      if (!Types.ObjectId.isValid(targetOrderId)) {
+        throw new BadRequestException('Mã đơn hàng không hợp lệ');
+      }
+      order = await this.orderModel.findOne({
+        _id: new Types.ObjectId(targetOrderId),
+        restaurantId: restaurant._id,
+      });
+      if (!order) {
+        throw new NotFoundException('Không tìm thấy đơn hàng');
+      }
+      // Bảo đảm đơn hàng thuộc đúng bàn của QR session
+      if (order.tableId.toString() !== table._id.toString()) {
+        throw new BadRequestException('Đơn hàng không thuộc bàn ăn này');
+      }
+    } else {
+      // Tự động tìm đơn hàng đang hoạt động của bàn
+      order = await this.orderModel.findOne({
+        tableId: table._id,
+        restaurantId: restaurant._id,
+        status: {
+          $in: [
+            'WaitingConfirmation',
+            'Confirmed',
+            'Preparing',
+            'Ready',
+            'Served',
+            'PaymentRequested',
+          ],
+        },
+      });
+
+      if (!order) {
+        throw new NotFoundException(
+          `Bàn "${table.name}" hiện không có đơn hàng hoạt động nào để gọi thêm món`,
+        );
+      }
+    }
+
+    // 3. Chặn thêm món vào đơn đã kết thúc (Terminal States)
+    if (order.isPaid || order.status === 'Paid' || order.status === 'Cancelled') {
+      throw new BadRequestException('Không thể thêm món vào đơn hàng đã thanh toán hoặc đã hủy');
+    }
+
+    // 4. Xác định roundNumber tiếp theo
+    const nextRoundNumber =
+      order.rounds && order.rounds.length > 0
+        ? Math.max(...order.rounds.map((r: any) => r.roundNumber)) + 1
+        : 2;
+
+    // 5. Snapshot giá DB cho các món gọi thêm, khởi tạo trạng thái WaitingConfirmation
+    const processedItems = await this.processOrderItems(
+      dto.items,
+      restaurant._id.toString(),
+      order.branchId,
+      nextRoundNumber,
+      'WaitingConfirmation',
+    );
+
+    const roundSubTotal = processedItems.reduce((sum, it) => sum + it.itemTotal, 0);
+
+    // 6. Tạo OrderRound mới ở trạng thái WaitingConfirmation (Chờ thu ngân duyệt)
+    const newRound: OrderRound = {
+      roundNumber: nextRoundNumber,
+      source: 'QR_CUSTOMER',
+      status: 'WaitingConfirmation',
+      roundSubTotal,
+      createdAt: new Date(),
+    };
+
+    order.rounds.push(newRound);
+    order.items.push(...processedItems);
+
+    // 7. Tính lại tài chính hóa đơn
+    order.subTotal = order.items
+      .filter((it: any) => it.status !== 'Cancelled')
+      .reduce((sum: number, it: any) => sum + it.itemTotal, 0);
+
+    order.totalAmount = Math.max(
+      0,
+      order.subTotal - (order.discountAmount || 0) + (order.serviceFee || 0) + (order.vatAmount || 0),
+    );
+
+    // 8. Đánh giá trạng thái tổng thể qua Reducer
+    const nextStatus = calculateOrderStatus(order.items, order.status);
+    if (nextStatus !== order.status) {
+      OrderStateValidator.validateOrderTransition(order.status, nextStatus);
+      order.status = nextStatus;
+    }
+
+    if (dto.note) {
+      order.customerNote = order.customerNote ? `${order.customerNote} | ${dto.note}` : dto.note;
+    }
+
+    const saved = await order.save();
+
+    // 9. Phát sự kiện WebSocket thông báo có đợt gọi món mới chờ duyệt
+    this.eventEmitter.emit('order.round_added', {
+      order: saved.toObject(),
+      restaurantId: restaurant._id.toString(),
+      branchId: saved.branchId,
+      roundNumber: nextRoundNumber,
+      isCustomer: true,
+    });
+
+    return saved;
+  }
+
+  /**
+   * SUB-PHASE 6.4: Khách hàng xem đơn hàng đang hoạt động của bàn qua mã QR công khai
+   */
+  async getActiveOrderByQr(dto: CustomerGetActiveOrderDto): Promise<Order | null> {
+    const { restaurant, table } = await this.validateQrSession(
+      dto.restaurantSlug,
+      dto.tableCode,
+      dto.qrToken,
+    );
+
+    const activeOrder = await this.orderModel.findOne({
+      tableId: table._id,
+      restaurantId: restaurant._id,
+      status: {
+        $in: [
+          'WaitingConfirmation',
+          'Confirmed',
+          'Preparing',
+          'Ready',
+          'Served',
+          'PaymentRequested',
+        ],
+      },
+    });
+
+    return activeOrder;
   }
 
   /**

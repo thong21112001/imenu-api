@@ -26,10 +26,16 @@ import { QueryOrderDto } from './dto/query-order.dto';
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../shared/common/decorators/require-permissions.decorator';
+import { Public } from '../../shared/common/decorators/public.decorator';
 import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
 import { ActionType, ResourceType } from '../../shared/common/constants/permission.const';
 import { OkResponse } from '../../shared/common/dto/okResponse';
 import { JwtUser } from '../auth/interface/jwtUser';
+import {
+  CustomerCreateOrderDto,
+  CustomerAddItemsDto,
+  CustomerGetActiveOrderDto,
+} from './dto/customer-order.dto';
 
 @ApiTags('Orders (Quản Lý Đơn Hàng & POS)')
 @ApiBearerAuth('JWT-auth')
@@ -37,6 +43,54 @@ import { JwtUser } from '../auth/interface/jwtUser';
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
+
+  // =========================================================================
+  // SUB-PHASE 6.4: CUSTOMER QR ORDERING BOUNDARY (PUBLIC - NO STAFF JWT REQUIRED)
+  // =========================================================================
+
+  @ApiOperation({ summary: 'Khách hàng tạo đơn hàng qua mã QR bàn (Public)' })
+  @Public()
+  @Post(['customer', 'public/customer'])
+  async createCustomerOrder(@Body() dto: CustomerCreateOrderDto) {
+    const order = await this.ordersService.createCustomerOrder(dto);
+    return new OkResponse({ message: 'Tạo đơn hàng QR thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Khách hàng gọi thêm món qua mã QR bàn (Public)' })
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post(['customer/items', 'public/customer/items'])
+  async addCustomerItems(@Body() dto: CustomerAddItemsDto) {
+    const order = await this.ordersService.addItemsByCustomer(dto);
+    return new OkResponse({ message: 'Gửi thêm món thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Khách hàng gọi thêm món theo ID đơn qua mã QR bàn (Public)' })
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post(['customer/:id/items', 'public/customer/:id/items'])
+  async addCustomerItemsWithId(
+    @Param('id') id: string,
+    @Body() dto: CustomerAddItemsDto,
+  ) {
+    const order = await this.ordersService.addItemsByCustomer(dto, id);
+    return new OkResponse({ message: 'Gửi thêm món thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Khách hàng lấy thông tin đơn hàng hoạt động của bàn qua mã QR (Public)' })
+  @Public()
+  @Get(['customer/active', 'public/customer/active'])
+  async getCustomerActiveOrder(@Query() query: CustomerGetActiveOrderDto) {
+    const order = await this.ordersService.getActiveOrderByQr(query);
+    return new OkResponse({
+      message: order ? 'Lấy đơn hàng của bàn thành công' : 'Bàn hiện chưa có đơn hàng hoạt động',
+      data: order,
+    });
+  }
+
+  // =========================================================================
+  // SUB-PHASE 6.3: POS CASHIER ENDPOINTS (STAFF JWT & PERMISSIONS REQUIRED)
+  // =========================================================================
 
   @ApiOperation({ summary: 'Tạo đơn hàng mới (POS hoặc QR bàn)' })
   @RequirePermissions(ResourceType.POS, ActionType.CREATE)
