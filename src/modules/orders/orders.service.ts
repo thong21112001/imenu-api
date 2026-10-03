@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -16,6 +17,7 @@ import { OrderItem, OrderItemStatus } from './entities/order-item.schema';
 import { OrderRound, RoundStatus } from './entities/order-round.schema';
 import { OrderStateValidator } from './domain/order-state.validator';
 import { calculateOrderStatus } from './domain/order-status.reducer';
+import { OrderFinancialCalculator } from './domain/order-financial.calculator';
 import { CreateOrderDto, AddItemsToOrderDto, CreateOrderItemDto } from './dto/create-order.dto';
 import { UpdateItemStatusDto } from './dto/update-item-status.dto';
 import {
@@ -26,6 +28,7 @@ import {
   CancelRoundDto,
 } from './dto/update-order-status.dto';
 import { PayOrderDto } from './dto/pay-order.dto';
+import { BillPreviewDto } from './dto/bill-preview.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { isSuperAdminUser, JwtUser } from '../auth/interface/jwtUser';
 
@@ -57,6 +60,13 @@ export class OrdersService {
 
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Đơn hàng phải chứa ít nhất 1 món ăn');
+    }
+
+    // Kiểm tra bàn đang có đơn hàng hoạt động tại quầy POS (409 Conflict)
+    if (dto.orderSource !== 'QR_CUSTOMER' && table.status === 'Occupied' && table.currentOrderId) {
+      throw new ConflictException(
+        `Bàn "${table.name}" hiện đang có khách với đơn hàng chưa thanh toán`,
+      );
     }
 
     // Xác định branchId: bắt buộc string (Architecture Decision đã khóa)
@@ -238,6 +248,93 @@ export class OrdersService {
     }
 
     return order;
+  }
+
+  /**
+   * Lấy đơn hàng đang hoạt động của một bàn cụ thể (dành cho màn hình POS)
+   */
+  async getActiveOrderByTable(
+    tableId: string,
+    restaurantId: string,
+    caller?: JwtUser,
+  ): Promise<Order | null> {
+    if (!Types.ObjectId.isValid(tableId)) {
+      throw new BadRequestException('Mã bàn ăn không hợp lệ');
+    }
+
+    const table = await this.tableModel.findOne({
+      _id: new Types.ObjectId(tableId),
+      restaurantId: new Types.ObjectId(restaurantId),
+      isDeleted: { $ne: true },
+    });
+
+    if (!table) {
+      throw new NotFoundException('Không tìm thấy bàn ăn');
+    }
+
+    // Branch Isolation
+    if (caller && !caller.isMainBranch && caller.branchId && !isSuperAdminUser(caller)) {
+      if (table.branchId && table.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền truy cập dữ liệu bàn của chi nhánh khác');
+      }
+    }
+
+    const activeOrder = await this.orderModel.findOne({
+      tableId: table._id,
+      restaurantId: new Types.ObjectId(restaurantId),
+      status: {
+        $in: [
+          'WaitingConfirmation',
+          'Confirmed',
+          'Preparing',
+          'Ready',
+          'Served',
+          'PaymentRequested',
+        ],
+      },
+    });
+
+    return activeOrder;
+  }
+
+  /**
+   * Xem trước phiếu tạm tính (Pre-bill) không làm thay đổi trạng thái trong DB
+   */
+  async previewBill(
+    orderId: string,
+    dto: BillPreviewDto,
+    restaurantId: string,
+    caller?: JwtUser,
+  ): Promise<any> {
+    const order: any = await this.findById(orderId, restaurantId, caller);
+
+    if (order.status === 'Cancelled') {
+      throw new BadRequestException('Không thể xem trước hóa đơn của đơn hàng đã hủy (Cancelled)');
+    }
+
+    const activeItems = (order.items || []).filter((it: any) => it.status !== 'Cancelled');
+    const subTotal = activeItems.reduce((sum: number, it: any) => sum + it.itemTotal, 0);
+
+    const financial = OrderFinancialCalculator.calculate({
+      subTotal,
+      discountAmount: dto.discountAmount,
+      discountPercent: dto.discountPercent,
+      serviceFee: dto.serviceFee,
+      serviceFeePercent: dto.serviceFeePercent,
+      vatAmount: dto.vatAmount,
+      vatPercent: dto.vatPercent,
+    });
+
+    return {
+      orderId: order._id,
+      orderCode: order.orderCode,
+      tableId: order.tableId,
+      tableName: order.tableName,
+      status: order.status,
+      isPaid: order.isPaid,
+      itemsCount: activeItems.length,
+      ...financial,
+    };
   }
 
   /**
@@ -856,7 +953,7 @@ export class OrdersService {
     dto: PayOrderDto,
     restaurantId: string,
     user?: any,
-  ): Promise<{ order: Order; table: Table }> {
+  ): Promise<{ order: Order; table: Table; changeAmount?: number }> {
     const order: any = await this.findById(orderId, restaurantId, user);
 
     if (order.isPaid || order.status === 'Paid') {
@@ -878,19 +975,42 @@ export class OrdersService {
     }
     OrderStateValidator.validateOrderTransition(order.status, 'Paid');
 
-    const discountAmount = dto.discountAmount || order.discountAmount || 0;
-    const serviceFee = dto.serviceFee || order.serviceFee || 0;
-    const vatAmount = dto.vatAmount || order.vatAmount || 0;
-    const totalAmount = Math.max(0, order.subTotal - discountAmount + serviceFee + vatAmount);
+    // 1. Tính toán tài chính theo công thức chuẩn hóa F&B (subTotal -> discount -> taxableBase -> serviceFee -> VAT -> total)
+    const activeItems = (order.items || []).filter((it: any) => it.status !== 'Cancelled');
+    const subTotal = activeItems.reduce((sum: number, it: any) => sum + it.itemTotal, 0);
+
+    const financial = OrderFinancialCalculator.calculate({
+      subTotal,
+      discountAmount: dto.discountAmount,
+      discountPercent: dto.discountPercent,
+      serviceFee: dto.serviceFee,
+      serviceFeePercent: dto.serviceFeePercent,
+      vatAmount: dto.vatAmount,
+      vatPercent: dto.vatPercent,
+    });
+
+    // 2. Xử lý phương thức thanh toán tiền mặt Cash & tính tiền thừa
+    const paymentMethod = dto.paymentMethod || 'VietQR';
+    let changeAmount: number | undefined = undefined;
+
+    if (paymentMethod === 'Cash' && dto.amountReceived !== undefined) {
+      if (dto.amountReceived < financial.totalAmount) {
+        throw new BadRequestException(
+          `Số tiền khách đưa (${dto.amountReceived} đ) không đủ để thanh toán tổng tiền (${financial.totalAmount} đ)`,
+        );
+      }
+      changeAmount = dto.amountReceived - financial.totalAmount;
+    }
 
     const callerId = user?._id || user?.userId || user?.id;
     const validUserOid = callerId && Types.ObjectId.isValid(callerId) ? new Types.ObjectId(callerId) : undefined;
 
-    order.discountAmount = discountAmount;
-    order.serviceFee = serviceFee;
-    order.vatAmount = vatAmount;
-    order.totalAmount = totalAmount;
-    order.paymentMethod = dto.paymentMethod || 'VietQR';
+    order.subTotal = financial.subTotal;
+    order.discountAmount = financial.discountAmount;
+    order.serviceFee = financial.serviceFee;
+    order.vatAmount = financial.vatAmount;
+    order.totalAmount = financial.totalAmount;
+    order.paymentMethod = paymentMethod;
     order.isPaid = true;
     order.status = 'Paid';
     order.closedAt = new Date();
@@ -901,7 +1021,7 @@ export class OrdersService {
     const table = await this.tableModel.findOneAndUpdate(
       {
         _id: order.tableId,
-        restaurantId: new Types.ObjectId(restaurantId),
+        restaurantId: order.restaurantId,
       },
       {
         $set: { status: 'Available', totalGuests: 0 },
@@ -923,9 +1043,14 @@ export class OrdersService {
       tableId: order.tableId.toString(),
       restaurantId,
       branchId: order.branchId,
+      changeAmount,
     });
 
-    return { order, table: table as any };
+    return {
+      order,
+      table: table as any,
+      ...(changeAmount !== undefined ? { changeAmount } : {}),
+    };
   }
 
   /**

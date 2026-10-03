@@ -21,6 +21,7 @@ import {
   CancelRoundDto,
 } from './dto/update-order-status.dto';
 import { PayOrderDto } from './dto/pay-order.dto';
+import { BillPreviewDto } from './dto/bill-preview.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
@@ -61,6 +62,21 @@ export class OrdersController {
     return new OkResponse({ message: 'Lấy danh sách đơn hàng thành công', data: result });
   }
 
+  @ApiOperation({ summary: 'Lấy đơn hàng đang hoạt động của một bàn (dành cho POS)' })
+  @RequirePermissions(ResourceType.POS, ActionType.VIEW)
+  @Get('by-table/:tableId')
+  async getActiveOrderByTable(
+    @Param('tableId') tableId: string,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const order = await this.ordersService.getActiveOrderByTable(tableId, restaurantId, user);
+    return new OkResponse({
+      message: order ? 'Lấy đơn hàng của bàn thành công' : 'Bàn hiện đang trống, chưa có đơn hàng hoạt động',
+      data: order,
+    });
+  }
+
   @ApiOperation({ summary: 'Xem chi tiết đơn hàng' })
   @RequirePermissions(ResourceType.POS, ActionType.VIEW)
   @Get(':id')
@@ -71,6 +87,19 @@ export class OrdersController {
   ) {
     const order = await this.ordersService.findById(id, restaurantId, user);
     return new OkResponse({ data: order });
+  }
+
+  @ApiOperation({ summary: 'Xem trước hóa đơn tạm tính (Pre-bill) với chiết khấu, VAT, phí dịch vụ' })
+  @RequirePermissions(ResourceType.POS, ActionType.VIEW)
+  @Get(':id/bill-preview')
+  async previewBill(
+    @Param('id') id: string,
+    @Query() query: BillPreviewDto,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const preview = await this.ordersService.previewBill(id, query, restaurantId, user);
+    return new OkResponse({ message: 'Tính toán hóa đơn tạm tính thành công', data: preview });
   }
 
   @ApiOperation({ summary: 'Gọi thêm món vào đơn hàng hiện tại của bàn' })
@@ -203,6 +232,19 @@ export class OrdersController {
   ) {
     const order = await this.ordersService.requestPayment(id, restaurantId, user);
     return new OkResponse({ message: 'Yêu cầu thanh toán thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Hoàn tác yêu cầu thanh toán (PaymentRequested -> Served)' })
+  @RequirePermissions(ResourceType.POS, ActionType.CREATE)
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/revert-payment-request')
+  async revertPaymentRequest(
+    @Param('id') id: string,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const order = await this.ordersService.revertPaymentRequest(id, restaurantId, user);
+    return new OkResponse({ message: 'Hoàn tác yêu cầu thanh toán thành công', data: order });
   }
 
   @ApiOperation({ summary: 'Cập nhật trạng thái toàn bộ đơn hàng' })

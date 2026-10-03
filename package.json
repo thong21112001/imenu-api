@@ -23,6 +23,7 @@
     "test:phase4": "ts-node tests/phase-04-menu/test.ts",
     "test:phase5": "ts-node tests/phase-05-order-table-kds/test.ts",
     "test:phase6:transitions": "ts-node tests/phase-06-state-machine/test.ts",
+    "test:phase6:pos": "ts-node tests/phase-06-pos-cashier/test.ts",
     "seed": "ts-node src/database/seed.ts",
     "seed:clean": "ts-node src/database/seed.ts --clean"
   },
