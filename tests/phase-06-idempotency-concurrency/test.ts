@@ -1041,6 +1041,244 @@ async function main() {
       failed++;
     }
 
+    // ========================================================================
+    // PHẦN 7: ADVANCED CONCURRENCY BURST, CROSS-ROUTE CONFLICT & TIMEOUT RETRY
+    // ========================================================================
+    console.log(`\n${colors.bold}--- PHẦN 7: ADVANCED CONCURRENCY BURST & TIMEOUT SIMULATION ---${colors.reset}`);
+
+    // TC-16: Cross-Route Key Reuse Conflict
+    const resCrossRoute = await request(`/orders/${posOrderId}/items`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${superAdminToken}`,
+        'x-restaurant-id': restId.toString(),
+        'Idempotency-Key': posCreateKey,
+      },
+      body: JSON.stringify({
+        items: [{ menuItemId: menuItem2Id.toString(), quantity: 1 }],
+      }),
+    });
+
+    if (resCrossRoute.status === 422) {
+      pass('TC-16: Tái sử dụng cùng Idempotency-Key trên route/endpoint khác bị chặn với HTTP 422 Unprocessable Entity');
+      passed++;
+    } else {
+      fail('TC-16: Cross-route key reuse không trả về 422', resCrossRoute.status);
+      failed++;
+    }
+
+    // TC-17: High Concurrency Burst: 5 request tạo đơn đồng thời với CÙNG một Idempotency-Key
+    const table7Id = new Types.ObjectId();
+    const qrTokenT7 = `token-t7-${timestamp}`;
+    await connection.collection('tables').insertOne({
+      _id: table7Id,
+      code: 'ban-07',
+      name: 'Bàn 07',
+      zone: zoneId,
+      restaurantId: restId,
+      branchId,
+      status: 'Available',
+      qrToken: qrTokenT7,
+      qrStatus: 'active',
+      isDeleted: false,
+    });
+
+    const burstKey = `key-burst-create-${timestamp}`;
+    const burstPayload = {
+      restaurantSlug: restSlug,
+      tableCode: 'ban-07',
+      qrToken: qrTokenT7,
+      customerNote: 'Burst concurrent creation',
+      items: [{ menuItemId: menuItem1Id.toString(), quantity: 1 }],
+    };
+
+    console.log('  -> Kích hoạt 5 request tạo đơn đồng thời với CÙNG 1 key bằng Promise.all...');
+    const burstResponses = await Promise.all([
+      request('/orders/customer', { method: 'POST', headers: { 'Idempotency-Key': burstKey }, body: JSON.stringify(burstPayload) }),
+      request('/orders/customer', { method: 'POST', headers: { 'Idempotency-Key': burstKey }, body: JSON.stringify(burstPayload) }),
+      request('/orders/customer', { method: 'POST', headers: { 'Idempotency-Key': burstKey }, body: JSON.stringify(burstPayload) }),
+      request('/orders/customer', { method: 'POST', headers: { 'Idempotency-Key': burstKey }, body: JSON.stringify(burstPayload) }),
+      request('/orders/customer', { method: 'POST', headers: { 'Idempotency-Key': burstKey }, body: JSON.stringify(burstPayload) }),
+    ]);
+
+    const burstStatuses = burstResponses.map((r) => r.status);
+    const countCreatedBurst = burstStatuses.filter((s) => s === 201).length;
+    const countConflictBurst = burstStatuses.filter((s) => s === 409).length;
+
+    const ordersTable7 = await connection.collection('orders').countDocuments({
+      restaurantId: restId,
+      tableId: table7Id,
+    });
+
+    if (countCreatedBurst >= 1 && countCreatedBurst + countConflictBurst === 5 && ordersTable7 === 1) {
+      pass('TC-17: High Concurrency Burst (5 concurrent requests cùng key): Duy nhất 1 đơn hàng được tạo trong DB, không sinh duplicate');
+      passed++;
+    } else {
+      fail('TC-17: High Concurrency Burst thất bại', { burstStatuses, ordersTable7 });
+      failed++;
+    }
+
+    // TC-18: Concurrent Payment Requests with SAME key (Burst 5 simultaneous pay requests)
+    const table8Id = new Types.ObjectId();
+    const qrTokenT8 = `token-t8-${timestamp}`;
+    await connection.collection('tables').insertOne({
+      _id: table8Id,
+      code: 'ban-08',
+      name: 'Bàn 08',
+      zone: zoneId,
+      restaurantId: restId,
+      branchId,
+      status: 'Occupied',
+      qrToken: qrTokenT8,
+      qrStatus: 'active',
+      isDeleted: false,
+    });
+
+    const initOrder8Res = await request('/orders', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${superAdminToken}`,
+        'x-restaurant-id': restId.toString(),
+      },
+      body: JSON.stringify({
+        tableId: table8Id.toString(),
+        items: [{ menuItemId: menuItem1Id.toString(), quantity: 2 }],
+        orderSource: 'STAFF_POS',
+        customerNote: 'Đơn Bàn 08 để test concurrent pay',
+      }),
+    });
+    const order8Id = initOrder8Res.data?.data?._id;
+
+    const burstPayKey = `pay-burst-${timestamp}`;
+    const burstPayPayload = {
+      paymentMethod: 'VietQR',
+      discountPercent: 5,
+      vatPercent: 8,
+    };
+
+    console.log('  -> Kích hoạt 5 request thanh toán đồng thời với CÙNG 1 key bằng Promise.all...');
+    const burstPayResponses = await Promise.all([
+      request(`/orders/${order8Id}/pay`, { method: 'POST', headers: { Authorization: `Bearer ${superAdminToken}`, 'x-restaurant-id': restId.toString(), 'Idempotency-Key': burstPayKey }, body: JSON.stringify(burstPayPayload) }),
+      request(`/orders/${order8Id}/pay`, { method: 'POST', headers: { Authorization: `Bearer ${superAdminToken}`, 'x-restaurant-id': restId.toString(), 'Idempotency-Key': burstPayKey }, body: JSON.stringify(burstPayPayload) }),
+      request(`/orders/${order8Id}/pay`, { method: 'POST', headers: { Authorization: `Bearer ${superAdminToken}`, 'x-restaurant-id': restId.toString(), 'Idempotency-Key': burstPayKey }, body: JSON.stringify(burstPayPayload) }),
+      request(`/orders/${order8Id}/pay`, { method: 'POST', headers: { Authorization: `Bearer ${superAdminToken}`, 'x-restaurant-id': restId.toString(), 'Idempotency-Key': burstPayKey }, body: JSON.stringify(burstPayPayload) }),
+      request(`/orders/${order8Id}/pay`, { method: 'POST', headers: { Authorization: `Bearer ${superAdminToken}`, 'x-restaurant-id': restId.toString(), 'Idempotency-Key': burstPayKey }, body: JSON.stringify(burstPayPayload) }),
+    ]);
+
+    const burstPayStatuses = burstPayResponses.map((r) => r.status);
+    const order8After = await connection.collection('orders').findOne({ _id: new Types.ObjectId(order8Id) });
+    const table8After = await connection.collection('tables').findOne({ _id: table8Id });
+
+    const paySuccessCount = burstPayStatuses.filter((s) => s === 200).length;
+    const payConflictCount = burstPayStatuses.filter((s) => s === 409).length;
+
+    if (
+      paySuccessCount >= 1 &&
+      paySuccessCount + payConflictCount === 5 &&
+      order8After?.status === 'Paid' &&
+      order8After?.isPaid === true &&
+      table8After?.status === 'Available'
+    ) {
+      pass('TC-18: Concurrent Payment Requests (5 concurrent pay cùng key): Bảo đảm thanh toán chính xác 1 lần, không double-charge, giải phóng bàn đúng 1 lần');
+      passed++;
+    } else {
+      fail('TC-18: Concurrent pay cùng key thất bại', { burstPayStatuses, orderStatus: order8After?.status, tableStatus: table8After?.status });
+      failed++;
+    }
+
+    // TC-19: Payment Retry after Timeout Simulation
+    const table9Id = new Types.ObjectId();
+    await connection.collection('tables').insertOne({
+      _id: table9Id,
+      code: 'ban-09',
+      name: 'Bàn 09',
+      zone: zoneId,
+      restaurantId: restId,
+      branchId,
+      status: 'Available',
+      qrToken: `token-t9-${timestamp}`,
+      qrStatus: 'active',
+      isDeleted: false,
+    });
+
+    const initOrder9Res = await request('/orders', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${superAdminToken}`,
+        'x-restaurant-id': restId.toString(),
+      },
+      body: JSON.stringify({
+        tableId: table9Id.toString(),
+        items: [{ menuItemId: menuItem2Id.toString(), quantity: 2 }],
+        orderSource: 'STAFF_POS',
+      }),
+    });
+    const order9Id = initOrder9Res.data?.data?._id;
+
+    const timeoutPayKey = `pay-timeout-sim-${timestamp}`;
+    const timeoutPayPayload = {
+      paymentMethod: 'Cash',
+      amountReceived: 100000,
+    };
+
+    // 1. Request thanh toán ban đầu thành công trên server
+    const resTimeout1 = await request(`/orders/${order9Id}/pay`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${superAdminToken}`,
+        'x-restaurant-id': restId.toString(),
+        'Idempotency-Key': timeoutPayKey,
+      },
+      body: JSON.stringify(timeoutPayPayload),
+    });
+
+    // 2. Client giả lập bị timeout / network drop và retry với CÙNG key
+    const resTimeoutRetry = await request(`/orders/${order9Id}/pay`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${superAdminToken}`,
+        'x-restaurant-id': restId.toString(),
+        'Idempotency-Key': timeoutPayKey,
+      },
+      body: JSON.stringify(timeoutPayPayload),
+    });
+
+    const isTimeoutReplay = resTimeoutRetry.headers.get('x-idempotent-replay') === 'true';
+    const sameChangeAmount = resTimeoutRetry.data?.data?.changeAmount === resTimeout1.data?.data?.changeAmount;
+
+    if (resTimeout1.status === 200 && resTimeoutRetry.status === 200 && isTimeoutReplay && sameChangeAmount) {
+      pass('TC-19: Payment Retry sau Timeout Simulation: Nhận phản hồi replay tức thì (X-Idempotent-Replay: true, đúng tiền thừa, không lỗi 400)');
+      passed++;
+    } else {
+      fail('TC-19: Payment Retry sau Timeout Simulation thất bại', {
+        status1: resTimeout1.status,
+        status2: resTimeoutRetry.status,
+        isTimeoutReplay,
+      });
+      failed++;
+    }
+
+    // TC-20: Actual Database State & Idempotency Key Record Quality
+    const idempDoc = await connection.collection('idempotency_keys').findOne({
+      restaurantId: restId,
+      key: timeoutPayKey,
+    });
+
+    const isRecordValid =
+      idempDoc?.status === 'COMPLETED' &&
+      idempDoc?.responseCode === 200 &&
+      Boolean(idempDoc?.responseBody?.order) &&
+      Boolean(idempDoc?.requestHash) &&
+      idempDoc?.createdAt instanceof Date;
+
+    if (isRecordValid) {
+      pass('TC-20: Idempotency Key Document Quality chuẩn xác trong MongoDB (status=COMPLETED, responseCode=200, hash hợp lệ, createdAt hợp lệ)');
+      passed++;
+    } else {
+      fail('TC-20: Idempotency Key Document Quality không hợp lệ trong DB', idempDoc);
+      failed++;
+    }
+
   } catch (err) {
     console.error('Lỗi nghiêm trọng trong quá trình chạy kiểm thử:', err);
     failed++;
