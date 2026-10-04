@@ -869,6 +869,178 @@ async function main() {
       failed++;
     }
 
+    // ========================================================================
+    // PHẦN 6: FAILED LIFECYCLE, POS ORDER CREATION & POS ATOMIC PAY IDEMPOTENCY
+    // ========================================================================
+    console.log(`\n${colors.bold}--- PHẦN 6: FAILED LIFECYCLE & POS ENDPOINTS IDEMPOTENCY ---${colors.reset}`);
+
+    // TC-13: FAILED lifecycle state handling
+    const explicitFailedKey = `key-explicit-failed-${timestamp}`;
+    await connection.collection('idempotency_keys').insertOne({
+      restaurantId: restId,
+      key: explicitFailedKey,
+      endpoint: 'POST /orders/customer',
+      requestHash: canonicalPayloadHash,
+      status: 'FAILED',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const resExplicitFailed = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': explicitFailedKey },
+      body: JSON.stringify(baseCreatePayload),
+    });
+
+    if (
+      resExplicitFailed.status === 409 &&
+      resExplicitFailed.data?.message?.includes('đã thất bại')
+    ) {
+      pass('TC-13: Idempotency-Key ở trạng thái FAILED bị từ chối với HTTP 409 Conflict và thông điệp chuẩn');
+      passed++;
+    } else {
+      fail('TC-13: FAILED state không trả về 409 Conflict', resExplicitFailed.data);
+      failed++;
+    }
+
+    // Đăng nhập SuperAdmin để kiểm thử POS endpoints
+    const loginSuperAdmin = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: process.env.SUPERADMIN_USERNAME || 'superadmin',
+        password: process.env.SUPERADMIN_PASSWORD || 'SuperAdmin@2026!',
+      }),
+    });
+    const superAdminToken = loginSuperAdmin.data?.data?.accessToken;
+
+    // Chuẩn bị Bàn 06
+    const table6Id = new Types.ObjectId();
+    await connection.collection('tables').insertOne({
+      _id: table6Id,
+      code: 'ban-06',
+      name: 'Bàn 06',
+      zone: zoneId,
+      restaurantId: restId,
+      branchId,
+      status: 'Available',
+      qrToken: `token-t6-${timestamp}`,
+      qrStatus: 'active',
+      isDeleted: false,
+    });
+
+    // TC-14: POS Order Creation with Idempotency-Key & Replay
+    const posCreateKey = `pos-create-key-${timestamp}`;
+    const posCreatePayload = {
+      tableId: table6Id.toString(),
+      items: [{ menuItemId: menuItem1Id.toString(), quantity: 1 }],
+      orderSource: 'STAFF_POS',
+      customerNote: 'Đơn POS tạo bởi thu ngân',
+    };
+
+    const resPosCreate1 = await request('/orders', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${superAdminToken}`,
+        'x-restaurant-id': restId.toString(),
+        'Idempotency-Key': posCreateKey,
+      },
+      body: JSON.stringify(posCreatePayload),
+    });
+
+    const posOrderId = resPosCreate1.data?.data?._id;
+
+    // Retry POS create with same key
+    const resPosCreateRetry = await request('/orders', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${superAdminToken}`,
+        'x-restaurant-id': restId.toString(),
+        'Idempotency-Key': posCreateKey,
+      },
+      body: JSON.stringify(posCreatePayload),
+    });
+
+    const isPosCreateReplay = resPosCreateRetry.headers.get('x-idempotent-replay') === 'true';
+    const samePosOrderId = resPosCreateRetry.data?.data?._id === posOrderId;
+
+    const countOrdersTable6 = await connection.collection('orders').countDocuments({
+      restaurantId: restId,
+      tableId: table6Id,
+    });
+
+    if (
+      resPosCreate1.status === 201 &&
+      resPosCreateRetry.status === 201 &&
+      isPosCreateReplay &&
+      samePosOrderId &&
+      countOrdersTable6 === 1
+    ) {
+      pass('TC-14: POS Order Creation hỗ trợ Idempotency-Key và Replay chuẩn xác (X-Idempotent-Replay: true, count = 1)');
+      passed++;
+    } else {
+      fail('TC-14: POS Order Creation Idempotency thất bại', {
+        status1: resPosCreate1.status,
+        status2: resPosCreateRetry.status,
+        isPosCreateReplay,
+        countOrdersTable6,
+      });
+      failed++;
+    }
+
+    // TC-15: POS Payment Execution with Idempotency-Key & Atomic Claim Preservation
+    const posPayKey = `pos-pay-key-${timestamp}`;
+    const payPayload = {
+      paymentMethod: 'VietQR',
+      discountPercent: 10,
+      vatPercent: 8,
+    };
+
+    const resPosPay1 = await request(`/orders/${posOrderId}/pay`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${superAdminToken}`,
+        'x-restaurant-id': restId.toString(),
+        'Idempotency-Key': posPayKey,
+      },
+      body: JSON.stringify(payPayload),
+    });
+
+    // Retry POS pay with same key
+    const resPosPayRetry = await request(`/orders/${posOrderId}/pay`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${superAdminToken}`,
+        'x-restaurant-id': restId.toString(),
+        'Idempotency-Key': posPayKey,
+      },
+      body: JSON.stringify(payPayload),
+    });
+
+    const isPosPayReplay = resPosPayRetry.headers.get('x-idempotent-replay') === 'true';
+    const table6AfterPay = await connection.collection('tables').findOne({ _id: table6Id });
+    const order6AfterPay = await connection.collection('orders').findOne({ _id: new Types.ObjectId(posOrderId) });
+
+    if (
+      resPosPay1.status === 200 &&
+      resPosPayRetry.status === 200 &&
+      isPosPayReplay &&
+      order6AfterPay?.status === 'Paid' &&
+      order6AfterPay?.isPaid === true &&
+      table6AfterPay?.status === 'Available'
+    ) {
+      pass('TC-15: POS Payment Execution bảo vệ Idempotency Replay và bảo toàn tính Atomic Claim (Order = Paid, Table = Available)');
+      passed++;
+    } else {
+      fail('TC-15: POS Payment Idempotency thất bại', {
+        status1: resPosPay1.status,
+        status2: resPosPayRetry.status,
+        isPosPayReplay,
+        orderStatus: order6AfterPay?.status,
+        tableStatus: table6AfterPay?.status,
+      });
+      failed++;
+    }
+
   } catch (err) {
     console.error('Lỗi nghiêm trọng trong quá trình chạy kiểm thử:', err);
     failed++;

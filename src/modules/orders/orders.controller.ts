@@ -120,8 +120,13 @@ export class OrdersController {
     @Body() dto: CreateOrderDto,
     @CurrentRestaurant() restaurantId: string,
     @CurrentUser() user: JwtUser,
+    @Headers('idempotency-key') idempotencyKey?: string,
+    @Res({ passthrough: true }) res?: any,
   ) {
-    const order = await this.ordersService.create(dto, restaurantId, user);
+    const order: any = await this.ordersService.create(dto, restaurantId, user, idempotencyKey);
+    if (order?.isReplay && res && typeof res.setHeader === 'function') {
+      res.setHeader('X-Idempotent-Replay', 'true');
+    }
     return new OkResponse({ message: 'Tạo đơn hàng thành công', data: order });
   }
 
@@ -186,8 +191,13 @@ export class OrdersController {
     @Body() dto: AddItemsToOrderDto,
     @CurrentRestaurant() restaurantId: string,
     @CurrentUser() user: JwtUser,
+    @Headers('idempotency-key') idempotencyKey?: string,
+    @Res({ passthrough: true }) res?: any,
   ) {
-    const order = await this.ordersService.addItems(id, dto, restaurantId, user);
+    const order: any = await this.ordersService.addItems(id, dto, restaurantId, user, idempotencyKey);
+    if (order?.isReplay && res && typeof res.setHeader === 'function') {
+      res.setHeader('X-Idempotent-Replay', 'true');
+    }
     return new OkResponse({ message: 'Gọi thêm món thành công', data: order });
   }
 
@@ -344,8 +354,13 @@ export class OrdersController {
     @Body() dto: PayOrderDto,
     @CurrentRestaurant() restaurantId: string,
     @CurrentUser() user: JwtUser,
+    @Headers('idempotency-key') idempotencyKey?: string,
+    @Res({ passthrough: true }) res?: any,
   ) {
-    const result = await this.ordersService.pay(id, dto, restaurantId, user);
+    const result: any = await this.ordersService.pay(id, dto, restaurantId, user, idempotencyKey);
+    if (result?.isReplay && res && typeof res.setHeader === 'function') {
+      res.setHeader('X-Idempotent-Replay', 'true');
+    }
     return new OkResponse({ message: 'Thanh toán đơn hàng thành công', data: result });
   }
 }
