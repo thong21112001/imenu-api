@@ -1279,6 +1279,92 @@ async function main() {
       failed++;
     }
 
+    // --- PHẦN 8: HARDENING VALIDATION (AUD-6.5-01 & AUD-6.5-02) ---
+    console.log(`\n${colors.cyan}--- PHẦN 8: HARDENING VALIDATION (AUD-6.5-01 & AUD-6.5-02) ---${colors.reset}`);
+
+    // TC-21 (HARDENING): Khôi phục Atomic Lease cho request bị treo PROCESSING > 60s (AUD-6.5-01)
+    const tableHardenId = new Types.ObjectId();
+    const qrTokenHarden = `token-harden-${timestamp}`;
+    await connection.collection('tables').insertOne({
+      _id: tableHardenId,
+      name: 'Bàn Hardening',
+      code: 'ban-harden',
+      zone: zoneId,
+      restaurantId: restId,
+      branchId,
+      status: 'Available',
+      qrToken: qrTokenHarden,
+      qrStatus: 'active',
+      isDeleted: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const createPayloadStalled = {
+      restaurantSlug: restSlug,
+      tableCode: 'ban-harden',
+      qrToken: qrTokenHarden,
+      items: [{ menuItemId: menuItem1Id.toString(), quantity: 1 }],
+    };
+    const endpointCustomer = 'POST /orders/customer';
+    const ordersService = app.get(OrdersService);
+    const hashStalled = ordersService.generateRequestFingerprint(endpointCustomer, createPayloadStalled);
+    const stalledKey = `stalled-key-${timestamp}`;
+
+    // Giả lập 1 request trước đó bị crash giữa chừng cách đây 75 giây (vượt ngưỡng lease 60s)
+    await connection.collection('idempotency_keys').insertOne({
+      restaurantId: restId,
+      key: stalledKey,
+      endpoint: endpointCustomer,
+      requestHash: hashStalled,
+      status: 'PROCESSING',
+      createdAt: new Date(Date.now() - 75000),
+      updatedAt: new Date(Date.now() - 75000),
+    });
+
+    // Client retry lại với cùng stalledKey -> Hệ thống phát hiện lease quá 60s, claim atomic lease và hoàn tất thành công!
+    const resRecover = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'Idempotency-Key': stalledKey },
+      body: JSON.stringify(createPayloadStalled),
+    });
+
+    const docAfterRecover = await connection.collection('idempotency_keys').findOne({
+      restaurantId: restId,
+      key: stalledKey,
+    });
+
+    if (resRecover.status === 201 && docAfterRecover?.status === 'COMPLETED') {
+      pass('TC-21: Request bị treo PROCESSING > 60s được tự động khôi phục atomic lease và chuyển COMPLETED thành công (AUD-6.5-01)');
+      passed++;
+    } else {
+      fail('TC-21: Khôi phục lease bị lỗi', { status: resRecover.status, doc: docAfterRecover });
+      failed++;
+    }
+
+    // TC-22 (HARDENING): Hàm generateRequestFingerprint hỗ trợ Date và toJSON() chuẩn xác (AUD-6.5-02)
+    const testDate = new Date('2026-10-04T10:00:00.000Z');
+    const hash1 = ordersService.generateRequestFingerprint('POST /test', {
+      time: testDate,
+      id: restId,
+      b: 2,
+      a: 1,
+    });
+    const hash2 = ordersService.generateRequestFingerprint('POST /test', {
+      a: 1,
+      id: restId,
+      b: 2,
+      time: new Date('2026-10-04T10:00:00.000Z'),
+    });
+
+    if (hash1 === hash2 && hash1.length === 64) {
+      pass('TC-22: Fingerprint sinh chuẩn xác và nhất quán với Date và toJSON() object (64 hex chars, AUD-6.5-02)');
+      passed++;
+    } else {
+      fail('TC-22: Fingerprint không nhất quán', { hash1, hash2 });
+      failed++;
+    }
+
   } catch (err) {
     console.error('Lỗi nghiêm trọng trong quá trình chạy kiểm thử:', err);
     failed++;

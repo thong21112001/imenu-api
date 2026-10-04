@@ -268,6 +268,12 @@ export class OrdersService {
       if (obj === null || typeof obj !== 'object') {
         return JSON.stringify(obj);
       }
+      if (obj instanceof Date) {
+        return JSON.stringify(obj.toISOString());
+      }
+      if (typeof obj.toJSON === 'function') {
+        return JSON.stringify(obj.toJSON());
+      }
       if (Array.isArray(obj)) {
         return '[' + obj.map((item) => canonicalJson(item)).join(',') + ']';
       }
@@ -293,6 +299,7 @@ export class OrdersService {
    * - Xử lý sai lệch payload (mismatch hash -> 422 Unprocessable Entity)
    * - Replay kết quả đã hoàn thành (COMPLETED -> cached replay)
    * - Cập nhật FAILED khi lỗi xảy ra để không treo PROCESSING vĩnh viễn
+   * - Lease timeout recovery: Khôi phục atomic cho các request bị crash/treo > 60s
    */
   public async executeWithIdempotency<T>(
     restaurantId: Types.ObjectId,
@@ -343,30 +350,56 @@ export class OrdersService {
           );
         }
 
-        // Cùng Key đang trong trạng thái PROCESSING -> HTTP 409 Conflict
+        // Cùng Key đang trong trạng thái PROCESSING
         if (existing.status === 'PROCESSING') {
-          throw new ConflictException(
-            'Yêu cầu với Idempotency-Key này đang được xử lý, vui lòng không gửi trùng lặp',
-          );
-        }
+          // DEF-6.5-HARDENING (AUD-6.5-01): Lease timeout bảo vệ request bị crash/treo
+          const PROCESSING_LOCK_TIMEOUT_MS = 60 * 1000; // 60 giây
+          const lastActivityTime = existing.updatedAt?.getTime() || existing.createdAt?.getTime() || 0;
+          const isStalled = Date.now() - lastActivityTime > PROCESSING_LOCK_TIMEOUT_MS;
 
-        // Cùng Key đã COMPLETED -> Replay kết quả đã lưu trữ
-        if (existing.status === 'COMPLETED') {
+          if (!isStalled) {
+            throw new ConflictException(
+              'Yêu cầu với Idempotency-Key này đang được xử lý, vui lòng không gửi trùng lặp',
+            );
+          }
+
+          // Request trước đó bị treo/crash > 60s -> Cố gắng claim atomic lease để khôi phục
+          const reclaimed = await this.idempotencyKeyModel.findOneAndUpdate(
+            {
+              _id: existing._id,
+              status: 'PROCESSING',
+              updatedAt: existing.updatedAt,
+            },
+            {
+              $set: { updatedAt: new Date() },
+            },
+            { new: true },
+          );
+
+          if (!reclaimed) {
+            // Luồng khác vừa claim hoặc đã chuyển trạng thái
+            throw new ConflictException(
+              'Yêu cầu với Idempotency-Key này đang được xử lý, vui lòng không gửi trùng lặp',
+            );
+          }
+
+          // Claim lease thành công, cho phép tiếp tục thực thi nghiệp vụ bên dưới
+        } else if (existing.status === 'COMPLETED') {
+          // Cùng Key đã COMPLETED -> Replay kết quả đã lưu trữ
           const replayed: any = existing.responseBody;
           if (replayed && typeof replayed === 'object') {
             replayed.isReplay = true;
           }
           return replayed;
-        }
-
-        // Cùng Key nhưng trước đó FAILED
-        if (existing.status === 'FAILED') {
+        } else if (existing.status === 'FAILED') {
+          // Cùng Key nhưng trước đó FAILED
           throw new ConflictException(
             'Yêu cầu trước đó với Idempotency-Key này đã thất bại, vui lòng sử dụng Idempotency-Key mới',
           );
         }
+      } else {
+        throw err;
       }
-      throw err;
     }
 
     // Nếu đã claim PROCESSING thành công: thực thi nghiệp vụ chính
