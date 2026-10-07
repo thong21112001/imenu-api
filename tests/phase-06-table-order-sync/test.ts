@@ -1048,6 +1048,182 @@ async function main() {
       failures.push({ category: 'CONCURRENCY', testName: '6.4: Stale State Invariant', error: allTables, classification: 'IMPLEMENTATION_DEFECT' });
     }
 
+    // ========================================================================
+    // 7. REGRESSION TESTS CHO CÁC DEFECT ĐÃ KHẮC PHỤC
+    // ========================================================================
+    console.log(`\n${colors.bold}--- PHẦN 7: KIỂM THỬ HỒI QUY CHO CÁC DEFECT ĐÃ SỬA (REGRESSION SUITE) ---${colors.reset}`);
+
+    // Tạo các bàn chuyên biệt cho Regression Suite để đảm bảo độc lập tuyệt đối
+    const tReg1 = await request('/tables', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerAToken}` },
+      body: JSON.stringify({ code: `REG_B01_${timestamp}`, name: 'Bàn Reg 01', zoneId: zoneAId, branchId: branchAId, capacity: 4 }),
+    });
+    const regTable1Id = tReg1.data?.data?._id || tReg1.data?.data?.id;
+
+    const tReg2 = await request('/tables', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerAToken}` },
+      body: JSON.stringify({ code: `REG_B02_${timestamp}`, name: 'Bàn Reg 02', zoneId: zoneAId, branchId: branchAId, capacity: 4 }),
+    });
+    const regTable2Id = tReg2.data?.data?._id || tReg2.data?.data?.id;
+
+    const tReg3 = await request('/tables', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerAToken}` },
+      body: JSON.stringify({ code: `REG_B03_${timestamp}`, name: 'Bàn Reg 03', zoneId: zoneAId, branchId: branchAId, capacity: 4 }),
+    });
+    const regTable3Id = tReg3.data?.data?._id || tReg3.data?.data?.id;
+
+    const tReg4 = await request('/tables', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerAToken}` },
+      body: JSON.stringify({ code: `REG_B04_${timestamp}`, name: 'Bàn Reg 04', zoneId: zoneAId, branchId: branchAId, capacity: 4 }),
+    });
+    const regTable4Id = tReg4.data?.data?._id || tReg4.data?.data?.id;
+
+    // 7.1: Hồi quy Defect 1 - Hỗ trợ alias cashGiven trong PayOrderDto tính tiền thừa chính xác
+    const regOrderRes = await request('/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cashierAToken}` },
+      body: JSON.stringify({
+        tableId: regTable1Id,
+        items: [{ menuItemId: menuItem2Id, quantity: 1 }], // Trà Đào Cam Sả: 35,000 đ
+      }),
+    });
+    const regOrderId = regOrderRes.data?.data?._id || regOrderRes.data?.data?.id;
+
+    const regPayRes = await request(`/orders/${regOrderId}/pay`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cashierAToken}` },
+      body: JSON.stringify({ paymentMethod: 'Cash', cashGiven: 100000 }),
+    });
+
+    if (
+      regPayRes.status === 200 &&
+      regPayRes.data?.data?.order?.isPaid &&
+      regPayRes.data?.data?.changeAmount === 10000
+    ) {
+      pass('7.1: [Regression Defect 1] Hỗ trợ alias cashGiven tính tiền thừa chính xác', 'Total: 90k, Khách đưa: 100k -> Tiền thừa: 10,000 đ');
+      passed++;
+    } else {
+      fail('7.1: [Regression Defect 1] Hỗ trợ alias cashGiven', regPayRes.data);
+      failed++;
+      failures.push({ category: 'REGRESSION', testName: '7.1: CashGiven Alias Regression', error: regPayRes.data, classification: 'IMPLEMENTATION_DEFECT' });
+    }
+
+    // 7.2: Hồi quy Defect 2 & 3 - Atomic Transfer CAS Protection (Race condition transfer đồng thời)
+    const regOrderRaceRes = await request('/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cashierAToken}` },
+      body: JSON.stringify({
+        tableId: regTable2Id,
+        items: [{ menuItemId: menuItem1Id, quantity: 2 }],
+      }),
+    });
+    const regRaceOrderId = regOrderRaceRes.data?.data?._id || regOrderRaceRes.data?.data?.id;
+
+    // Gửi đồng thời 2 request chuyển bàn từ regTable2Id sang regTable3Id và regTable4Id
+    const [raceRes1, raceRes2] = await Promise.all([
+      request('/tables/transfer', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cashierAToken}` },
+        body: JSON.stringify({ fromTableId: regTable2Id, toTableId: regTable3Id }),
+      }),
+      request('/tables/transfer', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cashierAToken}` },
+        body: JSON.stringify({ fromTableId: regTable2Id, toTableId: regTable4Id }),
+      }),
+    ]);
+
+    const race2Statuses = [raceRes1.status, raceRes2.status].sort();
+    const isOneSuccessOneConflict = race2Statuses[0] === 200 && (race2Statuses[1] === 409 || race2Statuses[1] === 400);
+
+    const checkRegT2 = await request(`/tables/${regTable2Id}`, { headers: { Authorization: `Bearer ${cashierAToken}` } });
+    const checkRegT3 = await request(`/tables/${regTable3Id}`, { headers: { Authorization: `Bearer ${cashierAToken}` } });
+    const checkRegT4 = await request(`/tables/${regTable4Id}`, { headers: { Authorization: `Bearer ${cashierAToken}` } });
+
+    const occupiedDestCount = [
+      checkRegT3.data?.data?.status,
+      checkRegT4.data?.data?.status,
+    ].filter((s) => s === 'Occupied').length;
+
+    if (
+      isOneSuccessOneConflict &&
+      checkRegT2.data?.data?.status === 'Available' &&
+      occupiedDestCount === 1
+    ) {
+      pass(
+        '7.2: [Regression Defect 2 & 3] Atomic Transfer CAS chặn hoàn toàn race condition đa luồng',
+        `2 request đồng thời -> [${race2Statuses.join(', ')}] -> Đúng 1 thành công (200), 1 bị chặn (409), đúng 1 bàn đích Occupied`,
+      );
+      passed++;
+    } else {
+      fail('7.2: [Regression Defect 2 & 3] Atomic Transfer CAS race condition', {
+        statuses: race2Statuses,
+        occupiedDestCount,
+        t2Status: checkRegT2.data?.data?.status,
+      });
+      failed++;
+      failures.push({
+        category: 'REGRESSION',
+        testName: '7.2: Atomic Transfer CAS Multi-Thread',
+        error: { statuses: race2Statuses, occupiedDestCount },
+        classification: 'IMPLEMENTATION_DEFECT',
+      });
+    }
+
+    // 7.3: Hồi quy Defect 4 - Move Items OCC Concurrency Retry (Không bao giờ văng 500 VersionError)
+    const currentOccupiedTableId =
+      checkRegT3.data?.data?.status === 'Occupied' ? regTable3Id : regTable4Id;
+
+    const currentOrderDoc = (await request(`/orders/${regRaceOrderId}`, { headers: { Authorization: `Bearer ${cashierAToken}` } })).data?.data;
+    const targetItemId = currentOrderDoc?.items?.[0]?._id?.toString();
+
+    // Gửi 2 request di chuyển cùng 1 món đồng thời sang regTable1Id
+    const [occMove1, occMove2] = await Promise.all([
+      request('/tables/move-items', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cashierAToken}` },
+        body: JSON.stringify({
+          fromTableId: currentOccupiedTableId,
+          toTableId: regTable1Id,
+          items: [{ itemId: targetItemId }],
+        }),
+      }),
+      request('/tables/move-items', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cashierAToken}` },
+        body: JSON.stringify({
+          fromTableId: currentOccupiedTableId,
+          toTableId: regTable1Id,
+          items: [{ itemId: targetItemId }],
+        }),
+      }),
+    ]);
+
+    const occStatuses = [occMove1.status, occMove2.status].sort();
+    const noServerError = !occStatuses.includes(500);
+    const occPassed = occStatuses[0] === 200 && (occStatuses[1] === 400 || occStatuses[1] === 404);
+
+    if (noServerError && occPassed) {
+      pass(
+        '7.3: [Regression Defect 4] Optimistic Concurrency Control (OCC) xử lý sạch xung đột di chuyển món',
+        `Kết quả: [${occStatuses.join(', ')}] -> Zero 500 InternalServerError, Món chuyển thành công 1 lần`,
+      );
+      passed++;
+    } else {
+      fail('7.3: [Regression Defect 4] OCC Move items error handling', { occStatuses });
+      failed++;
+      failures.push({
+        category: 'REGRESSION',
+        testName: '7.3: OCC Move Items Handling',
+        error: { occStatuses, occMove1: occMove1.data, occMove2: occMove2.data },
+        classification: 'IMPLEMENTATION_DEFECT',
+      });
+    }
+
   } catch (err: any) {
     console.error('Lỗi ngoại lệ trong quá trình chạy test:', err);
     failed++;

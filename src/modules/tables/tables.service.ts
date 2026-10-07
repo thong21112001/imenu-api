@@ -348,17 +348,37 @@ export class TablesService {
       );
     }
 
-    // 5. Cập nhật Order: Bảo toàn 100% order.rounds[], order.items[] và item snapshots
-    activeOrder.tableId = toTable._id;
-    activeOrder.tableName = toTable.name;
-    await activeOrder.save();
+    // 5. ATOMIC TRANSFER & CAS CONCURRENCY CONTROL
+    // A. Khóa và giải phóng bàn nguồn atomically (Chỉ 1 request chuyển bàn nguồn thành công)
+    const claimedFromTable = await this.tableModel.findOneAndUpdate(
+      {
+        _id: fromTable._id,
+        restaurantId: new Types.ObjectId(restaurantId),
+        status: { $in: ['Occupied', 'PaymentRequested'] },
+      },
+      {
+        $set: { status: 'Available', totalGuests: 0 },
+        $unset: { currentOrderId: 1, activeSince: 1 },
+      },
+      { new: true },
+    );
 
-    // 6. Cập nhật toTable sang Occupied
+    if (!claimedFromTable) {
+      throw new ConflictException(
+        `Bàn nguồn ${fromTable.name} đã được chuyển hoặc không còn ở trạng thái hoạt động`,
+      );
+    }
+
+    // B. Chiếm bàn đích (toTable) atomically (Đảm bảo bàn đích vẫn Available)
     const guestCount = fromTable.totalGuests || 2;
     const activeSinceDate = fromTable.activeSince || activeOrder.openedAt || new Date();
 
-    await this.tableModel.updateOne(
-      { _id: toTable._id },
+    const claimedToTable = await this.tableModel.findOneAndUpdate(
+      {
+        _id: toTable._id,
+        restaurantId: new Types.ObjectId(restaurantId),
+        status: 'Available',
+      },
       {
         $set: {
           status: 'Occupied',
@@ -367,22 +387,31 @@ export class TablesService {
           totalGuests: guestCount,
         },
       },
+      { new: true },
     );
 
-    // 7. Giải phóng fromTable về Available
-    await this.tableModel.updateOne(
-      { _id: fromTable._id },
-      {
-        $set: {
-          status: 'Available',
-          totalGuests: 0,
+    if (!claimedToTable) {
+      // Revert bàn nguồn về trạng thái cũ nếu bàn đích không thể chiếm
+      await this.tableModel.updateOne(
+        { _id: fromTable._id },
+        {
+          $set: {
+            status: fromTable.status,
+            totalGuests: fromTable.totalGuests || 2,
+            currentOrderId: activeOrder._id,
+            activeSince: activeSinceDate,
+          },
         },
-        $unset: {
-          currentOrderId: 1,
-          activeSince: 1,
-        },
-      },
-    );
+      );
+      throw new ConflictException(
+        `Bàn đích ${toTable.name} không còn ở trạng thái sẵn sàng để nhận chuyển đơn`,
+      );
+    }
+
+    // C. Cập nhật Order sang bàn đích: Bảo toàn 100% order.rounds[], order.items[] và item snapshots
+    activeOrder.tableId = toTable._id;
+    activeOrder.tableName = toTable.name;
+    await activeOrder.save();
 
     const updatedFrom = await this.findById(fromTable._id.toString(), restaurantId);
     const updatedTo = await this.findById(toTable._id.toString(), restaurantId);
@@ -418,6 +447,39 @@ export class TablesService {
    * Gộp bàn: Gộp món và bảo toàn toàn bộ rounds từ nhiều bàn nguồn sang bàn đích (Hardened Phase 6.6)
    */
   async mergeTables(
+    dto: MergeTablesDto,
+    restaurantId: string,
+    caller?: JwtUser,
+  ): Promise<{ success: boolean; message: string; targetTable?: Table; targetOrder?: Order }> {
+    const maxRetries = 2;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.executeMergeTables(dto, restaurantId, caller);
+      } catch (err: any) {
+        const isVersionError =
+          err.name === 'VersionError' ||
+          err.message?.includes('VersionError') ||
+          err.message?.includes('No matching document found');
+
+        if (isVersionError && attempt < maxRetries) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 30 * (attempt + 1) + Math.random() * 20),
+          );
+          continue;
+        }
+
+        if (isVersionError) {
+          throw new ConflictException(
+            'Dữ liệu đơn hàng bị xung đột khi gộp bàn. Vui lòng thử lại.',
+          );
+        }
+        throw err;
+      }
+    }
+    throw new ConflictException('Không thể thực hiện gộp bàn do xung đột đồng thời');
+  }
+
+  private async executeMergeTables(
     dto: MergeTablesDto,
     restaurantId: string,
     caller?: JwtUser,
@@ -656,6 +718,46 @@ export class TablesService {
    * Chuyển món / Tách bàn: Di chuyển danh sách món từ bàn nguồn sang bàn đích (Hardened Phase 6.6)
    */
   async moveItemsBetweenTables(
+    dto: MoveTableItemsDto,
+    restaurantId: string,
+    caller?: JwtUser,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    fromTable: Table;
+    toTable: Table;
+    fromOrder: Order;
+    toOrder: Order;
+  }> {
+    const maxRetries = 2;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.executeMoveItemsBetweenTables(dto, restaurantId, caller);
+      } catch (err: any) {
+        const isVersionError =
+          err.name === 'VersionError' ||
+          err.message?.includes('VersionError') ||
+          err.message?.includes('No matching document found');
+
+        if (isVersionError && attempt < maxRetries) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 30 * (attempt + 1) + Math.random() * 20),
+          );
+          continue;
+        }
+
+        if (isVersionError) {
+          throw new ConflictException(
+            'Dữ liệu đơn hàng bị xung đột do thao tác đồng thời. Vui lòng thử lại.',
+          );
+        }
+        throw err;
+      }
+    }
+    throw new ConflictException('Không thể thực hiện chuyển món do xung đột đồng thời');
+  }
+
+  private async executeMoveItemsBetweenTables(
     dto: MoveTableItemsDto,
     restaurantId: string,
     caller?: JwtUser,

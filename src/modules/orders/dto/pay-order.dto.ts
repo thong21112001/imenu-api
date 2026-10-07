@@ -65,6 +65,13 @@ export class PayOrderDto {
   @Min(0)
   amountReceived?: number;
 
+  @ApiPropertyOptional({ description: 'Số tiền khách đưa - alias tương thích cho amountReceived', minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  cashGiven?: number;
+
   @ApiPropertyOptional({ description: 'Ghi chú thanh toán' })
   @IsOptional()
   @IsString()

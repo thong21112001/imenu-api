@@ -1709,13 +1709,16 @@ export class OrdersService {
       const paymentMethod = dto.paymentMethod || 'VietQR';
       let changeAmount: number | undefined = undefined;
 
-      if (paymentMethod === 'Cash' && dto.amountReceived !== undefined) {
-        if (dto.amountReceived < financial.totalAmount) {
+      const effectiveAmountReceived =
+        dto.amountReceived !== undefined ? dto.amountReceived : dto.cashGiven;
+
+      if (paymentMethod === 'Cash' && effectiveAmountReceived !== undefined) {
+        if (effectiveAmountReceived < financial.totalAmount) {
           throw new BadRequestException(
-            `Số tiền khách đưa (${dto.amountReceived} đ) không đủ để thanh toán tổng tiền (${financial.totalAmount} đ)`,
+            `Số tiền khách đưa (${effectiveAmountReceived} đ) không đủ để thanh toán tổng tiền (${financial.totalAmount} đ)`,
           );
         }
-        changeAmount = dto.amountReceived - financial.totalAmount;
+        changeAmount = effectiveAmountReceived - financial.totalAmount;
       }
 
       const callerId = user?._id || user?.userId || user?.id;
