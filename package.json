@@ -27,7 +27,8 @@
     "test:phase6:customer-qr": "ts-node tests/phase-06-order-pos/customer-qr.test.ts",
     "test:phase6:concurrency": "ts-node tests/phase-06-order-pos/idempotency-concurrency.test.ts",
     "test:phase6:sync": "ts-node tests/phase-06-order-pos/table-order-sync.test.ts",
-    "test:phase6": "npm run test:phase6:transitions && npm run test:phase6:pos && npm run test:phase6:customer-qr && npm run test:phase6:concurrency && npm run test:phase6:sync",
+    "test:phase6:query": "ts-node tests/phase-06-order-pos/order-query.test.ts",
+    "test:phase6": "npm run test:phase6:transitions && npm run test:phase6:pos && npm run test:phase6:customer-qr && npm run test:phase6:concurrency && npm run test:phase6:sync && npm run test:phase6:query",
     "seed": "ts-node src/database/seed.ts",
     "seed:clean": "ts-node src/database/seed.ts --clean"
   },

@@ -19,20 +19,21 @@ Theo quy ước chuẩn kiến trúc của dự án `imenu-api`:
 
 ## 2. Phạm Vi Nghiệp Vụ & Các Sub-phase (Phase 6 Scope & Sub-phases)
 
-Phase 6 bao gồm 6 phân hệ nghiệp vụ chính:
+Phase 6 bao gồm 7 phân hệ nghiệp vụ chính:
 
 1. **Sub-phase 6.1 — Core Order & Table Lifecycle Baseline:** Thiết lập nền tảng vòng đời đơn hàng, liên kết bàn ăn và cấu trúc dữ liệu đợt gọi món (`rounds[]`), danh sách món (`items[]`).
 2. **Sub-phase 6.2 — State Machine & Business Invariants:** Máy trạng thái chuyển đổi đơn hàng và bàn ăn, ràng buộc bất biến (Single active order per table, Paid is Terminal, RBAC chuyển trạng thái).
 3. **Sub-phase 6.3 — POS Cashier & Billing Flows:** Nghiệp vụ thu ngân POS, hóa đơn, tính thuế VAT, phí dịch vụ, chiết khấu, thanh toán tiền mặt Cash (tính tiền thừa `changeAmount`), thanh toán VietQR và thanh toán nhanh (Quick-pay).
 4. **Sub-phase 6.4 — Customer QR Ordering:** Khách quét mã QR tại bàn, xem thực đơn công khai, gửi yêu cầu gọi món theo đợt (`WaitingConfirmation`), nhân viên thu ngân/phục vụ xác nhận (`Confirmed`), bảo vệ chống mở đơn trùng lặp.
 5. **Sub-phase 6.5 — Idempotency Key & Concurrency Control:** Middleware Idempotency Key (`X-Idempotency-Key`) chặn đứng request trùng lặp, cơ chế khóa nguyên tử thanh toán POS đa luồng (`Atomic Payment Claim`), bảo vệ bất biến tài chính.
-6. **Sub-phase 6.6 — Table ↔ Order Synchronization & Transfer/Merge (CLOSED):** Thắt chặt đồng bộ giữa bàn ăn và đơn hàng, đổi bàn (`transferTable`), gộp bàn (`mergeTables`), di chuyển món / tách bàn (`moveItemsBetweenTables`), tách hóa đơn (Split Bill), khóa nguyên tử CAS (Compare-And-Swap) và Optimistic Concurrency Control (OCC) Retry.
+6. **Sub-phase 6.6 — Table ↔ Order Synchronization & Transfer/Merge:** Thắt chặt đồng bộ giữa bàn ăn và đơn hàng, đổi bàn (`transferTable`), gộp bàn (`mergeTables`), di chuyển món / tách bàn (`moveItemsBetweenTables`), tách hóa đơn (Split Bill), khóa nguyên tử CAS (Compare-And-Swap) và Optimistic Concurrency Control (OCC) Retry.
+7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization (IMPLEMENTED):** Nâng cấp toàn diện API truy vấn đơn hàng `GET /api/orders` (lọc khoảng thời gian `fromDate`/`toDate`, trường thời gian `dateField`, nhân viên `staffId`/`createdBy`/`paidBy`, đa trạng thái, phương thức thanh toán `paymentMethod`, tìm kiếm an toàn `orderCode`/`tableName`, phân trang ổn định kèm `totalPages`, deterministic sorting với tie-breaker `_id: -1`, cưỡng chế phân lập chi nhánh và compound indexes).
 
 ---
 
 ## 3. Danh Mục Tệp Kiểm Thử (Test Inventory)
 
-Toàn bộ 5 tệp kiểm thử của Phase 6 nằm trực tiếp trong thư mục này:
+Toàn bộ 6 tệp kiểm thử của Phase 6 nằm trực tiếp trong thư mục này:
 
 | Tệp Kiểm Thử | Sub-phase | Trọng Tâm Xác Thực | Số Ca Test | Trạng Thái |
 | :--- | :---: | :--- | :---: | :---: |
@@ -41,6 +42,7 @@ Toàn bộ 5 tệp kiểm thử của Phase 6 nằm trực tiếp trong thư m�
 | **`customer-qr.test.ts`** | 6.4 | Khách quét QR gọi món, tạo round `WaitingConfirmation`, nhân viên xác nhận món, giới hạn bàn, bảo mật QR token, phân lập nhà hàng và chi nhánh. | **34** | **PASS** |
 | **`idempotency-concurrency.test.ts`** | 6.5 | Header `X-Idempotency-Key` tái phát hiện request trùng lặp (replay cached response), thanh toán đồng thời qua `Promise.all` (đúng 1 thành công, 1 bị từ chối), zero duplicate charge. | **36** | **PASS** |
 | **`table-order-sync.test.ts`** | 6.6 | Đổi bàn (`transferTable`), gộp bàn (`mergeTables`), di chuyển món (`moveItemsBetweenTables`), tách bill, khóa CAS chống race transfer, OCC retry chống xung đột phiên bản Mongoose, kiểm thử hồi quy defect. | **38** | **PASS** |
+| **`order-query.test.ts`** | 6.7 | Lọc thời gian, nhân sự, đa trạng thái, phương thức thanh toán, regex search an toàn, phân trang xác định, cách ly chi nhánh tuyệt đối, xác minh explain index scan. | **31** | **PASS** |
 
 ---
 
@@ -74,18 +76,22 @@ npm run test:phase6:sync
 # Lệnh trực tiếp:
 npx ts-node tests/phase-06-order-pos/table-order-sync.test.ts
 
-# 6. Chạy toàn bộ test suite của Phase 6
+# 6. Chạy kiểm thử Truy vấn, Lọc, Tìm kiếm & Phân lập Đa Chi nhánh (Phase 6.7)
+npm run test:phase6:query
+# Lệnh trực tiếp:
+npx ts-node tests/phase-06-order-pos/order-query.test.ts
+
+# 7. Chạy toàn bộ test suite của Phase 6 (Tất cả 6 tệp kiểm thử)
 npm run test:phase6
 ```
 
 ---
 
-## 5. Trạng Thái Hiện Tại & Đóng Sub-phase 6.6 (Current Status)
+## 5. Trạng Thái Hiện Tại (Current Status)
 
-- **Trạng thái Phase 6:** **HOÀN TOÀN ĐÓNG (ALL PHASE 6 SUB-PHASES CLOSED)**.
-- **Sub-phase 6.6 Status:** Nghiệm thu thành công qua chuỗi quy trình:
-  $$\text{PLAN} \longrightarrow \text{IMPLEMENT} \longrightarrow \text{TEST} \longrightarrow \text{RE-TEST} \longrightarrow \text{CHECK} \longrightarrow \text{PASS} \longrightarrow \text{CLOSED}$$
-- **Quyết định chốt chặn:** Toàn bộ kiến trúc Phase 6 đã trở thành Kiến trúc Cơ sở Baseline của dự án. Không mở lại Phase 6 trừ khi có chỉ thị chính thức.
+- **Trạng thái Sub-phase 6.7:** **ĐÃ TRIỂN KHAI HOÀN TẤT (IMPLEMENTED)**, đạt 31/31 ca test tự động PASS 100%.
+- **Toàn bộ Phase 6:** 225 ca test tự động vượt qua (100% Passed, Zero Failures).
+
 
 ---
 

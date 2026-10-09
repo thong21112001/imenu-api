@@ -43,7 +43,8 @@ tests/
     ├── pos-cashier.test.ts            # Sub-phase 6.3: POS Cashier, Taxes/Fees, Cash Change & VietQR (30 tests)
     ├── customer-qr.test.ts            # Sub-phase 6.4: Customer QR Ordering & Staff Approval (34 tests)
     ├── idempotency-concurrency.test.ts# Sub-phase 6.5: Idempotency Key & Concurrent Payment Claims (36 tests)
-    └── table-order-sync.test.ts       # Sub-phase 6.6: Table Transfer, Merge, Move Items & CAS Locks (38 tests)
+    ├── table-order-sync.test.ts       # Sub-phase 6.6: Table Transfer, Merge, Move Items & CAS Locks (38 tests)
+    └── order-query.test.ts            # Sub-phase 6.7: Order Query, Filters, Search & Branch Isolation (31 tests)
 ```
 
 ---
@@ -59,6 +60,7 @@ All Phase 6 functional sub-phases are consolidated inside `tests/phase-06-order-
 | **6.4 Customer QR** | `customer-qr.test.ts` | Customer QR ordering, `WaitingConfirmation` batches, staff confirmation | 34 | **PASS** |
 | **6.5 Idempotency** | `idempotency-concurrency.test.ts` | `X-Idempotency-Key` header, duplicate request replay, concurrency protection | 36 | **PASS** |
 | **6.6 Table Sync** | `table-order-sync.test.ts` | Table transfer, merge, move items, split billing, atomic CAS locks | 38 | **PASS** |
+| **6.7 Order Query** | `order-query.test.ts` | Date/time filters, staff, multi-status, safe regex search, branch isolation | 31 | **PASS** |
 
 ---
 
@@ -83,7 +85,7 @@ npm run test:phase5
 
 ### 🔹 Execute Phase 6 Tests (Order & POS):
 ```powershell
-# Run all 5 Phase 6 test suites sequentially
+# Run all 6 Phase 6 test suites sequentially
 npm run test:phase6
 
 # Or run individual sub-phase suites:
@@ -92,6 +94,7 @@ npm run test:phase6:pos          # Sub-phase 6.3: POS Cashier (pos-cashier.test.
 npm run test:phase6:customer-qr  # Sub-phase 6.4: Customer QR (customer-qr.test.ts)
 npm run test:phase6:concurrency  # Sub-phase 6.5: Idempotency (idempotency-concurrency.test.ts)
 npm run test:phase6:sync         # Sub-phase 6.6: Table Sync & Transfer (table-order-sync.test.ts)
+npm run test:phase6:query        # Sub-phase 6.7: Order Query & Filters (order-query.test.ts)
 ```
 
 ---

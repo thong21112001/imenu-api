@@ -147,6 +147,13 @@ OrderSchema.index(
 // 2. Query Indexes
 OrderSchema.index({ restaurantId: 1, branchId: 1, status: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, branchId: 1, isPaid: 1, createdAt: -1 });
+OrderSchema.index({ restaurantId: 1, branchId: 1, createdAt: -1 });
+OrderSchema.index({ restaurantId: 1, branchId: 1, openedAt: -1 });
+OrderSchema.index({ restaurantId: 1, branchId: 1, closedAt: -1 });
+OrderSchema.index({ restaurantId: 1, branchId: 1, paymentMethod: 1, createdAt: -1 });
+OrderSchema.index({ restaurantId: 1, createdBy: 1, createdAt: -1 });
+OrderSchema.index({ restaurantId: 1, paidBy: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, status: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, idempotencyKey: 1 }, { sparse: true });
 OrderSchema.index({ createdAt: -1 });
+

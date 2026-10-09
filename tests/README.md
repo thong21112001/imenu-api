@@ -43,7 +43,8 @@ tests/
     ├── pos-cashier.test.ts            # Sub-phase 6.3: POS Cashier, Thuế/Phí, Cash Change & VietQR (30 ca)
     ├── customer-qr.test.ts            # Sub-phase 6.4: Customer QR Ordering & Staff Approval (34 ca)
     ├── idempotency-concurrency.test.ts# Sub-phase 6.5: Idempotency Key & Concurrent Payment Protection (36 ca)
-    └── table-order-sync.test.ts       # Sub-phase 6.6: Table Transfer, Merge, Move Items & CAS Locks (38 ca)
+    ├── table-order-sync.test.ts       # Sub-phase 6.6: Table Transfer, Merge, Move Items & CAS Locks (38 ca)
+    └── order-query.test.ts            # Sub-phase 6.7: Order Query, Filters, Search & Branch Isolation (31 ca)
 ```
 
 ---
@@ -59,6 +60,7 @@ Toàn bộ các phân hệ của Phase 6 được tích hợp tập trung vào t
 | **6.4 Customer QR** | `customer-qr.test.ts` | Khách quét mã QR gọi món, duyệt đợt gọi món | 34 | **PASS** |
 | **6.5 Idempotency** | `idempotency-concurrency.test.ts` | Header `X-Idempotency-Key`, chống duplicate charge | 36 | **PASS** |
 | **6.6 Table Sync** | `table-order-sync.test.ts` | Đổi bàn, gộp bàn, di chuyển món, tách bill, khóa CAS | 38 | **PASS** |
+| **6.7 Order Query** | `order-query.test.ts` | Lọc thời gian, nhân viên, đa trạng thái, regex search, phân lập chi nhánh | 31 | **PASS** |
 
 ---
 
@@ -83,7 +85,7 @@ npm run test:phase5
 
 ### 🔹 Kiểm thử Phase 6 (Order & POS):
 ```powershell
-# Chạy toàn bộ 5 tệp kiểm thử của Phase 6
+# Chạy toàn bộ 6 tệp kiểm thử của Phase 6
 npm run test:phase6
 
 # Hoặc chạy riêng từng tệp theo phân hệ:
@@ -92,6 +94,7 @@ npm run test:phase6:pos          # Sub-phase 6.3: POS Cashier (pos-cashier.test.
 npm run test:phase6:customer-qr  # Sub-phase 6.4: Customer QR (customer-qr.test.ts)
 npm run test:phase6:concurrency  # Sub-phase 6.5: Idempotency (idempotency-concurrency.test.ts)
 npm run test:phase6:sync         # Sub-phase 6.6: Table Sync & Transfer (table-order-sync.test.ts)
+npm run test:phase6:query        # Sub-phase 6.7: Order Query & Filters (order-query.test.ts)
 ```
 
 ---

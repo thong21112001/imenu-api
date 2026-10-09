@@ -26,13 +26,14 @@ Phase 6 consists of 6 primary functional domains:
 3. **Sub-phase 6.3 — POS Cashier & Billing Flows:** POS cashier workflows, tax calculations (VAT, service fee, discounts), Cash payments with exact change calculations (`changeAmount`), VietQR payments, and Quick-pay.
 4. **Sub-phase 6.4 — Customer QR Ordering:** Table QR scanning, public digital menu access, batch order placement (`WaitingConfirmation`), staff review/confirmation (`Confirmed`), protection against duplicate active order creation.
 5. **Sub-phase 6.5 — Idempotency Key & Concurrency Control:** `X-Idempotency-Key` middleware for caching and replaying duplicate requests, atomic multi-threaded POS payment claims (`Atomic Payment Claim`), financial invariant preservation.
-6. **Sub-phase 6.6 — Table ↔ Order Synchronization & Transfer/Merge (CLOSED):** Hardened table-order lifecycle synchronization, table transfer (`transferTable`), table merge (`mergeTables`), item movement between tables (`moveItemsBetweenTables`), Split Bill flows, database-level atomic CAS (Compare-And-Swap) locking, and Optimistic Concurrency Control (OCC) Retries.
+6. **Sub-phase 6.6 — Table ↔ Order Synchronization & Transfer/Merge:** Hardened table-order lifecycle synchronization, table transfer (`transferTable`), table merge (`mergeTables`), item movement between tables (`moveItemsBetweenTables`), Split Bill flows, database-level atomic CAS (Compare-And-Swap) locking, and Optimistic Concurrency Control (OCC) Retries.
+7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization (IMPLEMENTED):** Comprehensive upgrade of `GET /api/orders` query API (date/time range filters `fromDate`/`toDate`, dynamic `dateField`, staff filters `staffId`/`createdBy`/`paidBy`, multi-status filter, payment method filter `paymentMethod`, safe regex search `orderCode`/`tableName`, deterministic sorting with `_id: -1` tie-breaker, pagination with `totalPages`, strict multi-branch scoping and MongoDB compound indexes).
 
 ---
 
 ## 3. Test Inventory
 
-All 5 Phase 6 test suites reside directly inside this directory:
+All 6 Phase 6 test suites reside directly inside this directory:
 
 | Test File | Sub-phase | Verification Scope | Test Count | Status |
 | :--- | :---: | :--- | :---: | :---: |
@@ -41,6 +42,7 @@ All 5 Phase 6 test suites reside directly inside this directory:
 | **`customer-qr.test.ts`** | 6.4 | Customer QR ordering, `WaitingConfirmation` rounds, staff confirmation flow, table binding, QR token validation, multi-tenant and branch boundaries. | **34** | **PASS** |
 | **`idempotency-concurrency.test.ts`** | 6.5 | `X-Idempotency-Key` header re-identification (cached replay), concurrent payments via `Promise.all` (exactly 1 succeeds, 1 rejected), zero duplicate charges. | **36** | **PASS** |
 | **`table-order-sync.test.ts`** | 6.6 | Table transfer (`transferTable`), table merge (`mergeTables`), item movement (`moveItemsBetweenTables`), split billing, CAS atomic locking against transfer races, OCC retries against Mongoose VersionError, defect regression suite. | **38** | **PASS** |
+| **`order-query.test.ts`** | 6.7 | Order query filters (date range, dateField, staff, multi-status, payment method), safe regex search, deterministic pagination with `totalPages`, strict multi-branch isolation, index scan verification. | **31** | **PASS** |
 
 ---
 
@@ -74,18 +76,21 @@ npm run test:phase6:sync
 # Direct command:
 npx ts-node tests/phase-06-order-pos/table-order-sync.test.ts
 
-# 6. Run all Phase 6 tests sequentially
+# 6. Run Order Query, Filters, Search & Multi-Branch tests (Phase 6.7)
+npm run test:phase6:query
+# Direct command:
+npx ts-node tests/phase-06-order-pos/order-query.test.ts
+
+# 7. Run all Phase 6 tests sequentially (All 6 test files)
 npm run test:phase6
 ```
 
 ---
 
-## 5. Current Status & Sub-phase 6.6 Closure
+## 5. Current Status
 
-- **Phase 6 Status:** **FULLY CLOSED (ALL PHASE 6 SUB-PHASES CLOSED)**.
-- **Sub-phase 6.6 Status:** Formally accepted and verified through the complete quality gate:
-  $$\text{PLAN} \longrightarrow \text{IMPLEMENT} \longrightarrow \text{TEST} \longrightarrow \text{RE-TEST} \longrightarrow \text{CHECK} \longrightarrow \text{PASS} \longrightarrow \text{CLOSED}$$
-- **Architectural Decision:** All Phase 6 architectural components are now frozen as part of the immutable project Baseline. Phase 6 will not be reopened unless explicitly instructed.
+- **Sub-phase 6.7 Status:** **IMPLEMENTED**, with 31/31 automated tests passing 100%.
+- **Phase 6 Total:** 225 automated tests passing (100% Passed, Zero Failures).
 
 ---
 

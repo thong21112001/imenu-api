@@ -859,42 +859,166 @@ export class OrdersService {
   }
 
   /**
-   * Lấy danh sách đơn hàng có bộ lọc và phân trang
+   * Lấy danh sách đơn hàng có bộ lọc nâng cao, tìm kiếm, sắp xếp và phân trang (Sub-phase 6.7)
    */
   async findAll(
     query: QueryOrderDto,
     restaurantId: string,
     caller?: JwtUser,
-  ): Promise<{ data: Order[]; total: number; page: number; limit: number }> {
+  ): Promise<{ data: Order[]; total: number; page: number; limit: number; totalPages: number }> {
+    if (!restaurantId || !Types.ObjectId.isValid(restaurantId)) {
+      throw new BadRequestException('Mã nhà hàng không hợp lệ');
+    }
+
     const filter: any = {
       restaurantId: new Types.ObjectId(restaurantId),
     };
 
-    let targetBranchId = query.branchId;
-    if (caller && !caller.isMainBranch && caller.branchId && !isSuperAdminUser(caller)) {
-      targetBranchId = caller.branchId;
+    // 1. Cưỡng chế phân lập Đa chi nhánh nghiêm ngặt (Strict Multi-Branch Isolation)
+    const isSuperAdmin = isSuperAdminUser(caller);
+    const isMainBranch = caller?.isMainBranch === true;
+
+    if (!isSuperAdmin && !isMainBranch && caller?.branchId) {
+      // Nhân viên chi nhánh con: Bắt buộc chỉ xem đơn của chi nhánh mình
+      if (query.branchId && query.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền truy cập dữ liệu của chi nhánh khác');
+      }
+      filter.branchId = caller.branchId;
+    } else {
+      // Trụ sở chính (Main Branch) hoặc Super Admin: Có quyền lọc theo branchId hoặc xem toàn chuỗi
+      if (query.branchId) {
+        filter.branchId = query.branchId;
+      }
     }
 
-    if (targetBranchId) {
-      filter.$or = [
-        { branchId: targetBranchId },
-        { branchId: { $exists: false } },
-        { branchId: '' },
-        { branchId: null },
-      ];
-    }
-
+    // 2. Lọc theo bàn ăn
     if (query.tableId) {
+      if (!Types.ObjectId.isValid(query.tableId)) {
+        throw new BadRequestException('Mã bàn ăn không hợp lệ');
+      }
       filter.tableId = new Types.ObjectId(query.tableId);
     }
 
-    if (query.status && query.status !== 'all') {
-      filter.status = query.status;
+    // 3. Lọc theo trạng thái (đơn trạng thái, đa trạng thái phân tách bằng dấu phẩy, hoặc 'all')
+    const VALID_STATUSES: OrderStatus[] = [
+      'WaitingConfirmation',
+      'Confirmed',
+      'Preparing',
+      'Ready',
+      'Served',
+      'PaymentRequested',
+      'Paid',
+      'Cancelled',
+    ];
+
+    if (query.status && query.status.trim() !== '' && query.status !== 'all') {
+      const statuses = query.status.split(',').map((s) => s.trim()).filter(Boolean);
+      for (const s of statuses) {
+        if (!VALID_STATUSES.includes(s as OrderStatus)) {
+          throw new BadRequestException(`Trạng thái đơn hàng không hợp lệ: ${s}`);
+        }
+      }
+      if (statuses.length === 1) {
+        filter.status = statuses[0];
+      } else if (statuses.length > 1) {
+        filter.status = { $in: statuses };
+      }
     }
 
+    // 4. Lọc trạng thái thanh toán (isPaid)
     if (query.isPaid !== undefined) {
       filter.isPaid = query.isPaid;
     }
+
+    // 5. Lọc theo khoảng thời gian (Date/Time Range)
+    const targetField = query.dateField || 'createdAt';
+    if (!['createdAt', 'openedAt', 'closedAt'].includes(targetField)) {
+      throw new BadRequestException('dateField phải là createdAt, openedAt hoặc closedAt');
+    }
+
+    if (query.fromDate || query.toDate) {
+      const dateCondition: any = {};
+      if (query.fromDate) {
+        const from = new Date(query.fromDate);
+        if (isNaN(from.getTime())) {
+          throw new BadRequestException('fromDate không đúng định dạng ngày tháng hợp lệ');
+        }
+        dateCondition.$gte = from;
+      }
+      if (query.toDate) {
+        const to = new Date(query.toDate);
+        if (isNaN(to.getTime())) {
+          throw new BadRequestException('toDate không đúng định dạng ngày tháng hợp lệ');
+        }
+        dateCondition.$lte = to;
+      }
+      if (query.fromDate && query.toDate && new Date(query.fromDate) > new Date(query.toDate)) {
+        throw new BadRequestException('fromDate không được lớn hơn toDate');
+      }
+      filter[targetField] = dateCondition;
+    }
+
+    // 6. Lọc phương thức thanh toán
+    if (query.paymentMethod) {
+      if (!['VietQR', 'Cash', 'Card', 'Transfer'].includes(query.paymentMethod)) {
+        throw new BadRequestException('Phương thức thanh toán không hợp lệ');
+      }
+      filter.paymentMethod = query.paymentMethod;
+    }
+
+    // 7. Lọc nhân sự và tìm kiếm (Kết hợp an toàn qua andClauses)
+    const andClauses: any[] = [];
+
+    // 7a. Lọc người tạo (createdBy) và người thu tiền (paidBy)
+    if (query.createdBy) {
+      if (!Types.ObjectId.isValid(query.createdBy)) {
+        throw new BadRequestException('createdBy không phải ObjectId hợp lệ');
+      }
+      filter.createdBy = new Types.ObjectId(query.createdBy);
+    }
+    if (query.paidBy) {
+      if (!Types.ObjectId.isValid(query.paidBy)) {
+        throw new BadRequestException('paidBy không phải ObjectId hợp lệ');
+      }
+      filter.paidBy = new Types.ObjectId(query.paidBy);
+    }
+    // Nếu truyền staffId: khớp với createdBy HOẶC paidBy
+    if (query.staffId) {
+      if (!Types.ObjectId.isValid(query.staffId)) {
+        throw new BadRequestException('staffId không phải ObjectId hợp lệ');
+      }
+      const staffObjectId = new Types.ObjectId(query.staffId);
+      andClauses.push({
+        $or: [{ createdBy: staffObjectId }, { paidBy: staffObjectId }],
+      });
+    }
+
+    // 7b. Tìm kiếm an toàn theo mã đơn hoặc tên bàn
+    if (query.search && query.search.trim() !== '') {
+      const rawSearch = query.search.trim();
+      if (rawSearch.length > 100) {
+        throw new BadRequestException('Từ khóa tìm kiếm không được vượt quá 100 ký tự');
+      }
+      const escaped = rawSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      andClauses.push({
+        $or: [
+          { orderCode: { $regex: escaped, $options: 'i' } },
+          { tableName: { $regex: escaped, $options: 'i' } },
+        ],
+      });
+    }
+
+    if (andClauses.length > 0) {
+      filter.$and = andClauses;
+    }
+
+    // 8. Sắp xếp xác định (Deterministic Sorting) & Phân trang
+    const sortBy = query.sortBy || 'createdAt';
+    if (!['createdAt', 'totalAmount', 'openedAt', 'closedAt'].includes(sortBy)) {
+      throw new BadRequestException('Trường sortBy không hợp lệ');
+    }
+    const sortDirection: 1 | -1 = query.sortOrder === 'asc' ? 1 : -1;
+    const sort: any = { [sortBy]: sortDirection, _id: -1 };
 
     const page = Math.max(1, query.page || 1);
     const limit = Math.max(1, Math.min(100, query.limit || 20));
@@ -903,15 +1027,18 @@ export class OrdersService {
     const [data, total] = await Promise.all([
       this.orderModel
         .find(filter)
-        .sort({ createdAt: -1 })
+        .sort(sort)
         .skip(skip)
         .limit(limit)
         .exec(),
       this.orderModel.countDocuments(filter),
     ]);
 
-    return { data, total, page, limit };
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return { data, total, page, limit, totalPages };
   }
+
 
   /**
    * Lấy chi tiết đơn hàng (có kiểm tra Multi-Branch Isolation & Super Admin Scope)
