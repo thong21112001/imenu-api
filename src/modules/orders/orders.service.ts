@@ -941,21 +941,30 @@ export class OrdersService {
 
     if (query.fromDate || query.toDate) {
       const dateCondition: any = {};
+      let from: Date | undefined;
+      let to: Date | undefined;
+
       if (query.fromDate) {
-        const from = new Date(query.fromDate);
+        const fromStr = /^\d{4}-\d{2}-\d{2}$/.test(query.fromDate.trim())
+          ? `${query.fromDate.trim()}T00:00:00.000Z`
+          : query.fromDate.trim();
+        from = new Date(fromStr);
         if (isNaN(from.getTime())) {
           throw new BadRequestException('fromDate không đúng định dạng ngày tháng hợp lệ');
         }
         dateCondition.$gte = from;
       }
       if (query.toDate) {
-        const to = new Date(query.toDate);
+        const toStr = /^\d{4}-\d{2}-\d{2}$/.test(query.toDate.trim())
+          ? `${query.toDate.trim()}T23:59:59.999Z`
+          : query.toDate.trim();
+        to = new Date(toStr);
         if (isNaN(to.getTime())) {
           throw new BadRequestException('toDate không đúng định dạng ngày tháng hợp lệ');
         }
         dateCondition.$lte = to;
       }
-      if (query.fromDate && query.toDate && new Date(query.fromDate) > new Date(query.toDate)) {
+      if (from && to && from > to) {
         throw new BadRequestException('fromDate không được lớn hơn toDate');
       }
       filter[targetField] = dateCondition;
@@ -1027,6 +1036,7 @@ export class OrdersService {
     const limit = Math.max(1, Math.min(100, query.limit || 20));
     const skip = (page - 1) * limit;
 
+    const startTime = Date.now();
     const [data, total] = await Promise.all([
       this.orderModel
         .find(filter)
@@ -1036,6 +1046,10 @@ export class OrdersService {
         .exec(),
       this.orderModel.countDocuments(filter),
     ]);
+    const duration = Date.now() - startTime;
+    this.logger.debug(
+      `findAll orders executed in ${duration}ms (restaurantId=${restaurantId}, total=${total}, page=${page}/${Math.ceil(total / limit) || 1})`,
+    );
 
     const totalPages = Math.ceil(total / limit) || 1;
 

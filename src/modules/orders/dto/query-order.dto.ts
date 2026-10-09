@@ -11,18 +11,20 @@ import {
   IsISO8601,
   MaxLength,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { PaymentMethod } from '../entities/order.entity';
 
 export class QueryOrderDto {
   @ApiPropertyOptional({ description: 'ID chi nhánh' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   branchId?: string;
 
   @ApiPropertyOptional({ description: 'ID bàn ăn' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   tableId?: string;
 
   @ApiPropertyOptional({
@@ -31,6 +33,7 @@ export class QueryOrderDto {
   })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   status?: string;
 
   @ApiPropertyOptional({ description: 'Lọc đơn chưa thanh toán / đã thanh toán' })
@@ -39,13 +42,15 @@ export class QueryOrderDto {
   @Type(() => Boolean)
   isPaid?: boolean;
 
-  @ApiPropertyOptional({ description: 'Thời gian bắt đầu (ISO 8601 string, ví dụ: 2026-10-09T00:00:00.000Z)' })
+  @ApiPropertyOptional({ description: 'Thời gian bắt đầu (ISO 8601 string, ví dụ: 2026-10-09T00:00:00.000Z hoặc 2026-10-09)' })
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsISO8601({}, { message: 'fromDate phải đúng định dạng ISO 8601' })
   fromDate?: string;
 
-  @ApiPropertyOptional({ description: 'Thời gian kết thúc (ISO 8601 string, ví dụ: 2026-10-09T23:59:59.999Z)' })
+  @ApiPropertyOptional({ description: 'Thời gian kết thúc (ISO 8601 string, ví dụ: 2026-10-09T23:59:59.999Z hoặc 2026-10-09)' })
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsISO8601({}, { message: 'toDate phải đúng định dạng ISO 8601' })
   toDate?: string;
 
@@ -55,6 +60,7 @@ export class QueryOrderDto {
     default: 'createdAt',
   })
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsIn(['createdAt', 'openedAt', 'closedAt'], {
     message: 'dateField phải là createdAt, openedAt hoặc closedAt',
   })
@@ -63,16 +69,19 @@ export class QueryOrderDto {
   @ApiPropertyOptional({ description: 'ID nhân sự (khớp createdBy HOẶC paidBy)' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   staffId?: string;
 
   @ApiPropertyOptional({ description: 'ID nhân viên tạo đơn (createdBy)' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   createdBy?: string;
 
   @ApiPropertyOptional({ description: 'ID thu ngân thanh toán (paidBy)' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   paidBy?: string;
 
   @ApiPropertyOptional({
@@ -80,6 +89,7 @@ export class QueryOrderDto {
     enum: ['VietQR', 'Cash', 'Card', 'Transfer'],
   })
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsIn(['VietQR', 'Cash', 'Card', 'Transfer'], {
     message: 'paymentMethod phải là VietQR, Cash, Card hoặc Transfer',
   })
@@ -88,6 +98,7 @@ export class QueryOrderDto {
   @ApiPropertyOptional({ description: 'Từ khóa tìm kiếm theo mã đơn (orderCode) hoặc tên bàn (tableName)' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @MaxLength(100, { message: 'Từ khóa tìm kiếm không vượt quá 100 ký tự' })
   search?: string;
 
@@ -97,6 +108,7 @@ export class QueryOrderDto {
     default: 'createdAt',
   })
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsIn(['createdAt', 'totalAmount', 'openedAt', 'closedAt'], {
     message: 'sortBy phải là createdAt, totalAmount, openedAt hoặc closedAt',
   })
@@ -108,6 +120,7 @@ export class QueryOrderDto {
     default: 'desc',
   })
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsIn(['asc', 'desc'], { message: 'sortOrder phải là asc hoặc desc' })
   sortOrder?: 'asc' | 'desc' = 'desc';
 

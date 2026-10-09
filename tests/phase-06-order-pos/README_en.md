@@ -42,7 +42,7 @@ All 6 Phase 6 test suites reside directly inside this directory:
 | **`customer-qr.test.ts`** | 6.4 | Customer QR ordering, `WaitingConfirmation` rounds, staff confirmation flow, table binding, QR token validation, multi-tenant and branch boundaries. | **43** | **PASS** |
 | **`idempotency-concurrency.test.ts`** | 6.5 | `X-Idempotency-Key` header re-identification (cached replay), concurrent payments via `Promise.all` (exactly 1 succeeds, 1 rejected), zero duplicate charges. | **32** | **PASS** |
 | **`table-order-sync.test.ts`** | 6.6 | Table transfer (`transferTable`), table merge (`mergeTables`), item movement (`moveItemsBetweenTables`), split billing, CAS atomic locking against transfer races, OCC retries against Mongoose VersionError, defect regression suite. | **38** | **PASS** |
-| **`order-query.test.ts`** | 6.7 | Order query filters (date range, dateField, staff, multi-status, payment method), safe regex search, deterministic pagination with `totalPages`, strict multi-branch isolation, index scan verification. | **39** | **PASS** |
+| **`order-query.test.ts`** | 6.7 | Order query filters (date range, dateField, staff, multi-status, payment method), safe regex search, deterministic pagination with `totalPages`, strict multi-branch isolation, index scan verification. | **42** | **PASS** |
 
 ---
 
@@ -89,8 +89,8 @@ npm run test:phase6
 
 ## 5. Current Status
 
-- **Sub-phase 6.7 Status:** **VERIFIED & PASSED (POST-FIX)**, with 39/39 automated tests passing 100%.
-- **Phase 6 Total:** 238 automated tests passing (100% Passed, Zero Failures).
+- **Sub-phase 6.7 Status:** **HARDENED & VERIFIED**, with 42/42 automated tests passing 100%.
+- **Phase 6 Total:** 241 automated tests passing (100% Passed, Zero Failures).
 
 ---
 

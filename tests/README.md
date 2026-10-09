@@ -44,7 +44,7 @@ tests/
     ├── customer-qr.test.ts            # Sub-phase 6.4: Customer QR Ordering & Staff Approval (43 ca)
     ├── idempotency-concurrency.test.ts# Sub-phase 6.5: Idempotency Key & Concurrent Payment Protection (32 ca)
     ├── table-order-sync.test.ts       # Sub-phase 6.6: Table Transfer, Merge, Move Items & CAS Locks (38 ca)
-    └── order-query.test.ts            # Sub-phase 6.7: Order Query, Filters, Search & Branch Isolation (39 ca)
+    └── order-query.test.ts            # Sub-phase 6.7: Order Query, Filters, Search & Branch Isolation (42 ca)
 ```
 
 ---
@@ -54,13 +54,13 @@ tests/
 Toàn bộ các phân hệ của Phase 6 được tích hợp tập trung vào thư mục `tests/phase-06-order-pos/`:
 
 | Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
-| :--- | :--- | :--- | :---: | :---: |
+| :--- | :--- | :--- | :--- | :---: |
 | **6.2 State Machine** | `state-machine.test.ts` | Máy trạng thái vòng đời đơn, Invariants, hủy món/round | 56 | **PASS** |
 | **6.3 POS Cashier** | `pos-cashier.test.ts` | Máy thu ngân, VAT, Service fee, Cash tiền thừa, VietQR | 30 | **PASS** |
 | **6.4 Customer QR** | `customer-qr.test.ts` | Khách quét mã QR gọi món, duyệt đợt gọi món | 43 | **PASS** |
 | **6.5 Idempotency** | `idempotency-concurrency.test.ts` | Header `X-Idempotency-Key`, chống duplicate charge | 32 | **PASS** |
 | **6.6 Table Sync** | `table-order-sync.test.ts` | Đổi bàn, gộp bàn, di chuyển món, tách bill, khóa CAS | 38 | **PASS** |
-| **6.7 Order Query** | `order-query.test.ts` | Lọc thời gian, nhân viên, đa trạng thái, regex search, phân lập chi nhánh | 39 | **PASS** |
+| **6.7 Order Query** | `order-query.test.ts` | Lọc thời gian, nhân viên, đa trạng thái, regex search, phân lập chi nhánh | 42 | **PASS** |
 
 ---
 

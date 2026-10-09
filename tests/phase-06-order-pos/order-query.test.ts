@@ -539,6 +539,47 @@ async function main() {
     failed++;
   }
 
+  // 1.1b: Lọc theo định dạng ngày không giờ YYYY-MM-DD (AUD-6.7-01: Auto-expansion toDate)
+  try {
+    const order1DateStr = new Date(now - 3 * h1).toISOString().split('T')[0];
+    const res = await request(`/orders?fromDate=${order1DateStr}&toDate=${order1DateStr}`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    if (res.status === 200 && Array.isArray(res.data.data.data)) {
+      const codes = res.data.data.data.map((o: any) => o.orderCode);
+      if (codes.includes(`ORD-${prefix}-001`)) {
+        pass('1.1b: Lọc khoảng ngày không giờ YYYY-MM-DD tự động phủ trọn cả ngày thành công');
+        passed++;
+      } else {
+        fail('1.1b: Không tìm thấy đơn hàng trong ngày khi truyền YYYY-MM-DD', codes);
+        failed++;
+      }
+    } else {
+      fail('1.1b: Gọi API lọc ngày YYYY-MM-DD thất bại', res);
+      failed++;
+    }
+  } catch (e) {
+    fail('1.1b: Ngoại lệ', e);
+    failed++;
+  }
+
+  // 1.1c: Khử khoảng trắng đầu cuối tham số truy vấn (AUD-6.7-03: Perimeter sanitization)
+  try {
+    const res = await request(`/orders?status=%20Preparing,Served%20&search=%20ORD-`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    if (res.status === 200 && Array.isArray(res.data.data.data) && res.data.data.data.length > 0) {
+      pass('1.1c: Tự động loại bỏ khoảng trắng thừa (trim) tại tầng DTO thành công');
+      passed++;
+    } else {
+      fail('1.1c: Lọc với tham số có khoảng trắng thừa thất bại', res);
+      failed++;
+    }
+  } catch (e) {
+    fail('1.1c: Ngoại lệ', e);
+    failed++;
+  }
+
   // 1.2 Lọc theo closedAt (thời điểm đóng hóa đơn)
   try {
     const from = new Date(now - 1 * h1).toISOString();
@@ -1408,13 +1449,14 @@ async function main() {
       'restaurantId_1_branchId_1_openedAt_-1',
       'restaurantId_1_branchId_1_closedAt_-1',
       'restaurantId_1_branchId_1_paymentMethod_1_createdAt_-1',
+      'restaurantId_1_branchId_1_totalAmount_-1',
       'restaurantId_1_createdBy_1_createdAt_-1',
       'restaurantId_1_paidBy_1_createdAt_-1',
     ];
 
     const allExist = requiredIndexes.every((reqIdx) => indexNames.includes(reqIdx));
     if (allExist) {
-      pass('8.2: Xác minh đầy đủ 6 Compound Indexes dự kiến tồn tại trên MongoDB Collection');
+      pass('8.2: Xác minh đầy đủ 7 Compound Indexes dự kiến tồn tại trên MongoDB Collection');
       passed++;
     } else {
       fail('8.2: Thiếu một số compound index', { requiredIndexes, indexNames });
@@ -1422,6 +1464,32 @@ async function main() {
     }
   } catch (e) {
     fail('8.2: Ngoại lệ kiểm tra indexes', e);
+    failed++;
+  }
+
+  // 8.3 Kiểm tra truy vấn sắp xếp totalAmount sử dụng Compound Index (IXSCAN)
+  try {
+    const explainResult: any = await orderModel
+      .find({
+        restaurantId: restAId,
+        branchId: branch1Id,
+      })
+      .sort({ totalAmount: -1, _id: -1 })
+      .explain('executionStats');
+
+    const winningPlan = explainResult?.queryPlanner?.winningPlan;
+    const planStr = JSON.stringify(winningPlan || {});
+    const isIndexScan = planStr.includes('"stage":"IXSCAN"') && !planStr.includes('"stage":"COLLSCAN"');
+
+    if (isIndexScan) {
+      pass('8.3: Truy vấn sort totalAmount sử dụng Compound Index (IXSCAN), không phải COLLSCAN');
+      passed++;
+    } else {
+      fail('8.3: Truy vấn sort totalAmount không dùng index tối ưu', winningPlan?.stage);
+      failed++;
+    }
+  } catch (e) {
+    fail('8.3: Ngoại lệ explain sort totalAmount', e);
     failed++;
   }
 

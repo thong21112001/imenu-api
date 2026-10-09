@@ -151,6 +151,7 @@ OrderSchema.index({ restaurantId: 1, branchId: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, branchId: 1, openedAt: -1 });
 OrderSchema.index({ restaurantId: 1, branchId: 1, closedAt: -1 });
 OrderSchema.index({ restaurantId: 1, branchId: 1, paymentMethod: 1, createdAt: -1 });
+OrderSchema.index({ restaurantId: 1, branchId: 1, totalAmount: -1 });
 OrderSchema.index({ restaurantId: 1, createdBy: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, paidBy: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, status: 1, createdAt: -1 });
