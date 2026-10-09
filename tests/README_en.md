@@ -44,7 +44,7 @@ tests/
     ├── customer-qr.test.ts            # Sub-phase 6.4: Customer QR Ordering & Staff Approval (43 tests)
     ├── idempotency-concurrency.test.ts# Sub-phase 6.5: Idempotency Key & Concurrent Payment Claims (32 tests)
     ├── table-order-sync.test.ts       # Sub-phase 6.6: Table Transfer, Merge, Move Items & CAS Locks (38 tests)
-    └── order-query.test.ts            # Sub-phase 6.7: Order Query, Filters, Search & Branch Isolation (38 tests)
+    └── order-query.test.ts            # Sub-phase 6.7: Order Query, Filters, Search & Branch Isolation (39 tests)
 ```
 
 ---
@@ -60,7 +60,7 @@ All Phase 6 functional sub-phases are consolidated inside `tests/phase-06-order-
 | **6.4 Customer QR** | `customer-qr.test.ts` | Customer QR ordering, `WaitingConfirmation` batches, staff confirmation | 43 | **PASS** |
 | **6.5 Idempotency** | `idempotency-concurrency.test.ts` | `X-Idempotency-Key` header, duplicate request replay, concurrency protection | 32 | **PASS** |
 | **6.6 Table Sync** | `table-order-sync.test.ts` | Table transfer, merge, move items, split billing, atomic CAS locks | 38 | **PASS** |
-| **6.7 Order Query** | `order-query.test.ts` | Date/time filters, staff, multi-status, safe regex search, branch isolation | 38 | **PASS** |
+| **6.7 Order Query** | `order-query.test.ts` | Date/time filters, staff, multi-status, safe regex search, branch isolation | 39 | **PASS** |
 
 ---
 

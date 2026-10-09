@@ -42,7 +42,7 @@ Toàn bộ 6 tệp kiểm thử của Phase 6 nằm trực tiếp trong thư m�
 | **`customer-qr.test.ts`** | 6.4 | Khách quét QR gọi món, tạo round `WaitingConfirmation`, nhân viên xác nhận món, giới hạn bàn, bảo mật QR token, phân lập nhà hàng và chi nhánh. | **43** | **PASS** |
 | **`idempotency-concurrency.test.ts`** | 6.5 | Header `X-Idempotency-Key` tái phát hiện request trùng lặp (replay cached response), thanh toán đồng thời qua `Promise.all` (đúng 1 thành công, 1 bị từ chối), zero duplicate charge. | **32** | **PASS** |
 | **`table-order-sync.test.ts`** | 6.6 | Đổi bàn (`transferTable`), gộp bàn (`mergeTables`), di chuyển món (`moveItemsBetweenTables`), tách bill, khóa CAS chống race transfer, OCC retry chống xung đột phiên bản Mongoose, kiểm thử hồi quy defect. | **38** | **PASS** |
-| **`order-query.test.ts`** | 6.7 | Lọc thời gian, nhân sự, đa trạng thái, phương thức thanh toán, regex search an toàn, phân trang xác định, cách ly chi nhánh tuyệt đối, xác minh explain index scan. | **38** | **PASS** |
+| **`order-query.test.ts`** | 6.7 | Lọc thời gian, nhân sự, đa trạng thái, phương thức thanh toán, regex search an toàn, phân trang xác định, cách ly chi nhánh tuyệt đối, xác minh explain index scan. | **39** | **PASS** |
 
 ---
 
@@ -89,8 +89,8 @@ npm run test:phase6
 
 ## 5. Trạng Thái Hiện Tại (Current Status)
 
-- **Trạng thái Sub-phase 6.7:** **KIỂM THỬ HOÀN TẤT (VERIFIED & PASSED)**, đạt 38/38 ca test tự động PASS 100%.
-- **Toàn bộ Phase 6:** 237 ca test tự động vượt qua (100% Passed, Zero Failures).
+- **Trạng thái Sub-phase 6.7:** **KIỂM THỬ HOÀN TẤT & ĐÃ FIX (VERIFIED & PASSED)**, đạt 39/39 ca test tự động PASS 100%.
+- **Toàn bộ Phase 6:** 238 ca test tự động vượt qua (100% Passed, Zero Failures).
 
 
 ---

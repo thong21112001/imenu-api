@@ -878,7 +878,10 @@ export class OrdersService {
     const isSuperAdmin = isSuperAdminUser(caller);
     const isMainBranch = caller?.isMainBranch === true;
 
-    if (!isSuperAdmin && !isMainBranch && caller?.branchId) {
+    if (!isSuperAdmin && !isMainBranch) {
+      if (!caller?.branchId) {
+        throw new ForbiddenException('Tài khoản chưa được gán chi nhánh hợp lệ');
+      }
       // Nhân viên chi nhánh con: Bắt buộc chỉ xem đơn của chi nhánh mình
       if (query.branchId && query.branchId !== caller.branchId) {
         throw new ForbiddenException('Bạn không có quyền truy cập dữ liệu của chi nhánh khác');
@@ -886,8 +889,8 @@ export class OrdersService {
       filter.branchId = caller.branchId;
     } else {
       // Trụ sở chính (Main Branch) hoặc Super Admin: Có quyền lọc theo branchId hoặc xem toàn chuỗi
-      if (query.branchId) {
-        filter.branchId = query.branchId;
+      if (query.branchId && query.branchId.trim() !== '') {
+        filter.branchId = query.branchId.trim();
       }
     }
 

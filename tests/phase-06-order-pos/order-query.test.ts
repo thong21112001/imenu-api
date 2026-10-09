@@ -130,6 +130,7 @@ async function main() {
   const subManagerId = new Types.ObjectId();
   const restBUserId = new Types.ObjectId();
   const superAdminId = new Types.ObjectId();
+  const unassignedUserId = new Types.ObjectId();
 
   await userCol.insertMany([
     {
@@ -196,6 +197,17 @@ async function main() {
       status: 'ACTIVE',
       isDeleted: false,
     },
+    {
+      _id: unassignedUserId,
+      email: `unassigned_${prefix}@example.com`,
+      fullName: 'Nhân viên chưa gán chi nhánh',
+      role: cashierRole?._id,
+      restaurantId: restAId,
+      branchId: '',
+      isRoleActive: true,
+      status: 'ACTIVE',
+      isDeleted: false,
+    },
   ]);
 
   // 2.4 Đăng nhập lấy Bearer Tokens
@@ -220,6 +232,17 @@ async function main() {
     roleSlug: 'cashier',
     restaurantId: restAId.toString(),
     branchId: branch2Id,
+  });
+
+  const unassignedToken = makeToken({
+    id: unassignedUserId.toString(),
+    userId: unassignedUserId.toString(),
+    email: `unassigned_${prefix}@example.com`,
+    roleId: cashierRole?._id.toString(),
+    roleSlug: 'cashier',
+    restaurantId: restAId.toString(),
+    branchId: '',
+    isMainBranch: false,
   });
 
   const restBToken = makeToken({
@@ -1234,6 +1257,23 @@ async function main() {
     failed++;
   }
 
+  // 7.2b Chặn nhân viên chưa được gán chi nhánh hợp lệ xem đơn (HTTP 403 Forbidden)
+  try {
+    const res = await request(`/orders`, {
+      headers: { Authorization: `Bearer ${unassignedToken}` },
+    });
+    if (res.status === 403) {
+      pass('7.2b: Chặn nhân viên chưa được gán chi nhánh xem đơn (HTTP 403 Forbidden thành công)');
+      passed++;
+    } else {
+      fail('7.2b: Không chặn nhân viên chưa gán branchId', res);
+      failed++;
+    }
+  } catch (e) {
+    fail('7.2b: Ngoại lệ', e);
+    failed++;
+  }
+
   // 7.3 Main Branch xem toàn chuỗi (không truyền branchId)
   try {
     const res = await request(`/orders`, {
@@ -1404,7 +1444,7 @@ async function main() {
     });
     await userCol.deleteMany({
       _id: {
-        $in: [staff1Id, staff2Id, mainManagerId, subManagerId, restBUserId, superAdminId],
+        $in: [staff1Id, staff2Id, mainManagerId, subManagerId, restBUserId, superAdminId, unassignedUserId],
       },
     });
     await tableCol.deleteMany({ _id: { $in: [table1Id, table2Id, tableVIPId, tableCN2Id] } });
