@@ -63,6 +63,7 @@ async function main() {
   await rolesService.seedDefaultRoles();
 
   orderModel = connection.model<OrderDocument>(Order.name);
+  await orderModel.syncIndexes();
 
   await app.listen(TEST_PORT);
   console.log(`  Test server đã khởi động trên cổng ${TEST_PORT}!\n`);
@@ -541,6 +542,31 @@ async function main() {
     failed++;
   }
 
+  // 1.2b Lọc theo openedAt
+  try {
+    const from = new Date(now - 3.5 * h1).toISOString();
+    const to = new Date(now - 1.5 * h1).toISOString();
+    const res = await request(`/orders?dateField=openedAt&fromDate=${from}&toDate=${to}`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    if (res.status === 200 && Array.isArray(res.data.data.data)) {
+      const codes = res.data.data.data.map((o: any) => o.orderCode);
+      if (codes.includes(`ORD-${prefix}-001`) && codes.includes(`ORD-${prefix}-002`) && codes.includes(`ORD-${prefix}-003`)) {
+        pass('1.2b: Lọc theo openedAt thành công');
+        passed++;
+      } else {
+        fail('1.2b: Lọc openedAt trả về kết quả không khớp', codes);
+        failed++;
+      }
+    } else {
+      fail('1.2b: Gọi API lọc openedAt thất bại', res);
+      failed++;
+    }
+  } catch (e) {
+    fail('1.2b: Ngoại lệ', e);
+    failed++;
+  }
+
   // 1.3 Bắt lỗi when fromDate > toDate (Negative test)
   try {
     const from = new Date(now).toISOString();
@@ -910,6 +936,33 @@ async function main() {
     failed++;
   }
 
+  // 5.2b Tìm kiếm chuỗi con chữ thường và tiền tố (Case-insensitive & Prefix search)
+  try {
+    const res = await request(`/orders?search=bàn vip`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    const resPrefix = await request(`/orders?search=ord-`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    if (res.status === 200 && resPrefix.status === 200) {
+      const codes = res.data.data.data.map((o: any) => o.orderCode);
+      const prefixCount = resPrefix.data.data.data.length;
+      if (codes.includes(`ORD-${prefix}-004`) && prefixCount >= 4) {
+        pass('5.2b: Tìm kiếm chuỗi con chữ thường và tiền tố (case-insensitive) thành công');
+        passed++;
+      } else {
+        fail('5.2b: Tìm kiếm hoa thường/tiền tố không khớp', { codes, prefixCount });
+        failed++;
+      }
+    } else {
+      fail('5.2b: Tìm kiếm hoa thường/tiền tố thất bại', { res, resPrefix });
+      failed++;
+    }
+  } catch (e) {
+    fail('5.2b: Ngoại lệ', e);
+    failed++;
+  }
+
   // 5.3 Tìm với ký tự đặc biệt Regex (Xử lý an toàn không crash)
   try {
     const res = await request(`/orders?search=Bàn (VIP+01)*`, {
@@ -924,6 +977,24 @@ async function main() {
     }
   } catch (e) {
     fail('5.3: Ngoại lệ', e);
+    failed++;
+  }
+
+  // 5.3b Bắt lỗi search quá dài (> 100 ký tự)
+  try {
+    const longString = 'a'.repeat(101);
+    const res = await request(`/orders?search=${longString}`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    if (res.status === 400) {
+      pass('5.3b: Chặn chuỗi tìm kiếm quá dài > 100 ký tự (HTTP 400 Bad Request thành công)');
+      passed++;
+    } else {
+      fail('5.3b: Không chặn search quá dài', res);
+      failed++;
+    }
+  } catch (e) {
+    fail('5.3b: Ngoại lệ', e);
     failed++;
   }
 
@@ -1003,6 +1074,75 @@ async function main() {
     }
   } catch (e) {
     fail('6.2: Ngoại lệ', e);
+    failed++;
+  }
+
+  // 6.2b Sắp xếp giảm dần theo openedAt
+  try {
+    const res = await request(`/orders?sortBy=openedAt&sortOrder=desc&limit=10`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    if (res.status === 200) {
+      const openedAts = res.data.data.data.map((o: any) => new Date(o.openedAt).getTime());
+      const isSortedDesc = openedAts.every((val: number, i: number, arr: number[]) => !i || arr[i - 1] >= val);
+      if (isSortedDesc && openedAts.length >= 4) {
+        pass('6.2b: Sắp xếp giảm dần theo openedAt thành công');
+        passed++;
+      } else {
+        fail('6.2b: Sắp xếp openedAt desc không đúng', openedAts);
+        failed++;
+      }
+    } else {
+      fail('6.2b: Gọi API sort openedAt desc thất bại', res);
+      failed++;
+    }
+  } catch (e) {
+    fail('6.2b: Ngoại lệ', e);
+    failed++;
+  }
+
+  // 6.2c Chặn sortBy không thuộc whitelist (Negative test)
+  try {
+    const res = await request(`/orders?sortBy=unauthorizedField`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    if (res.status === 400) {
+      pass('6.2c: Chặn sortBy không thuộc danh sách cho phép (HTTP 400 Bad Request thành công)');
+      passed++;
+    } else {
+      fail('6.2c: Không chặn sortBy không hợp lệ', res);
+      failed++;
+    }
+  } catch (e) {
+    fail('6.2c: Ngoại lệ', e);
+    failed++;
+  }
+
+  // 6.2d Sắp xếp ổn định khi nhiều bản ghi có cùng giá trị (Deterministic tie-breaker _id: -1)
+  try {
+    const res1 = await request(`/orders?sortBy=createdAt&sortOrder=asc&limit=10`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    const res2 = await request(`/orders?sortBy=createdAt&sortOrder=asc&limit=10`, {
+      headers: { Authorization: `Bearer ${mainToken}` },
+    });
+    if (res1.status === 200 && res2.status === 200) {
+      const ids1 = res1.data.data.data.map((o: any) => o._id);
+      const ids2 = res2.data.data.data.map((o: any) => o._id);
+      const isIdentical = ids1.every((id: string, idx: number) => id === ids2[idx]);
+      if (isIdentical && ids1.length >= 4) {
+        pass('6.2d: Sắp xếp ổn định xác định với tie-breaker _id (Deterministic ordering) thành công');
+        passed++;
+      } else {
+        fail('6.2d: Sắp xếp không có tính ổn định lặp lại', { ids1, ids2 });
+        failed++;
+      }
+    } else {
+      fail('6.2d: Gọi API kiểm tra deterministic sorting thất bại', { res1, res2 });
+      failed++;
+    }
+  } catch (e) {
+    fail('6.2d: Ngoại lệ', e);
     failed++;
   }
 
@@ -1216,6 +1356,32 @@ async function main() {
 
   } catch (e) {
     fail('8.1: Ngoại lệ explain', e);
+    failed++;
+  }
+
+  // 8.2 Xác minh danh sách Compound Indexes thực tế tồn tại trên Collection
+  try {
+    const indexes = await orderModel.collection.indexes();
+    const indexNames = indexes.map((idx: any) => idx.name);
+    const requiredIndexes = [
+      'restaurantId_1_branchId_1_createdAt_-1',
+      'restaurantId_1_branchId_1_openedAt_-1',
+      'restaurantId_1_branchId_1_closedAt_-1',
+      'restaurantId_1_branchId_1_paymentMethod_1_createdAt_-1',
+      'restaurantId_1_createdBy_1_createdAt_-1',
+      'restaurantId_1_paidBy_1_createdAt_-1',
+    ];
+
+    const allExist = requiredIndexes.every((reqIdx) => indexNames.includes(reqIdx));
+    if (allExist) {
+      pass('8.2: Xác minh đầy đủ 6 Compound Indexes dự kiến tồn tại trên MongoDB Collection');
+      passed++;
+    } else {
+      fail('8.2: Thiếu một số compound index', { requiredIndexes, indexNames });
+      failed++;
+    }
+  } catch (e) {
+    fail('8.2: Ngoại lệ kiểm tra indexes', e);
     failed++;
   }
 

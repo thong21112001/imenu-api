@@ -41,10 +41,10 @@ tests/
     ├── README_en.md                   # Comprehensive Phase 6 test guide (English)
     ├── state-machine.test.ts          # Sub-phase 6.2: State Machine, Round/Item Cancellation & Invariants (56 tests)
     ├── pos-cashier.test.ts            # Sub-phase 6.3: POS Cashier, Taxes/Fees, Cash Change & VietQR (30 tests)
-    ├── customer-qr.test.ts            # Sub-phase 6.4: Customer QR Ordering & Staff Approval (34 tests)
-    ├── idempotency-concurrency.test.ts# Sub-phase 6.5: Idempotency Key & Concurrent Payment Claims (36 tests)
+    ├── customer-qr.test.ts            # Sub-phase 6.4: Customer QR Ordering & Staff Approval (43 tests)
+    ├── idempotency-concurrency.test.ts# Sub-phase 6.5: Idempotency Key & Concurrent Payment Claims (32 tests)
     ├── table-order-sync.test.ts       # Sub-phase 6.6: Table Transfer, Merge, Move Items & CAS Locks (38 tests)
-    └── order-query.test.ts            # Sub-phase 6.7: Order Query, Filters, Search & Branch Isolation (31 tests)
+    └── order-query.test.ts            # Sub-phase 6.7: Order Query, Filters, Search & Branch Isolation (38 tests)
 ```
 
 ---
@@ -57,10 +57,10 @@ All Phase 6 functional sub-phases are consolidated inside `tests/phase-06-order-
 | :--- | :--- | :--- | :---: | :---: |
 | **6.2 State Machine** | `state-machine.test.ts` | Order lifecycle state machine, Invariants, item/round cancellations | 56 | **PASS** |
 | **6.3 POS Cashier** | `pos-cashier.test.ts` | Cashier workflows, VAT, Service fee, Cash change calculations, VietQR | 30 | **PASS** |
-| **6.4 Customer QR** | `customer-qr.test.ts` | Customer QR ordering, `WaitingConfirmation` batches, staff confirmation | 34 | **PASS** |
-| **6.5 Idempotency** | `idempotency-concurrency.test.ts` | `X-Idempotency-Key` header, duplicate request replay, concurrency protection | 36 | **PASS** |
+| **6.4 Customer QR** | `customer-qr.test.ts` | Customer QR ordering, `WaitingConfirmation` batches, staff confirmation | 43 | **PASS** |
+| **6.5 Idempotency** | `idempotency-concurrency.test.ts` | `X-Idempotency-Key` header, duplicate request replay, concurrency protection | 32 | **PASS** |
 | **6.6 Table Sync** | `table-order-sync.test.ts` | Table transfer, merge, move items, split billing, atomic CAS locks | 38 | **PASS** |
-| **6.7 Order Query** | `order-query.test.ts` | Date/time filters, staff, multi-status, safe regex search, branch isolation | 31 | **PASS** |
+| **6.7 Order Query** | `order-query.test.ts` | Date/time filters, staff, multi-status, safe regex search, branch isolation | 38 | **PASS** |
 
 ---
 

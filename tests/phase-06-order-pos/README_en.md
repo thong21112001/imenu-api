@@ -39,10 +39,10 @@ All 6 Phase 6 test suites reside directly inside this directory:
 | :--- | :---: | :--- | :---: | :---: |
 | **`state-machine.test.ts`** | 6.2 | Order state transitions (`WaitingConfirmation` $\rightarrow$ `Preparing` $\rightarrow$ `Ready` $\rightarrow$ `Served` $\rightarrow$ `Paid` / `Cancelled`), round confirmation/cancellation, item cancellations, subtotal recalculations, staff RBAC. | **56** | **PASS** |
 | **`pos-cashier.test.ts`** | 6.3 | POS Cashier operations, financial calculation engine (VAT, service fees, discounts), Cash payments (change amount), VietQR payments, quick-pay, immutable Paid orders, tenant/branch isolation. | **30** | **PASS** |
-| **`customer-qr.test.ts`** | 6.4 | Customer QR ordering, `WaitingConfirmation` rounds, staff confirmation flow, table binding, QR token validation, multi-tenant and branch boundaries. | **34** | **PASS** |
-| **`idempotency-concurrency.test.ts`** | 6.5 | `X-Idempotency-Key` header re-identification (cached replay), concurrent payments via `Promise.all` (exactly 1 succeeds, 1 rejected), zero duplicate charges. | **36** | **PASS** |
+| **`customer-qr.test.ts`** | 6.4 | Customer QR ordering, `WaitingConfirmation` rounds, staff confirmation flow, table binding, QR token validation, multi-tenant and branch boundaries. | **43** | **PASS** |
+| **`idempotency-concurrency.test.ts`** | 6.5 | `X-Idempotency-Key` header re-identification (cached replay), concurrent payments via `Promise.all` (exactly 1 succeeds, 1 rejected), zero duplicate charges. | **32** | **PASS** |
 | **`table-order-sync.test.ts`** | 6.6 | Table transfer (`transferTable`), table merge (`mergeTables`), item movement (`moveItemsBetweenTables`), split billing, CAS atomic locking against transfer races, OCC retries against Mongoose VersionError, defect regression suite. | **38** | **PASS** |
-| **`order-query.test.ts`** | 6.7 | Order query filters (date range, dateField, staff, multi-status, payment method), safe regex search, deterministic pagination with `totalPages`, strict multi-branch isolation, index scan verification. | **31** | **PASS** |
+| **`order-query.test.ts`** | 6.7 | Order query filters (date range, dateField, staff, multi-status, payment method), safe regex search, deterministic pagination with `totalPages`, strict multi-branch isolation, index scan verification. | **38** | **PASS** |
 
 ---
 
@@ -89,8 +89,8 @@ npm run test:phase6
 
 ## 5. Current Status
 
-- **Sub-phase 6.7 Status:** **IMPLEMENTED**, with 31/31 automated tests passing 100%.
-- **Phase 6 Total:** 225 automated tests passing (100% Passed, Zero Failures).
+- **Sub-phase 6.7 Status:** **VERIFIED & PASSED**, with 38/38 automated tests passing 100%.
+- **Phase 6 Total:** 237 automated tests passing (100% Passed, Zero Failures).
 
 ---
 
