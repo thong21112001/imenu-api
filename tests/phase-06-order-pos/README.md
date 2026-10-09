@@ -1,8 +1,8 @@
 # 🧪 Phase 6: Vận Hành Order, POS & Đồng Bộ Bàn Ăn (Order & POS Lifecycle)
 
-> **Ngôn ngữ:** [🇻🇳 Tiếng Việt](README.md) | [🇬🇧 English](README_en.md)  
-> **Phase:** 6 — Order & POS Lifecycle  
-> **Trạng thái hiện tại:** **HOÀN THÀNH TOÀN DIỆN & ĐÃ ĐÓNG (PHASE 6.6 CLOSED)**  
+> **Ngôn ngữ:** [🇻🇳 Tiếng Việt](README.md) | [🇬🇧 English](README_en.md)<br>
+> **Phase:** 6 — Order & POS Lifecycle<br>
+> **Trạng thái hiện tại:** **HOÀN THÀNH TOÀN DIỆN & ĐÃ ĐÓNG (PHASE 6.7 CLOSED)**<br>
 > **Kiến trúc thư mục:** `ONE PHASE = ONE TEST DIRECTORY` (Tất cả test artifacts của Phase 6 được lưu trữ tập trung tại thư mục này).
 
 ---
@@ -13,7 +13,7 @@ Phase 6 là giai đoạn trọng yếu triển khai toàn bộ luồng vận hà
 
 Theo quy ước chuẩn kiến trúc của dự án `imenu-api`:
 > **Quy ước:** `ONE PHASE = ONE DIRECTORY`  
-> Mặc dù Phase 6 bao gồm nhiều Sub-phase nghiệp vụ (từ 6.1 đến 6.6), toàn bộ các tệp kiểm thử tự động của Phase 6 được lưu trữ thống nhất và tập trung trực tiếp tại thư mục `tests/phase-06-order-pos/`. Các Sub-phase **không** tạo thư mục riêng nhằm tránh phân mảnh repository.
+> Mặc dù Phase 6 bao gồm nhiều Sub-phase nghiệp vụ (từ 6.1 đến 6.7), toàn bộ các tệp kiểm thử tự động của Phase 6 được lưu trữ thống nhất và tập trung trực tiếp tại thư mục `tests/phase-06-order-pos/`. Các Sub-phase **không** tạo thư mục riêng nhằm tránh phân mảnh repository.
 
 ---
 
@@ -27,7 +27,7 @@ Phase 6 bao gồm 7 phân hệ nghiệp vụ chính:
 4. **Sub-phase 6.4 — Customer QR Ordering:** Khách quét mã QR tại bàn, xem thực đơn công khai, gửi yêu cầu gọi món theo đợt (`WaitingConfirmation`), nhân viên thu ngân/phục vụ xác nhận (`Confirmed`), bảo vệ chống mở đơn trùng lặp.
 5. **Sub-phase 6.5 — Idempotency Key & Concurrency Control:** Middleware Idempotency Key (`X-Idempotency-Key`) chặn đứng request trùng lặp, cơ chế khóa nguyên tử thanh toán POS đa luồng (`Atomic Payment Claim`), bảo vệ bất biến tài chính.
 6. **Sub-phase 6.6 — Table ↔ Order Synchronization & Transfer/Merge:** Thắt chặt đồng bộ giữa bàn ăn và đơn hàng, đổi bàn (`transferTable`), gộp bàn (`mergeTables`), di chuyển món / tách bàn (`moveItemsBetweenTables`), tách hóa đơn (Split Bill), khóa nguyên tử CAS (Compare-And-Swap) và Optimistic Concurrency Control (OCC) Retry.
-7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization (IMPLEMENTED):** Nâng cấp toàn diện API truy vấn đơn hàng `GET /api/orders` (lọc khoảng thời gian `fromDate`/`toDate`, trường thời gian `dateField`, nhân viên `staffId`/`createdBy`/`paidBy`, đa trạng thái, phương thức thanh toán `paymentMethod`, tìm kiếm an toàn `orderCode`/`tableName`, phân trang ổn định kèm `totalPages`, deterministic sorting với tie-breaker `_id: -1`, cưỡng chế phân lập chi nhánh và compound indexes).
+7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization (HOÀN THÀNH TOÀN DIỆN & ĐÃ ĐÓNG):** Nâng cấp toàn diện API truy vấn đơn hàng `GET /api/orders` (lọc khoảng thời gian `fromDate`/`toDate`, trường thời gian `dateField`, nhân viên `staffId`/`createdBy`/`paidBy`, đa trạng thái, phương thức thanh toán `paymentMethod`, tìm kiếm an toàn `orderCode`/`tableName`, phân trang ổn định kèm `totalPages`, deterministic sorting với tie-breaker `_id: -1`, cưỡng chế phân lập chi nhánh và compound indexes).
 
 ---
 
@@ -89,7 +89,7 @@ npm run test:phase6
 
 ## 5. Trạng Thái Hiện Tại (Current Status)
 
-- **Trạng thái Sub-phase 6.7:** **GIA CỐ BẢO MẬT & HIỆU NĂNG HOÀN TẤT (HARDENED & VERIFIED)**, đạt 42/42 ca test tự động PASS 100%.
+- **Trạng thái Sub-phase 6.7:** **HOÀN THÀNH TOÀN DIỆN & ĐÃ ĐÓNG (CLOSED)**, đạt 42/42 ca test tự động PASS 100%.
 - **Toàn bộ Phase 6:** 241 ca test tự động vượt qua (100% Passed, Zero Failures).
 
 

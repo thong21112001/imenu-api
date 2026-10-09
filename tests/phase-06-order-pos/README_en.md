@@ -1,8 +1,8 @@
 # 🧪 Phase 6: Order Operations, POS & Table Synchronization (Order & POS Lifecycle)
 
-> **Language:** [🇻🇳 Tiếng Việt](README.md) | [🇬🇧 English](README_en.md)  
-> **Phase:** 6 — Order & POS Lifecycle  
-> **Current Status:** **FULLY COMPLETED & CLOSED (PHASE 6.6 CLOSED)**  
+> **Language:** [🇻🇳 Tiếng Việt](README.md) | [🇬🇧 English](README_en.md)<br>
+> **Phase:** 6 — Order & POS Lifecycle<br>
+> **Current Status:** **COMPREHENSIVELY COMPLETED & CLOSED (PHASE 6.7 CLOSED)**<br>
 > **Directory Convention:** `ONE PHASE = ONE TEST DIRECTORY` (All Phase 6 test artifacts are intentionally stored directly in this single directory).
 
 ---
@@ -13,13 +13,13 @@ Phase 6 is the mission-critical phase implementing the end-to-end Order Lifecycl
 
 Per `imenu-api` repository architecture standard:
 > **Repository Convention:** `ONE PHASE = ONE DIRECTORY`  
-> Although Phase 6 encompasses multiple functional sub-phases (from 6.1 through 6.6), all Phase 6 automated test files are intentionally and strictly consolidated in this single directory `tests/phase-06-order-pos/`. Sub-phases do **NOT** have their own directories to prevent repository fragmentation.
+> Although Phase 6 encompasses multiple functional sub-phases (from 6.1 through 6.7), all Phase 6 automated test files are intentionally and strictly consolidated in this single directory `tests/phase-06-order-pos/`. Sub-phases do **NOT** have their own directories to prevent repository fragmentation.
 
 ---
 
 ## 2. Phase 6 Scope & Sub-phases
 
-Phase 6 consists of 6 primary functional domains:
+Phase 6 consists of 7 primary functional domains:
 
 1. **Sub-phase 6.1 — Core Order & Table Lifecycle Baseline:** Core order lifecycle foundations, table-order associations, order rounds (`rounds[]`), and line items (`items[]`).
 2. **Sub-phase 6.2 — State Machine & Business Invariants:** State machine transitions for orders and tables, immutable state constraints (Single active order per table, Paid is Terminal, RBAC state transition checks).
@@ -27,7 +27,7 @@ Phase 6 consists of 6 primary functional domains:
 4. **Sub-phase 6.4 — Customer QR Ordering:** Table QR scanning, public digital menu access, batch order placement (`WaitingConfirmation`), staff review/confirmation (`Confirmed`), protection against duplicate active order creation.
 5. **Sub-phase 6.5 — Idempotency Key & Concurrency Control:** `X-Idempotency-Key` middleware for caching and replaying duplicate requests, atomic multi-threaded POS payment claims (`Atomic Payment Claim`), financial invariant preservation.
 6. **Sub-phase 6.6 — Table ↔ Order Synchronization & Transfer/Merge:** Hardened table-order lifecycle synchronization, table transfer (`transferTable`), table merge (`mergeTables`), item movement between tables (`moveItemsBetweenTables`), Split Bill flows, database-level atomic CAS (Compare-And-Swap) locking, and Optimistic Concurrency Control (OCC) Retries.
-7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization (IMPLEMENTED):** Comprehensive upgrade of `GET /api/orders` query API (date/time range filters `fromDate`/`toDate`, dynamic `dateField`, staff filters `staffId`/`createdBy`/`paidBy`, multi-status filter, payment method filter `paymentMethod`, safe regex search `orderCode`/`tableName`, deterministic sorting with `_id: -1` tie-breaker, pagination with `totalPages`, strict multi-branch scoping and MongoDB compound indexes).
+7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization (COMPLETED & CLOSED):** Comprehensive upgrade of `GET /api/orders` query API (date/time range filters `fromDate`/`toDate`, dynamic `dateField`, staff filters `staffId`/`createdBy`/`paidBy`, multi-status filter, payment method filter `paymentMethod`, safe regex search `orderCode`/`tableName`, deterministic sorting with `_id: -1` tie-breaker, pagination with `totalPages`, strict multi-branch scoping and MongoDB compound indexes).
 
 ---
 
@@ -89,7 +89,7 @@ npm run test:phase6
 
 ## 5. Current Status
 
-- **Sub-phase 6.7 Status:** **HARDENED & VERIFIED**, with 42/42 automated tests passing 100%.
+- **Sub-phase 6.7 Status:** **COMPREHENSIVELY COMPLETED & CLOSED (PHASE 6.7 CLOSED)**, with 42/42 automated tests passing 100%.
 - **Phase 6 Total:** 241 automated tests passing (100% Passed, Zero Failures).
 
 ---
