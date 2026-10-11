@@ -109,6 +109,17 @@ export class OrdersController {
     });
   }
 
+  @ApiOperation({ summary: 'Khách hàng phân giải ngữ cảnh bàn ăn và đơn hàng hoạt động qua mã QR (Public)' })
+  @Public()
+  @Get(['public/table-context', 'customer/table-context'])
+  async getTableContext(@Query() query: CustomerGetActiveOrderDto) {
+    const context = await this.ordersService.getTableContextByQr(query);
+    return new OkResponse({
+      message: 'Xác thực và lấy thông tin bàn ăn thành công',
+      data: context,
+    });
+  }
+
   // =========================================================================
   // SUB-PHASE 6.3: POS CASHIER ENDPOINTS (STAFF JWT & PERMISSIONS REQUIRED)
   // =========================================================================

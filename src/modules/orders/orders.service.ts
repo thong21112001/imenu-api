@@ -859,6 +859,72 @@ export class OrdersService {
   }
 
   /**
+   * SUB-PHASE 6.8: Phân giải ngữ cảnh nhà hàng, chi nhánh, bàn ăn và đơn hàng qua mã QR (Public)
+   */
+  async getTableContextByQr(dto: CustomerGetActiveOrderDto): Promise<{
+    restaurant: {
+      id: string;
+      name: string;
+      slug: string;
+      phone?: string;
+      address?: string;
+      logoUrl?: string;
+    };
+    table: {
+      id: string;
+      code: string;
+      name: string;
+      branchId?: string;
+      zoneId?: string;
+      capacity?: number;
+      qrStatus?: string;
+    };
+    activeOrder: Order | null;
+  }> {
+    const { restaurant, table } = await this.validateQrSession(
+      dto.restaurantSlug,
+      dto.tableCode,
+      dto.qrToken,
+    );
+
+    const activeOrder = await this.orderModel.findOne({
+      tableId: table._id,
+      restaurantId: restaurant._id,
+      status: {
+        $in: [
+          'WaitingConfirmation',
+          'Confirmed',
+          'Preparing',
+          'Ready',
+          'Served',
+          'PaymentRequested',
+        ],
+      },
+    });
+
+    return {
+      restaurant: {
+        id: restaurant._id.toString(),
+        name: restaurant.name,
+        slug: restaurant.slug,
+        phone: restaurant.phone,
+        address: restaurant.address,
+        logoUrl: (restaurant as any).logoUrl,
+      },
+      table: {
+        id: table._id.toString(),
+        code: table.code,
+        name: table.name,
+        branchId: table.branchId ? table.branchId.toString() : undefined,
+        zoneId: (table as any).zoneId ? (table as any).zoneId.toString() : undefined,
+        capacity: table.capacity,
+        qrStatus: table.qrStatus,
+      },
+      activeOrder,
+    };
+  }
+
+  /**
    * Lấy danh sách đơn hàng có bộ lọc nâng cao, tìm kiếm, sắp xếp và phân trang (Sub-phase 6.7)
    */
   async findAll(
