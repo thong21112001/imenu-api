@@ -120,6 +120,17 @@ export class OrdersController {
     });
   }
 
+  @ApiOperation({ summary: 'Khách hàng xem thông tin đơn hàng theo ID qua mã QR (Public)' })
+  @Public()
+  @Get(['customer/:id', 'public/customer/:id'])
+  async getCustomerOrderById(@Param('id') id: string) {
+    const order = await this.ordersService.findById(id);
+    return new OkResponse({
+      message: 'Lấy thông tin đơn hàng thành công',
+      data: order,
+    });
+  }
+
   // =========================================================================
   // SUB-PHASE 6.3: POS CASHIER ENDPOINTS (STAFF JWT & PERMISSIONS REQUIRED)
   // =========================================================================
@@ -182,7 +193,7 @@ export class OrdersController {
 
   @ApiOperation({ summary: 'Xem trước hóa đơn tạm tính (Pre-bill) với chiết khấu, VAT, phí dịch vụ' })
   @RequirePermissions(ResourceType.POS, ActionType.VIEW)
-  @Get(':id/bill-preview')
+  @Get([':id/bill-preview', ':id/preview-bill'])
   async previewBill(
     @Param('id') id: string,
     @Query() query: BillPreviewDto,
