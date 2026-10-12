@@ -7,6 +7,7 @@ import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
+import { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
 
 const TEST_PORT = 3105;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -884,6 +885,44 @@ async function main() {
       passed++;
     } else {
       fail('TC-28: Không chặn QR token chéo nhà hàng', tc28);
+      failed++;
+    }
+
+    // =========================================================================
+    // SECTION 7: WEBSOCKET REALTIME AUTHORIZATION HARDENING (AUD-6.8-01)
+    // =========================================================================
+    console.log(`\n--- PHẦN 7: REALTIME GATEWAY AUTHORIZATION HARDENING (AUD-6.8-01) ---`);
+    const gateway = app.get(RealtimeGateway);
+
+    // TC-29: Chặn nhân viên Nhà hàng A join room Nhà hàng B
+    const mockClientStaffA: any = {
+      id: 'socket-staff-a',
+      data: { user: { restaurantId: restaurantAId, role: 'STAFF' } },
+      handshake: { query: {} },
+      join: () => {},
+    };
+    const tc29Res = gateway.handleJoinRestaurant(mockClientStaffA, { restaurantId: restaurantBId });
+    if (tc29Res.success === false && tc29Res.message?.includes('Unauthorized')) {
+      pass('TC-29: RealtimeGateway chặn nhân viên Nhà hàng A tham gia room Nhà hàng B');
+      passed++;
+    } else {
+      fail('TC-29: Không chặn nhân viên join room trái phép', tc29Res);
+      failed++;
+    }
+
+    // TC-30: Chặn khách vãng lai join room Nhà hàng khi handshake query không khớp
+    const mockClientGuest: any = {
+      id: 'socket-guest',
+      data: {},
+      handshake: { query: { restaurantId: restaurantAId } },
+      join: () => {},
+    };
+    const tc30Res = gateway.handleJoinRestaurant(mockClientGuest, { restaurantId: restaurantBId });
+    if (tc30Res.success === false && tc30Res.message?.includes('Unauthorized')) {
+      pass('TC-30: RealtimeGateway chặn khách vãng lai join room nhà hàng khác với handshake query');
+      passed++;
+    } else {
+      fail('TC-30: Không chặn khách join room nhà hàng trái phép', tc30Res);
       failed++;
     }
 

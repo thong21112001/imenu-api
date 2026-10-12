@@ -81,7 +81,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   /**
-   * Client chủ động join room cụ thể
+   * Client chủ động join room cụ thể (Hardened: Kiểm tra quyền hạn và tenant isolation)
    */
   @SubscribeMessage('join:restaurant')
   handleJoinRestaurant(
@@ -89,6 +89,23 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() data: { restaurantId: string; branchId?: string },
   ) {
     if (data?.restaurantId) {
+      // 1. Kiểm tra xác thực staff / admin nếu có JWT trong session
+      if (client.data?.user) {
+        const userRestId = client.data.user.restaurantId || client.data.user.user?.restaurantId;
+        const isSuperAdmin = client.data.user.role === 'SUPER_ADMIN' || client.data.user.user?.role === 'SUPER_ADMIN';
+        if (!isSuperAdmin && userRestId && userRestId !== data.restaurantId) {
+          this.logger.warn(`[Security] Unauthorized join:restaurant attempt: User from [${userRestId}] tried to join [${data.restaurantId}]`);
+          return { success: false, message: 'Unauthorized: Restaurant mismatch' };
+        }
+      } else {
+        // 2. Với khách vãng lai, bắt buộc query handshake phải khớp restaurantId của bàn đã quét
+        const queryRestId = client.handshake.query?.restaurantId as string;
+        if (!queryRestId || queryRestId !== data.restaurantId) {
+          this.logger.warn(`[Security] Unauthorized guest join:restaurant attempt: Handshake rest [${queryRestId}] != requested [${data.restaurantId}]`);
+          return { success: false, message: 'Unauthorized: Missing or invalid guest restaurant context' };
+        }
+      }
+
       const room = `restaurant_${data.restaurantId}`;
       client.join(room);
       if (data.branchId) {
@@ -105,6 +122,23 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() data: { tableId: string; restaurantId?: string },
   ) {
     if (data?.tableId) {
+      // Hardened: Kiểm tra quyền bàn
+      if (client.data?.user) {
+        const userRestId = client.data.user.restaurantId || client.data.user.user?.restaurantId;
+        const isSuperAdmin = client.data.user.role === 'SUPER_ADMIN' || client.data.user.user?.role === 'SUPER_ADMIN';
+        if (!isSuperAdmin && userRestId && data.restaurantId && userRestId !== data.restaurantId) {
+          this.logger.warn(`[Security] Unauthorized join:table attempt: User [${userRestId}] tried to join table in [${data.restaurantId}]`);
+          return { success: false, message: 'Unauthorized: Restaurant mismatch' };
+        }
+      } else {
+        // Khách vãng lai: Handshake tableId (nếu có) phải khớp tableId được yêu cầu
+        const queryTableId = client.handshake.query?.tableId as string;
+        if (queryTableId && queryTableId !== data.tableId) {
+          this.logger.warn(`[Security] Unauthorized guest join:table attempt: Handshake table [${queryTableId}] != requested [${data.tableId}]`);
+          return { success: false, message: 'Unauthorized: Table mismatch' };
+        }
+      }
+
       const room = `table_${data.tableId}`;
       client.join(room);
       if (data.restaurantId) {
