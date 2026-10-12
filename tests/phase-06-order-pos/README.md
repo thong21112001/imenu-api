@@ -13,13 +13,13 @@ Phase 6 là giai đoạn trọng yếu triển khai toàn bộ luồng vận hà
 
 Theo quy ước chuẩn kiến trúc của dự án `imenu-api`:
 > **Quy ước:** `ONE PHASE = ONE DIRECTORY`  
-> Mặc dù Phase 6 bao gồm nhiều Sub-phase nghiệp vụ (từ 6.1 đến 6.7), toàn bộ các tệp kiểm thử tự động của Phase 6 được lưu trữ thống nhất và tập trung trực tiếp tại thư mục `tests/phase-06-order-pos/`. Các Sub-phase **không** tạo thư mục riêng nhằm tránh phân mảnh repository.
+> Mặc dù Phase 6 bao gồm nhiều Sub-phase nghiệp vụ (từ 6.1 đến 6.8), toàn bộ các tệp kiểm thử tự động của Phase 6 được lưu trữ thống nhất và tập trung trực tiếp tại thư mục `tests/phase-06-order-pos/`. Các Sub-phase **không** tạo thư mục riêng nhằm tránh phân mảnh repository.
 
 ---
 
 ## 2. Phạm Vi Nghiệp Vụ & Các Sub-phase (Phase 6 Scope & Sub-phases)
 
-Phase 6 bao gồm 7 phân hệ nghiệp vụ chính:
+Phase 6 bao gồm 8 phân hệ nghiệp vụ chính:
 
 1. **Sub-phase 6.1 — Core Order & Table Lifecycle Baseline:** Thiết lập nền tảng vòng đời đơn hàng, liên kết bàn ăn và cấu trúc dữ liệu đợt gọi món (`rounds[]`), danh sách món (`items[]`).
 2. **Sub-phase 6.2 — State Machine & Business Invariants:** Máy trạng thái chuyển đổi đơn hàng và bàn ăn, ràng buộc bất biến (Single active order per table, Paid is Terminal, RBAC chuyển trạng thái).
@@ -27,13 +27,14 @@ Phase 6 bao gồm 7 phân hệ nghiệp vụ chính:
 4. **Sub-phase 6.4 — Customer QR Ordering:** Khách quét mã QR tại bàn, xem thực đơn công khai, gửi yêu cầu gọi món theo đợt (`WaitingConfirmation`), nhân viên thu ngân/phục vụ xác nhận (`Confirmed`), bảo vệ chống mở đơn trùng lặp.
 5. **Sub-phase 6.5 — Idempotency Key & Concurrency Control:** Middleware Idempotency Key (`X-Idempotency-Key`) chặn đứng request trùng lặp, cơ chế khóa nguyên tử thanh toán POS đa luồng (`Atomic Payment Claim`), bảo vệ bất biến tài chính.
 6. **Sub-phase 6.6 — Table ↔ Order Synchronization & Transfer/Merge:** Thắt chặt đồng bộ giữa bàn ăn và đơn hàng, đổi bàn (`transferTable`), gộp bàn (`mergeTables`), di chuyển món / tách bàn (`moveItemsBetweenTables`), tách hóa đơn (Split Bill), khóa nguyên tử CAS (Compare-And-Swap) và Optimistic Concurrency Control (OCC) Retry.
-7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization (HOÀN THÀNH TOÀN DIỆN & ĐÃ ĐÓNG):** Nâng cấp toàn diện API truy vấn đơn hàng `GET /api/orders` (lọc khoảng thời gian `fromDate`/`toDate`, trường thời gian `dateField`, nhân viên `staffId`/`createdBy`/`paidBy`, đa trạng thái, phương thức thanh toán `paymentMethod`, tìm kiếm an toàn `orderCode`/`tableName`, phân trang ổn định kèm `totalPages`, deterministic sorting với tie-breaker `_id: -1`, cưỡng chế phân lập chi nhánh và compound indexes).
+7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization:** Nâng cấp toàn diện API truy vấn đơn hàng `GET /api/orders` (lọc khoảng thời gian `fromDate`/`toDate`, trường thời gian `dateField`, nhân viên `staffId`/`createdBy`/`paidBy`, đa trạng thái, phương thức thanh toán `paymentMethod`, tìm kiếm an toàn `orderCode`/`tableName`, phân trang ổn định kèm `totalPages`, deterministic sorting với tie-breaker `_id: -1`, cưỡng chế phân lập chi nhánh và compound indexes).
+8. **Sub-phase 6.8 — Frontend Monorepo Integration (HOÀN THÀNH TOÀN DIỆN & ĐÃ ĐÓNG):** Tích hợp toàn diện Monorepo Frontend (`imenu-menudientu`) với Backend API (`imenu-api`); công khai endpoint QR table context (`GET /api/orders/public/table-context`), đồng bộ hóa các đợt gọi món (`OrderRound`, `WaitingConfirmation`), duyệt đơn QR POS & KDS guard, thao tác gộp/chuyển bàn, xem trước hóa đơn và in 80mm, gia cố bảo mật phòng WebSocket Realtime (`AUD-6.8-01`).
 
 ---
 
 ## 3. Danh Mục Tệp Kiểm Thử (Test Inventory)
 
-Toàn bộ 6 tệp kiểm thử của Phase 6 nằm trực tiếp trong thư mục này:
+Toàn bộ 7 tệp kiểm thử của Phase 6 nằm trực tiếp trong thư mục này:
 
 | Tệp Kiểm Thử | Sub-phase | Trọng Tâm Xác Thực | Số Ca Test | Trạng Thái |
 | :--- | :---: | :--- | :---: | :---: |
@@ -43,6 +44,7 @@ Toàn bộ 6 tệp kiểm thử của Phase 6 nằm trực tiếp trong thư m�
 | **`idempotency-concurrency.test.ts`** | 6.5 | Header `X-Idempotency-Key` tái phát hiện request trùng lặp (replay cached response), thanh toán đồng thời qua `Promise.all` (đúng 1 thành công, 1 bị từ chối), zero duplicate charge. | **32** | **PASS** |
 | **`table-order-sync.test.ts`** | 6.6 | Đổi bàn (`transferTable`), gộp bàn (`mergeTables`), di chuyển món (`moveItemsBetweenTables`), tách bill, khóa CAS chống race transfer, OCC retry chống xung đột phiên bản Mongoose, kiểm thử hồi quy defect. | **38** | **PASS** |
 | **`order-query.test.ts`** | 6.7 | Lọc thời gian, nhân sự, đa trạng thái, phương thức thanh toán, regex search an toàn, phân trang xác định, cách ly chi nhánh tuyệt đối, xác minh explain index scan. | **42** | **PASS** |
+| **`subphase-6-8-integration.test.ts`** | 6.8 | Tích hợp xuyên suốt Frontend-Backend, vòng đời đợt gọi món QR, duyệt đơn QR POS, Table operations (transfer, merge, move-items), Bill preview & POS pay, bảo mật phân lập tenant và gia cố Realtime Room Auth (`AUD-6.8-01`). | **29** | **PASS** |
 
 ---
 
@@ -67,6 +69,33 @@ npm run test:phase6:customer-qr
 npx ts-node tests/phase-06-order-pos/customer-qr.test.ts
 
 # 4. Chạy kiểm thử Idempotency & Concurrency (Phase 6.5)
+npm run test:phase6:concurrency
+# Lệnh trực tiếp:
+npx ts-node tests/phase-06-order-pos/idempotency-concurrency.test.ts
+
+# 5. Chạy kiểm thử Đồng bộ Bàn, Đổi/Gộp bàn & Di chuyển món (Phase 6.6)
+npm run test:phase6:sync
+# Lệnh trực tiếp:
+npx ts-node tests/phase-06-order-pos/table-order-sync.test.ts
+
+# 6. Chạy kiểm thử Truy vấn, Lọc, Tìm kiếm & Phân lập Đa Chi nhánh (Phase 6.7)
+npm run test:phase6:query
+# Lệnh trực tiếp:
+npx ts-node tests/phase-06-order-pos/order-query.test.ts
+
+# 7. Chạy kiểm thử Tích hợp Toàn diện Frontend-Backend (Phase 6.8)
+npx ts-node tests/phase-06-order-pos/subphase-6-8-integration.test.ts
+
+# 8. Chạy toàn bộ test suite cơ bản của Phase 6
+npm run test:phase6
+```
+
+---
+
+## 5. Trạng Thái Hiện Tại (Current Status)
+
+- **Trạng thái Sub-phase 6.8:** **HOÀN THÀNH TOÀN DIỆN & ĐÃ ĐÓNG (PHASE 6.8 CLOSED)**, đạt 29/29 ca test tự động PASS 100%.
+- **Toàn bộ Phase 6:** 270 ca test tự động vượt qua (100% Passed, Zero Failures).hử Idempotency & Concurrency (Phase 6.5)
 npm run test:phase6:concurrency
 # Lệnh trực tiếp:
 npx ts-node tests/phase-06-order-pos/idempotency-concurrency.test.ts

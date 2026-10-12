@@ -19,7 +19,7 @@ Per `imenu-api` repository architecture standard:
 
 ## 2. Phase 6 Scope & Sub-phases
 
-Phase 6 consists of 7 primary functional domains:
+Phase 6 consists of 8 primary functional domains:
 
 1. **Sub-phase 6.1 — Core Order & Table Lifecycle Baseline:** Core order lifecycle foundations, table-order associations, order rounds (`rounds[]`), and line items (`items[]`).
 2. **Sub-phase 6.2 — State Machine & Business Invariants:** State machine transitions for orders and tables, immutable state constraints (Single active order per table, Paid is Terminal, RBAC state transition checks).
@@ -27,13 +27,14 @@ Phase 6 consists of 7 primary functional domains:
 4. **Sub-phase 6.4 — Customer QR Ordering:** Table QR scanning, public digital menu access, batch order placement (`WaitingConfirmation`), staff review/confirmation (`Confirmed`), protection against duplicate active order creation.
 5. **Sub-phase 6.5 — Idempotency Key & Concurrency Control:** `X-Idempotency-Key` middleware for caching and replaying duplicate requests, atomic multi-threaded POS payment claims (`Atomic Payment Claim`), financial invariant preservation.
 6. **Sub-phase 6.6 — Table ↔ Order Synchronization & Transfer/Merge:** Hardened table-order lifecycle synchronization, table transfer (`transferTable`), table merge (`mergeTables`), item movement between tables (`moveItemsBetweenTables`), Split Bill flows, database-level atomic CAS (Compare-And-Swap) locking, and Optimistic Concurrency Control (OCC) Retries.
-7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization (COMPLETED & CLOSED):** Comprehensive upgrade of `GET /api/orders` query API (date/time range filters `fromDate`/`toDate`, dynamic `dateField`, staff filters `staffId`/`createdBy`/`paidBy`, multi-status filter, payment method filter `paymentMethod`, safe regex search `orderCode`/`tableName`, deterministic sorting with `_id: -1` tie-breaker, pagination with `totalPages`, strict multi-branch scoping and MongoDB compound indexes).
+7. **Sub-phase 6.7 — Order Query, Filters, Search & Multi-Branch Optimization:** Comprehensive upgrade of `GET /api/orders` query API (date/time range filters `fromDate`/`toDate`, dynamic `dateField`, staff filters `staffId`/`createdBy`/`paidBy`, multi-status filter, payment method filter `paymentMethod`, safe regex search `orderCode`/`tableName`, deterministic sorting with `_id: -1` tie-breaker, pagination with `totalPages`, strict multi-branch scoping and MongoDB compound indexes).
+8. **Sub-phase 6.8 — Frontend Monorepo Integration (COMPREHENSIVELY COMPLETED & CLOSED):** End-to-end integration between frontend monorepo (`imenu-menudientu`) and backend API (`imenu-api`); public QR table context (`GET /api/orders/public/table-context`), order round lifecycle synchronization (`OrderRound`, `WaitingConfirmation`), POS QR approval & KDS guard, table operations (transfer, merge, move-items), bill preview & 80mm print, hardened WebSocket room authorization (`AUD-6.8-01`).
 
 ---
 
 ## 3. Test Inventory
 
-All 6 Phase 6 test suites reside directly inside this directory:
+All 7 Phase 6 test suites reside directly inside this directory:
 
 | Test File | Sub-phase | Verification Scope | Test Count | Status |
 | :--- | :---: | :--- | :---: | :---: |
@@ -43,6 +44,7 @@ All 6 Phase 6 test suites reside directly inside this directory:
 | **`idempotency-concurrency.test.ts`** | 6.5 | `X-Idempotency-Key` header re-identification (cached replay), concurrent payments via `Promise.all` (exactly 1 succeeds, 1 rejected), zero duplicate charges. | **32** | **PASS** |
 | **`table-order-sync.test.ts`** | 6.6 | Table transfer (`transferTable`), table merge (`mergeTables`), item movement (`moveItemsBetweenTables`), split billing, CAS atomic locking against transfer races, OCC retries against Mongoose VersionError, defect regression suite. | **38** | **PASS** |
 | **`order-query.test.ts`** | 6.7 | Order query filters (date range, dateField, staff, multi-status, payment method), safe regex search, deterministic pagination with `totalPages`, strict multi-branch isolation, index scan verification. | **42** | **PASS** |
+| **`subphase-6-8-integration.test.ts`** | 6.8 | End-to-end frontend-backend integration, QR round lifecycle, POS approval, table operations, bill preview & POS checkout, tenant isolation, and Realtime room authorization hardening (`AUD-6.8-01`). | **29** | **PASS** |
 
 ---
 
@@ -81,7 +83,10 @@ npm run test:phase6:query
 # Direct command:
 npx ts-node tests/phase-06-order-pos/order-query.test.ts
 
-# 7. Run all Phase 6 tests sequentially (All 6 test files)
+# 7. Run Sub-phase 6.8 End-to-End Integration Suite (Phase 6.8)
+npx ts-node tests/phase-06-order-pos/subphase-6-8-integration.test.ts
+
+# 8. Run all Phase 6 tests sequentially
 npm run test:phase6
 ```
 
@@ -89,8 +94,8 @@ npm run test:phase6
 
 ## 5. Current Status
 
-- **Sub-phase 6.7 Status:** **COMPREHENSIVELY COMPLETED & CLOSED (PHASE 6.7 CLOSED)**, with 42/42 automated tests passing 100%.
-- **Phase 6 Total:** 241 automated tests passing (100% Passed, Zero Failures).
+- **Sub-phase 6.8 Status:** **COMPREHENSIVELY COMPLETED & CLOSED (PHASE 6.8 CLOSED)**, with 29/29 automated tests passing 100%.
+- **Phase 6 Total:** 270 automated tests passing (100% Passed, Zero Failures).
 
 ---
 
