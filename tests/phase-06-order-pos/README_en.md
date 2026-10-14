@@ -81,6 +81,22 @@ Detailed breakdown of the 77 Phase 2–5 regression cases:
 - **Phase 4:** 17 cases (`tests/phase-04-menu/test.ts`)
 - **Phase 5:** 20 cases (`tests/phase-05-order-table-kds/test.ts`)
 
+### 4.1. Inventory of the 9 Frontend SDK Contract Test Cases (`packages/utils/tests/sdk-contract.test.ts`):
+
+All 9 frontend SDK contract test cases are mapped directly from the actual code assertions:
+
+| Test Case ID | SDK Method & Verification Focus | Actual Technical Assertion | Status |
+| :---: | :--- | :--- | :---: |
+| **`SDK-01`** | `apiClient.customerOrders.getTableContext` | Accurate mapping to `GET /api/orders/public/table-context` with `restaurantSlug`, `tableCode`, `qrToken` query params | **PASS** |
+| **`SDK-02`** | `apiClient.customerOrders.create` (Route) | Accurate mapping to public endpoint `POST /api/orders/customer` | **PASS** |
+| **`SDK-02b`**| `apiClient.customerOrders.create` (Header) | Correct `idempotency-key` header transmission to prevent duplicate orders | **PASS** |
+| **`SDK-03`** | `apiClient.customerOrders.addItems` (Route) | Accurate mapping to public endpoint `POST /api/orders/customer/items` | **PASS** |
+| **`SDK-03b`**| `apiClient.customerOrders.addItems` (Header)| Correct `idempotency-key` header transmission when adding additional order rounds | **PASS** |
+| **`SDK-04`** | `apiClient.orders.previewBill` | Accurate mapping to `GET /api/orders/:id/bill-preview` with tax/fee/discount query params | **PASS** |
+| **`SDK-05`** | `apiClient.orders.pay` | Accurate mapping to `POST /api/orders/:id/pay` and `idempotency-key` header transmission | **PASS** |
+| **`SDK-06`** | `apiClient.tables` (Transfer/Merge/Move) | Accurate mapping of table operation routes (`/tables/transfer`, `/tables/merge`, `/tables/move-items`) | **PASS** |
+| **`SDK-07`** | `apiClient.orders` (Round Management) | Accurate mapping of round confirmation and cancellation routes (`/rounds/:roundNumber/confirm`, `/cancel`) | **PASS** |
+
 ---
 
 ## 5. Test Execution Commands

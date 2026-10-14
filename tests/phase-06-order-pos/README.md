@@ -81,6 +81,22 @@ Phân bổ chi tiết 77 ca hồi quy Phases 2–5:
 - **Phase 4:** 17 ca (`tests/phase-04-menu/test.ts`)
 - **Phase 5:** 20 ca (`tests/phase-05-order-table-kds/test.ts`)
 
+### 4.1. Danh mục 9 ca kiểm thử Frontend SDK Contract (`packages/utils/tests/sdk-contract.test.ts`):
+
+Toàn bộ 9 ca kiểm thử hợp đồng SDK frontend được ánh xạ trực tiếp từ các assertion thực tế:
+
+| Mã Ca Test | Phương Thức SDK & Trọng Tâm Xác Thực | Assertion Kỹ Thuật Thực Tế | Trạng Thái |
+| :---: | :--- | :--- | :---: |
+| **`SDK-01`** | `apiClient.customerOrders.getTableContext` | Ánh xạ chính xác `GET /api/orders/public/table-context` kèm query `restaurantSlug`, `tableCode`, `qrToken` | **PASS** |
+| **`SDK-02`** | `apiClient.customerOrders.create` (Route) | Ánh xạ chính xác public endpoint `POST /api/orders/customer` | **PASS** |
+| **`SDK-02b`**| `apiClient.customerOrders.create` (Header) | Truyền đúng header `idempotency-key` chống duplicate order | **PASS** |
+| **`SDK-03`** | `apiClient.customerOrders.addItems` (Route) | Ánh xạ chính xác public endpoint `POST /api/orders/customer/items` | **PASS** |
+| **`SDK-03b`**| `apiClient.customerOrders.addItems` (Header)| Truyền đúng header `idempotency-key` khi gọi thêm món đợt sau | **PASS** |
+| **`SDK-04`** | `apiClient.orders.previewBill` | Ánh xạ chính xác route `GET /api/orders/:id/bill-preview` kèm query thuế/phí/chiết khấu | **PASS** |
+| **`SDK-05`** | `apiClient.orders.pay` | Ánh xạ chính xác `POST /api/orders/:id/pay` và truyền header `idempotency-key` | **PASS** |
+| **`SDK-06`** | `apiClient.tables` (Transfer/Merge/Move) | Ánh xạ chính xác các route thao tác bàn (`/tables/transfer`, `/tables/merge`, `/tables/move-items`) | **PASS** |
+| **`SDK-07`** | `apiClient.orders` (Round Management) | Ánh xạ chính xác các route duyệt/hủy đợt gọi món (`/rounds/:roundNumber/confirm`, `/cancel`) | **PASS** |
+
 ---
 
 ## 5. Lệnh Thực Thi Kiểm Thử (Execution Commands)
