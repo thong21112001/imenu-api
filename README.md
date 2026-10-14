@@ -21,20 +21,21 @@
 2. [Kiến trúc Kỹ thuật & Công nghệ](#2-kiến-trúc-kỹ-thuật--công-nghệ)
 3. [Mô hình Phân lập Đa Người Thuê & Đa Chi Nhánh](#3-mô-hình-phân-lập-đa-người-thuê--đa-chi-nhánh)
 4. [Hệ thống Phân quyền Nhân sự (RBAC)](#4-hệ-thống-phân-quyền-nhân-sự-rbac)
-5. [Tổng hợp Tính năng Chi tiết (Phase 1 – Phase 5)](#5-tổng-hợp-tính-năng-chi-tiết-phase-1--phase-5)
+5. [Tổng hợp Tính năng Chi tiết (Phase 1 – Phase 6)](#5-tổng-hợp-tính-năng-chi-tiết-phase-1--phase-6)
 6. [Cơ chế Thời gian thực (WebSocket KDS Hub)](#6-cơ-chế-thời-gian-thực-websocket-kds-hub)
 7. [Vòng đời Bàn ăn & Cấp phát Mã QR Đa Chi Nhánh](#7-vòng-đời-bàn-ăn--cấp-phát-mã-qr-đa-chi-nhánh)
 8. [Tài liệu API Endpoints Chính](#8-tài-liệu-api-endpoints-chính)
 9. [Cài đặt & Khởi chạy Cục bộ](#9-cài-đặt--khởi-chạy-cục-bộ)
 10. [Bộ Kiểm Thử Tự Động (Automated Test Suites)](#10-bộ-kiểm-thử-tự-động-automated-test-suites)
+11. [Trạng Thái Dự Án & Nghiệm Thu](#11-trạng-thái-dự-án--nghiệm-thu)
 
 ---
 
 ## 1. 📖 Giới thiệu & Phạm vi Nghiệp vụ
 
 **iMenu API** là nền tảng Backend API hiệu năng cao xây dựng trên nền tảng **NestJS 11** và **MongoDB Mongoose**, cung cấp toàn bộ logic nghiệp vụ, quản lý dữ liệu, xác thực phân quyền và đồng bộ thời gian thực cho chuỗi nhà hàng ẩm thực F&B:
-- **Thực khách (Customer)**: Quét mã QR tại bàn để xem thực đơn điện tử độc lập theo từng chi nhánh, tùy biến món ăn (toppings/options), đặt món trực tiếp và yêu cầu thanh toán / gọi nhân viên.
-- **Thu ngân / POS**: Quản lý gọi món tại quầy, sơ đồ bàn trực quan, đổi bàn, gộp bàn, áp dụng chiết khấu thuế và thanh toán tự động qua VietQR.
+- **Thực khách (Customer)**: Quét mã QR tại bàn để xem thực đơn điện tử độc lập theo từng chi nhánh, tùy biến món ăn (toppings/options), đặt món trực tiếp theo nhiều đợt (multi-round ordering) và yêu cầu thanh toán / gọi nhân viên.
+- **Thu ngân / POS**: Quản lý gọi món tại quầy, sơ đồ bàn trực quan, đổi bàn, gộp bàn, di chuyển món giữa các bàn, tách hóa đơn, duyệt đơn QR, áp dụng chiết khấu/thuế/phí dịch vụ, thanh toán tiền mặt (tính tiền thừa) và thanh toán qua VietQR.
 - **Màn hình Bếp KDS (Kitchen Display System)**: Nhận vé order tức thì qua WebSocket, điều phối các bước chế biến (`Cooking` ➔ `Ready` ➔ `Served`) và rung chuông thông báo âm thanh.
 - **Quản lý & Chủ nhà hàng**: Phân quyền nhân sự theo vai trò, quản lý thực đơn với giá bán riêng từng chi nhánh, quản lý danh sách bàn & sinh mã QR standee A6/tem dán bàn, và xem báo cáo doanh thu theo chi nhánh hoặc hợp nhất toàn chuỗi.
 
@@ -101,13 +102,35 @@ Ma trận phân quyền gồm 6 vai trò tiêu chuẩn:
 
 ---
 
-## 5. 🚀 Tổng hợp Tính năng Chi tiết (Phase 1 – Phase 5)
+## 5. 🚀 Tổng hợp Tính năng Chi tiết (Phase 1 – Phase 6)
 
 - **Phase 1: Nền tảng API & Bảo mật Base**: Kiến trúc module, JWT Auth, Swagger `/api-docs`, Winston Logger, MongoDB Mongoose schema.
 - **Phase 2: Đa Nhà Hàng & Vòng Đời Chi Nhánh**: Đăng ký nhà hàng kèm chi nhánh chính tự động, đóng/mở giờ hoạt động chi nhánh, cấu hình VietQR và hotline độc lập cho từng chi nhánh, bảo toàn kế toán (chặn xóa chi nhánh đã có hóa đơn lịch sử).
 - **Phase 3: Phân Quyền RBAC & Điều Chuyển Nhân Sự**: Khóa/mở tài khoản nhân viên, điều chuyển nhân sự giữa các chi nhánh, chặn chi nhánh con tự ý phong admin hoặc sửa vai trò hệ thống.
 - **Phase 4: Quản Lý Thực Đơn & Tuỳ Chọn (Toppings)**: Quản lý danh mục & món ăn, nhóm tùy chọn toppings, giá bán và cờ tạm hết món riêng biệt theo chi nhánh, tìm kiếm tiếng Việt regex không dấu (`pho bo` khớp `Phở bò`), xóa mềm an toàn.
 - **Phase 5: Bàn Ăn, POS, Bếp KDS & Mã QR Realtime**: Sơ đồ bàn ăn động, đổi bàn, gộp bàn, thanh toán POS VietQR, WebSocket KDS realtime hai chiều, cấp phát/thu hồi/đổi token mã QR bàn ăn đa chi nhánh.
+- **Phase 6: Vận Hành Order & POS ✅ (ĐÃ NGHIỆM THU — ĐÓNG CHÍNH THỨC)**: Vòng đời đơn hàng hoàn chỉnh và máy trạng thái chuyển đổi trạng thái, khách gọi món qua QR nhiều đợt (multi-round), POS duyệt và quản lý đơn hàng, hóa đơn VAT/phí dịch vụ/chiết khấu, thanh toán tiền mặt (tính tiền thừa) và VietQR, bảo vệ idempotency key chống trùng thanh toán, khóa nguyên tử đồng thời (Atomic Payment Claim), đồng bộ bàn-đơn hàng (đổi bàn, gộp bàn, di chuyển món, tách hóa đơn) với CAS lock và OCC retry, truy vấn đơn hàng nâng cao (lọc thời gian, nhân viên, đa trạng thái, regex search, phân lập chi nhánh), tích hợp Monorepo Frontend với xem trước hóa đơn và bảo mật phòng WebSocket realtime, kiểm thử E2E trình duyệt đa ứng dụng.
+
+### Phase 6 — Phạm Vi 9 Phân Hệ Chi Tiết
+
+| Phân hệ | Tên | Mô tả |
+| :---: | :--- | :--- |
+| 6.1 | Core Order & Table Lifecycle | Nền tảng vòng đời đơn hàng, liên kết bàn ăn, cấu trúc đợt gọi món (`rounds[]`) và danh sách món (`items[]`) |
+| 6.2 | State Machine & Business Invariants | Máy trạng thái đơn hàng (`WaitingConfirmation` → `Preparing` → `Ready` → `Served` → `Paid` / `Cancelled`), duyệt/hủy round, hủy món, tính lại `subTotal`, RBAC chuyển trạng thái |
+| 6.3 | POS Cashier & Billing Flows | Thu ngân POS, hóa đơn, VAT, phí dịch vụ, chiết khấu, thanh toán tiền mặt (tính tiền thừa `changeAmount`), thanh toán VietQR, quick-pay |
+| 6.4 | Customer QR Ordering | Khách quét QR gọi món theo đợt (`WaitingConfirmation`), nhân viên duyệt, bảo vệ chống mở đơn trùng lặp |
+| 6.5 | Idempotency Key & Concurrency Control | Header `X-Idempotency-Key` chặn request trùng lặp, Atomic Payment Claim đa luồng, bảo vệ bất biến tài chính |
+| 6.6 | Table ↔ Order Sync & Transfer/Merge | Đổi bàn, gộp bàn, di chuyển món, tách hóa đơn, CAS lock, OCC retry |
+| 6.7 | Order Query & Multi-Branch Optimization | Lọc khoảng thời gian, nhân viên, đa trạng thái, phương thức thanh toán, regex search an toàn, phân trang, compound indexes, cách ly chi nhánh |
+| 6.8 | Frontend Monorepo Integration | Tích hợp `imenu-menudientu`, endpoint QR table context (`GET /api/orders/public/table-context`), duyệt đơn QR POS & KDS guard, xem trước hóa đơn, bảo mật phòng WebSocket Realtime (`AUD-6.8-01`) |
+| 6.9 | Master Hardening & Final Closure Gate | E2E browser 9 checkpoints, Master Test Orchestrator, đặc tả kiến trúc máy in nhiệt Phase 8, khung nghiệm thu 365 ca test |
+
+### Phase 6 — Giới Hạn & Ranh Giới Kiến Trúc Đã Biết
+
+- **Máy in nhiệt phần cứng**: Phase 6 chỉ cung cấp tài liệu đặc tả kiến trúc ESC/POS (`thermal-printer-spec.md`). Tuyệt đối không triển khai driver phần cứng, WebUSB/WebSerial, hay ESC/POS binary builder. Tích hợp phần cứng thực tế được hoạch định cho Phase 8.
+- **Redis Pub/Sub & kiến trúc messaging đa node**: Chưa triển khai. Hệ thống realtime hiện tại sử dụng EventEmitter2 + Socket.IO trên tiến trình đơn (single-process). Kiến trúc phân tán đa node là phạm vi mở rộng tương lai.
+- **Phase 7 KDS**: Chức năng KDS nâng cao thuộc Phase 7, không nằm trong phạm vi Phase 6.
+- **Bằng chứng giải phóng bàn**: Bộ kiểm thử xác minh trạng thái cuối cùng của bàn (`Available`) và tính idempotency thanh toán. Tuy nhiên, bằng chứng này không chứng minh được chính xác số lượng mutation vật lý tại cơ sở dữ liệu cho thao tác giải phóng bàn.
 
 ---
 
@@ -152,13 +175,22 @@ Chi tiết Swagger trực quan xem tại: `http://localhost:3001/api-docs`
 | | `POST` | `/api/tables/seed-default` | Khởi tạo 12 bàn & 4 khu vực mẫu | TABLE.UPDATE |
 | | `POST` | `/api/tables/transfer` | Đổi bàn gọi món | POS.VIEW |
 | | `POST` | `/api/tables/merge` | Gộp nhiều bàn vào một bàn | POS.VIEW |
+| | `POST` | `/api/tables/move-items` | Di chuyển món giữa các bàn | POS.VIEW |
 | **Table Zones** | `GET` | `/api/table-zones` | Danh sách khu vực bàn | POS.VIEW |
 | | `POST` | `/api/table-zones` | Tạo khu vực bàn riêng mới | TABLE.UPDATE |
 | **Menu** | `GET` | `/api/categories` | Danh sách danh mục thực đơn | Public |
 | | `GET` | `/api/menu-items` | Danh sách món ăn kèm giá chi nhánh | Public |
-| **Orders** | `POST` | `/api/orders` | Tạo đơn hàng mới từ POS hoặc QR | POS.ORDER |
-| | `POST` | `/api/orders/:id/pay` | Thanh toán hóa đơn | POS.CONFIRM |
+| **Orders** | `POST` | `/api/orders` | Tạo đơn hàng mới từ POS | POS.ORDER |
+| | `GET` | `/api/orders` | Truy vấn danh sách đơn hàng (lọc, search, phân trang) | POS.VIEW |
+| | `GET` | `/api/orders/:id` | Xem chi tiết đơn hàng | POS.VIEW |
+| | `GET` | `/api/orders/:id/bill-preview` | Xem trước hóa đơn (VAT, phí, chiết khấu) | POS.VIEW |
+| | `POST` | `/api/orders/:id/pay` | Thanh toán hóa đơn (Cash / VietQR) | POS.CONFIRM |
 | | `PATCH` | `/api/orders/:id/items/:itemId/status` | Bếp cập nhật trạng thái món | KDS.COOK |
+| | `POST` | `/api/orders/:id/rounds/:roundNumber/confirm` | Duyệt đợt gọi món QR | POS.ORDER |
+| | `POST` | `/api/orders/:id/rounds/:roundNumber/cancel` | Hủy đợt gọi món QR | POS.ORDER |
+| | `GET` | `/api/orders/public/table-context` | Ngữ cảnh bàn ăn công khai cho QR | Public |
+| | `POST` | `/api/orders/customer` | Khách đặt món qua QR | Public |
+| | `POST` | `/api/orders/customer/items` | Khách gọi thêm món đợt sau qua QR | Public |
 
 ---
 
@@ -187,18 +219,115 @@ npm run build
 
 ## 10. 🧪 Bộ Kiểm Thử Tự Động (Automated Test Suites)
 
-Hệ thống cung cấp **73 ca kiểm thử tự động toàn diện** (Zero Garbage - tự động dọn sạch sau khi test):
+Hệ sinh thái kiểm thử iMenu gồm **365 ca test tự động toàn diện** (Zero Garbage — tự động dọn sạch fixture sau khi test), phủ toàn bộ Phase 2 đến Phase 6.
+
+### Bộ Điều Phối Master Test Runner
 
 ```bash
-# Kiểm thử Phase 5: Đơn hàng, Sơ đồ bàn & KDS WebSocket (18 tests)
-npm run test:phase5
+# Chế độ Phát triển (270 backend + 9 SDK = 279 ca bắt buộc, cho phép SKIP E2E nếu thiếu server UI)
+npm run test:phase6:all
 
-# Kiểm thử Phase 4: Quản lý Thực đơn, Toppings & Giá chi nhánh (17 tests)
-npm run test:phase4
+# Chế độ Nghiệm Thu Đóng Phase (365 ca bắt buộc: 0 FAIL, 0 SKIP, 0 BLOCKED)
+npm run test:phase6:acceptance
+```
 
-# Kiểm thử Phase 3: Phân quyền RBAC, Nhân sự & Chi nhánh (16 tests)
+> **Quan trọng:** `test:phase6:all` (chế độ `--mode=dev`) và `test:phase6:acceptance` (chế độ `--mode=acceptance`) đều sử dụng Master Test Orchestrator (`run-all-phase6.ts`). Chế độ acceptance yêu cầu tất cả 365 ca test đạt 100% PASS. Chế độ dev cho phép SKIP E2E nếu các server giao diện chưa khởi động.
+
+### Kiểm Thử Theo Từng Phase (Hồi Quy)
+
+```bash
+# Phase 2: Auth, Nhà hàng & Multi-Branch (24 ca)
+npm run test:phase2:all
+
+# Phase 3: Nhân sự & Phân quyền RBAC (16 ca)
 npm run test:phase3
 
-# Kiểm thử Phase 2: Vòng đời Chi nhánh & Đa Người Thuê (11 tests)
-npm run test:phase2:all
+# Phase 4: Thực đơn, Danh mục & Toppings (17 ca)
+npm run test:phase4
+
+# Phase 5: Bàn ăn, Đơn hàng & Realtime KDS (20 ca)
+npm run test:phase5
+
+# Toàn bộ hồi quy Phases 2–5 (77 ca):
+npm run test:regression:phase2-5
 ```
+
+### Kiểm Thử Phase 6 (Order & POS)
+
+```bash
+# Chạy 6 suite backend cơ bản (241 ca — không bao gồm sub-phase 6.8 Integration):
+npm run test:phase6
+
+# Chạy riêng lẻ từng phân hệ:
+npm run test:phase6:transitions  # Sub-phase 6.2: State Machine (56 ca)
+npm run test:phase6:pos          # Sub-phase 6.3: POS Cashier (30 ca)
+npm run test:phase6:customer-qr  # Sub-phase 6.4: Customer QR (43 ca)
+npm run test:phase6:concurrency  # Sub-phase 6.5: Idempotency (32 ca)
+npm run test:phase6:sync         # Sub-phase 6.6: Table Sync (38 ca)
+npm run test:phase6:query        # Sub-phase 6.7: Order Query (42 ca)
+npm run test:phase6:integration  # Sub-phase 6.8: Frontend Monorepo Integration (29 ca)
+
+# Kiểm thử Browser E2E đa ứng dụng (yêu cầu API:3001, Admin:3003, Menu:3005):
+npm run test:phase6:e2e
+```
+
+> **Lưu ý:** Lệnh `npm run test:phase6` chạy 6 suite backend cơ bản (241 ca). Để chạy toàn bộ 270 ca backend + 9 SDK + 9 E2E + 77 hồi quy = 365 ca, sử dụng `npm run test:phase6:acceptance`. Script `test:sdk` không tồn tại riêng lẻ trong `package.json`; suite SDK Contract (9 ca) được tích hợp trực tiếp trong Master Test Orchestrator.
+
+### Bảng Đối Chiếu 365 Ca Test
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  HỆ SINH THÁI KIỂM THỬ IMENU — 365 CA TEST TỰ ĐỘNG CHUẨN XÁC           │
+├────────────────────────────────┬──────────────────────┬────────────────┤
+│ Nhóm Kiểm Thử                  │ Tệp Nguồn / Vị Trí   │ Số Ca Test     │
+├────────────────────────────────┼──────────────────────┼────────────────┤
+│ 1. Phase 6 Backend (7 suites)  │ tests/phase-06-order │ 270            │
+│ 2. Frontend SDK Contract       │ imenu-menudientu     │ 9              │
+│ 3. Browser E2E (9 checkpoints) │ scripts/e2e-order    │ 9              │
+│ 4. Phase 2–5 Regression        │ tests/phase-02..05   │ 77             │
+├────────────────────────────────┴──────────────────────┼────────────────┤
+│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)│ 365 CA TEST    │
+└───────────────────────────────────────────────────────┴────────────────┘
+```
+
+### Tài liệu Kiểm Thử Chi Tiết
+
+- **Mục lục kiểm thử tổng thể:** [tests/README.md](tests/README.md) (Tiếng Việt) | [tests/README_en.md](tests/README_en.md) (English)
+- **Tài liệu Phase 6 chi tiết:** [tests/phase-06-order-pos/README.md](tests/phase-06-order-pos/README.md) (Tiếng Việt) | [tests/phase-06-order-pos/README_en.md](tests/phase-06-order-pos/README_en.md) (English)
+- **Đặc tả máy in nhiệt Phase 8:** [tests/phase-06-order-pos/thermal-printer-spec.md](tests/phase-06-order-pos/thermal-printer-spec.md)
+
+---
+
+## 11. 📊 Trạng Thái Dự Án & Nghiệm Thu
+
+### Trạng Thái Phase 6: ✅ ĐÃ NGHIỆM THU — ĐÓNG CHÍNH THỨC
+
+Phase 6 (Order & POS) đã hoàn thành toàn bộ 9 phân hệ (Sub-phase 6.1 đến 6.9) và đã được nghiệm thu chính thức thông qua cổng kiểm tra đóng Phase (Master Closure Gate).
+
+**Kết quả nghiệm thu cuối cùng:**
+
+| Nhóm Kiểm Thử | Số Ca Test | Kết Quả |
+| :--- | :---: | :---: |
+| Phase 6 Backend (7 suites) | 270 | ✅ PASS |
+| Frontend SDK Contract | 9 | ✅ PASS |
+| Browser E2E (9 checkpoints) | 9 | ✅ PASS |
+| Phase 2–5 Regression (5 suites) | 77 | ✅ PASS |
+| **TỔNG CỘNG** | **365** | **365/365 PASS** |
+
+- **FAIL:** 0
+- **SKIP:** 0
+- **BLOCKED:** 0
+
+> **Lưu ý:** Kết quả 365/365 PASS được báo cáo bởi Master Test Orchestrator (`run-all-phase6.ts --mode=acceptance`). Phase 6 là một milestone hoàn thành; dự án iMenu vẫn tiếp tục phát triển các Phase tiếp theo.
+
+### Lộ Trình Tổng Thể
+
+| Phase | Trạng Thái |
+| :--- | :--- |
+| Phase 1: Nền tảng API & Bảo mật | ✅ Hoàn thành |
+| Phase 2: Đa Nhà Hàng & Chi Nhánh | ✅ Hoàn thành |
+| Phase 3: Phân Quyền RBAC & Nhân Sự | ✅ Hoàn thành |
+| Phase 4: Quản Lý Thực Đơn & Toppings | ✅ Hoàn thành |
+| Phase 5: Bàn Ăn, POS & KDS Realtime | ✅ Hoàn thành |
+| Phase 6: Vận Hành Order & POS | ✅ Nghiệm thu & Đóng chính thức |
+| Phase 7+: Các giai đoạn tiếp theo | 🔜 Chưa triển khai |
