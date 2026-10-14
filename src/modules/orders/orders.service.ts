@@ -40,6 +40,8 @@ import {
 import { PayOrderDto } from './dto/pay-order.dto';
 import { BillPreviewDto } from './dto/bill-preview.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
+import { QueryKitchenOrdersDto } from './dto/query-kitchen-orders.dto';
+import { BatchKitchenItemsDto } from './dto/batch-kitchen-items.dto';
 import { isSuperAdminUser, JwtUser } from '../auth/interface/jwtUser';
 
 @Injectable()
@@ -1694,7 +1696,283 @@ export class OrdersService {
   }
 
   /**
-   * DOMAIN ACTION: Bếp / Phục vụ cập nhật trạng thái món ăn (Waiting -> Cooking -> Ready -> Served)
+   * Helper function thực thi thao tác với cơ chế OCC Retry & Jitter chống Lost Update
+   */
+  private async executeWithOccRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries = 3,
+    minJitterMs = 20,
+    maxJitterMs = 50,
+  ): Promise<T> {
+    let lastError: any;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (err: any) {
+        lastError = err;
+        const isConflict =
+          err?.name === 'VersionError' ||
+          err?.code === 11000 ||
+          err?.message?.includes('OCC_CONFLICT') ||
+          err?.status === HttpStatus.CONFLICT;
+
+        if (isConflict && attempt < maxRetries) {
+          const jitter = Math.floor(Math.random() * (maxJitterMs - minJitterMs + 1)) + minJitterMs;
+          this.logger.warn(
+            `[OCC] Xung đột tương tranh tài liệu (lần thử ${attempt}/${maxRetries}), thử lại sau ${jitter}ms...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, jitter));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  }
+
+  /**
+   * CORE OCC & IDEMPOTENCY ENGINE: Chuyển đổi trạng thái OrderItem
+   */
+  async transitionOrderItemStatus(params: {
+    itemId: string;
+    targetStatus: OrderItemStatus;
+    restaurantId: string;
+    caller?: any;
+    orderId?: string;
+    expectedCurrentStatus?: OrderItemStatus;
+  }): Promise<{ order: any; isIdempotent: boolean; previousStatus: OrderItemStatus }> {
+    const { itemId, targetStatus, restaurantId, caller, orderId, expectedCurrentStatus } = params;
+
+    const result = await this.executeWithOccRetry(async () => {
+      let order: any;
+
+      if (orderId) {
+        if (!Types.ObjectId.isValid(orderId)) {
+          throw new BadRequestException('Mã đơn hàng không hợp lệ');
+        }
+        order = await this.orderModel.findOne({
+          _id: new Types.ObjectId(orderId),
+          restaurantId: new Types.ObjectId(restaurantId),
+        });
+      } else {
+        if (!Types.ObjectId.isValid(itemId)) {
+          throw new BadRequestException('Mã món ăn không hợp lệ');
+        }
+        // Ưu tiên tìm trong đơn active (status NOT IN ['Paid', 'Cancelled'])
+        order = await this.orderModel.findOne({
+          'items._id': new Types.ObjectId(itemId),
+          restaurantId: new Types.ObjectId(restaurantId),
+          status: { $nin: ['Paid', 'Cancelled'] },
+        });
+        if (!order) {
+          order = await this.orderModel.findOne({
+            'items._id': new Types.ObjectId(itemId),
+            restaurantId: new Types.ObjectId(restaurantId),
+          });
+        }
+      }
+
+      if (!order) {
+        throw new NotFoundException('Không tìm thấy đơn hàng chứa món ăn này');
+      }
+
+      // Phân lập chi nhánh
+      const isSuperAdmin = isSuperAdminUser(caller);
+      const isMainBranch = caller?.isMainBranch === true;
+      if (!isSuperAdmin && !isMainBranch && caller?.branchId) {
+        if (order.branchId && order.branchId !== caller.branchId) {
+          throw new ForbiddenException('Bạn không có quyền thao tác trên đơn hàng của chi nhánh khác');
+        }
+      }
+
+      // Tìm item trong mảng items
+      const item = (order.items || []).find(
+        (it: any) => it._id?.toString() === itemId || it.id === itemId,
+      );
+      if (!item) {
+        throw new NotFoundException('Không tìm thấy món ăn trong đơn hàng');
+      }
+
+      // 1. Kiểm tra Idempotency: nếu trạng thái hiện tại đã bằng targetStatus
+      if (item.status === targetStatus) {
+        const ordObj = order.toObject ? order.toObject() : order;
+        return {
+          order: { ...ordObj, isIdempotent: true },
+          isIdempotent: true,
+          previousStatus: item.status,
+        };
+      }
+
+      // 2. Chặn các trạng thái đóng băng
+      if (order.isPaid || order.status === 'Paid') {
+        throw new BadRequestException('Không thể thay đổi trạng thái món ăn của đơn hàng đã thanh toán (Paid)');
+      }
+      if (order.status === 'Cancelled') {
+        throw new BadRequestException('Không thể thay đổi trạng thái món ăn của đơn hàng đã hủy (Cancelled)');
+      }
+      if (item.status === 'Cancelled') {
+        throw new BadRequestException('Không thể thay đổi trạng thái của món ăn đã bị hủy (Cancelled)');
+      }
+      if (item.status === 'WaitingConfirmation') {
+        throw new BadRequestException('Món ăn đang ở trạng thái chờ duyệt (WaitingConfirmation), chưa thể chế biến');
+      }
+
+      // 3. Kiểm tra bước nhảy theo expectedCurrentStatus nếu có yêu cầu
+      if (expectedCurrentStatus && item.status !== expectedCurrentStatus) {
+        if (expectedCurrentStatus === 'Waiting' && targetStatus === 'Cooking') {
+          if (item.status === 'Ready' || item.status === 'Served') {
+            throw new BadRequestException(
+              `Món ăn đã ở trạng thái ${item.status}, không thể chuyển lại Đang nấu (Cooking)`,
+            );
+          }
+        }
+        if (expectedCurrentStatus === 'Cooking' && targetStatus === 'Ready') {
+          if (item.status === 'Waiting') {
+            throw new BadRequestException(
+              'Món ăn cần chuyển sang Đang nấu (Cooking) trước khi Hoàn tất (Ready)',
+            );
+          }
+          if (item.status === 'Served') {
+            throw new BadRequestException(
+              'Món ăn đã phục vụ (Served), không thể quay lại trạng thái Hoàn tất (Ready)',
+            );
+          }
+        }
+        if (expectedCurrentStatus === 'Ready' && targetStatus === 'Served') {
+          if (item.status === 'Waiting' || item.status === 'Cooking') {
+            throw new BadRequestException(
+              'Món ăn chưa hoàn thành chế biến, không thể báo Đã phục vụ (Served)',
+            );
+          }
+        }
+      }
+
+      // Kiểm tra State Validator chung
+      OrderStateValidator.validateItemTransition(item.status, targetStatus, order.isPaid);
+
+      const previousStatus = item.status;
+      item.status = targetStatus;
+
+      // Tính lại Order.status từ Reducer
+      const derivedStatus = calculateOrderStatus(order.items, order.status);
+      if (derivedStatus !== order.status) {
+        OrderStateValidator.validateOrderTransition(order.status, derivedStatus);
+        order.status = derivedStatus;
+      }
+
+      // Cập nhật OCC nguyên tử với updatedAt
+      const updateFilter: any = {
+        _id: order._id,
+        restaurantId: order.restaurantId,
+      };
+      if (order.updatedAt) {
+        updateFilter.updatedAt = order.updatedAt;
+      }
+
+      const updated = await this.orderModel.findOneAndUpdate(
+        updateFilter,
+        {
+          $set: {
+            items: order.items,
+            status: order.status,
+            updatedAt: new Date(),
+          },
+        },
+        { new: true },
+      );
+
+      if (!updated) {
+        throw new Error('OCC_CONFLICT');
+      }
+
+      const resObj = updated.toObject ? updated.toObject() : updated;
+      return {
+        order: { ...resObj, isIdempotent: false },
+        isIdempotent: false,
+        previousStatus,
+      };
+    });
+
+    // Chỉ phát sự kiện WebSocket khi có thay đổi thực sự (không phát nếu idempotent)
+    if (!result.isIdempotent) {
+      this.eventEmitter.emit('order.item_status_updated', {
+        orderId: (result.order._id || result.order.id).toString(),
+        itemId,
+        status: targetStatus,
+        previousStatus: result.previousStatus,
+        order: result.order,
+        restaurantId: restaurantId.toString(),
+        branchId: result.order.branchId,
+        tableId: (result.order.tableId?._id || result.order.tableId)?.toString(),
+        tableName: result.order.tableName,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * KDS ACTION: Bắt đầu nấu món (Waiting -> Cooking)
+   */
+  async startCookingItem(
+    itemId: string,
+    restaurantId: string,
+    caller: JwtUser,
+    orderId?: string,
+  ): Promise<any> {
+    const res = await this.transitionOrderItemStatus({
+      itemId,
+      targetStatus: 'Cooking',
+      expectedCurrentStatus: 'Waiting',
+      restaurantId,
+      caller,
+      orderId,
+    });
+    return res.order;
+  }
+
+  /**
+   * KDS ACTION: Báo hoàn tất món (Cooking -> Ready)
+   */
+  async markItemReady(
+    itemId: string,
+    restaurantId: string,
+    caller: JwtUser,
+    orderId?: string,
+  ): Promise<any> {
+    const res = await this.transitionOrderItemStatus({
+      itemId,
+      targetStatus: 'Ready',
+      expectedCurrentStatus: 'Cooking',
+      restaurantId,
+      caller,
+      orderId,
+    });
+    return res.order;
+  }
+
+  /**
+   * KDS ACTION: Báo đã phục vụ món ra bàn (Ready -> Served)
+   */
+  async markItemServed(
+    itemId: string,
+    restaurantId: string,
+    caller: JwtUser,
+    orderId?: string,
+  ): Promise<any> {
+    const res = await this.transitionOrderItemStatus({
+      itemId,
+      targetStatus: 'Served',
+      expectedCurrentStatus: 'Ready',
+      restaurantId,
+      caller,
+      orderId,
+    });
+    return res.order;
+  }
+
+  /**
+   * Cập nhật trạng thái món ăn (Tương thích ngược với PATCH /orders/:id/items/:itemId/status)
    */
   async updateItemStatus(
     orderId: string,
@@ -1702,42 +1980,323 @@ export class OrdersService {
     status: OrderItemStatus,
     restaurantId: string,
     caller?: any,
-  ): Promise<Order> {
-    const order: any = await this.findById(orderId, restaurantId, caller);
+  ): Promise<any> {
+    const res = await this.transitionOrderItemStatus({
+      itemId,
+      targetStatus: status,
+      restaurantId,
+      caller,
+      orderId,
+    });
+    return res.order;
+  }
 
-    const item = order.items.find(
-      (it: any) => it._id?.toString() === itemId || it.id === itemId,
+  /**
+   * KDS BATCH ACTION: Nấu / Hoàn tất hàng loạt món trong vé bếp hoặc đợt gọi món
+   */
+  async batchUpdateKitchenItems(
+    orderId: string,
+    targetStatus: 'Cooking' | 'Ready' | 'Served',
+    restaurantId: string,
+    caller: JwtUser,
+    roundNumber?: number,
+  ): Promise<any> {
+    return this.executeWithOccRetry(async () => {
+      const order: any = await this.findById(orderId, restaurantId, caller);
+      if (order.isPaid || order.status === 'Paid') {
+        throw new BadRequestException('Không thể thay đổi món của đơn hàng đã thanh toán (Paid)');
+      }
+      if (order.status === 'Cancelled') {
+        throw new BadRequestException('Không thể thay đổi món của đơn hàng đã hủy (Cancelled)');
+      }
+
+      let eligibleItems = (order.items || []).filter(
+        (it: any) => it.status !== 'Cancelled' && it.status !== 'WaitingConfirmation',
+      );
+      if (roundNumber !== undefined && roundNumber !== null) {
+        eligibleItems = eligibleItems.filter((it: any) => it.roundNumber === Number(roundNumber));
+      }
+
+      let itemsToUpdate: any[] = [];
+      if (targetStatus === 'Cooking') {
+        itemsToUpdate = eligibleItems.filter((it: any) => it.status === 'Waiting');
+      } else if (targetStatus === 'Ready') {
+        itemsToUpdate = eligibleItems.filter((it: any) => it.status === 'Cooking');
+      } else if (targetStatus === 'Served') {
+        itemsToUpdate = eligibleItems.filter((it: any) => it.status === 'Ready');
+      }
+
+      // Nếu không có item nào cần update, kiểm tra idempotency
+      if (itemsToUpdate.length === 0) {
+        const alreadyTarget = eligibleItems.filter((it: any) => it.status === targetStatus);
+        if (alreadyTarget.length > 0) {
+          const ordObj = order.toObject ? order.toObject() : order;
+          return { ...ordObj, isIdempotent: true, updatedCount: 0 };
+        }
+        throw new BadRequestException(
+          `Không có món nào hợp lệ để chuyển sang trạng thái ${targetStatus}`,
+        );
+      }
+
+      for (const it of itemsToUpdate) {
+        it.status = targetStatus;
+      }
+
+      const derivedStatus = calculateOrderStatus(order.items, order.status);
+      if (derivedStatus !== order.status) {
+        OrderStateValidator.validateOrderTransition(order.status, derivedStatus);
+        order.status = derivedStatus;
+      }
+
+      const updateFilter: any = {
+        _id: order._id,
+        restaurantId: order.restaurantId,
+      };
+      if (order.updatedAt) {
+        updateFilter.updatedAt = order.updatedAt;
+      }
+
+      const updated = await this.orderModel.findOneAndUpdate(
+        updateFilter,
+        {
+          $set: {
+            items: order.items,
+            status: order.status,
+            updatedAt: new Date(),
+          },
+        },
+        { new: true },
+      );
+
+      if (!updated) {
+        throw new Error('OCC_CONFLICT');
+      }
+
+      const resObj = updated.toObject ? updated.toObject() : updated;
+
+      // Broadcast realtime event
+      this.eventEmitter.emit('order.item_status_updated', {
+        orderId: (updated._id || (updated as any).id).toString(),
+        itemId: 'batch',
+        status: targetStatus,
+        order: resObj,
+        restaurantId: restaurantId.toString(),
+        branchId: updated.branchId,
+        tableId: (updated.tableId?._id || updated.tableId)?.toString(),
+        tableName: updated.tableName,
+      });
+
+      return { ...resObj, isIdempotent: false, updatedCount: itemsToUpdate.length };
+    });
+  }
+
+  /**
+   * KDS QUERY: Lấy danh sách đơn hàng active cho Màn hình Bếp
+   */
+  async getKitchenOrders(
+    query: QueryKitchenOrdersDto,
+    restaurantId: string,
+    caller: JwtUser,
+  ): Promise<any[]> {
+    if (!restaurantId || !Types.ObjectId.isValid(restaurantId)) {
+      throw new BadRequestException('Mã nhà hàng không hợp lệ');
+    }
+    const restObjId = new Types.ObjectId(restaurantId);
+
+    const filter: any = {
+      restaurantId: restObjId,
+      status: { $nin: ['Paid', 'Cancelled'] },
+    };
+
+    // 1. Cưỡng chế phân lập chi nhánh
+    const isSuperAdmin = isSuperAdminUser(caller);
+    const isMainBranch = caller?.isMainBranch === true;
+    if (!isSuperAdmin && !isMainBranch) {
+      if (!caller?.branchId) {
+        throw new ForbiddenException('Tài khoản chưa được gán chi nhánh hợp lệ');
+      }
+      if (query.branchId && query.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền truy cập dữ liệu của chi nhánh khác');
+      }
+      filter.branchId = caller.branchId;
+    } else {
+      if (query.branchId && query.branchId.trim() !== '' && query.branchId !== 'all') {
+        filter.branchId = query.branchId.trim();
+      }
+    }
+
+    // 2. Xử lý includeUnconfirmed
+    if (query.includeUnconfirmed === false) {
+      filter.status.$nin.push('WaitingConfirmation');
+    }
+
+    // 3. Lọc theo khu vực bàn ăn (zoneId)
+    if (query.zoneId) {
+      if (Types.ObjectId.isValid(query.zoneId)) {
+        const zoneTables = await this.tableModel
+          .find({
+            zoneId: new Types.ObjectId(query.zoneId),
+            restaurantId: restObjId,
+          })
+          .select('_id');
+        const tableIds = zoneTables.map((t) => t._id);
+        filter.tableId = { $in: tableIds };
+      }
+    }
+
+    // 4. Lọc theo bàn (tableId)
+    if (query.tableId) {
+      if (!Types.ObjectId.isValid(query.tableId)) {
+        throw new BadRequestException('Mã bàn ăn không hợp lệ');
+      }
+      filter.tableId = new Types.ObjectId(query.tableId);
+    }
+
+    // 5. Lọc theo trạng thái
+    if (query.status && query.status.trim() !== '' && query.status !== 'all') {
+      const statuses = query.status.split(',').map((s) => s.trim()).filter(Boolean);
+      if (statuses.length === 1) {
+        filter.status = statuses[0];
+      } else if (statuses.length > 1) {
+        filter.status = { $in: statuses };
+      }
+    }
+
+    // 6. Tìm kiếm theo mã đơn hoặc tên bàn
+    if (query.search && query.search.trim()) {
+      const sRegex = new RegExp(query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [{ orderCode: sRegex }, { tableName: sRegex }];
+    }
+
+    // 7. Sắp xếp FIFO: createdAt ASC
+    const orders = await this.orderModel
+      .find(filter)
+      .sort({ createdAt: 1 })
+      .populate('tableId', 'name code capacity zoneId qrStatus')
+      .lean();
+
+    const now = Date.now();
+    return orders.map((o: any) => ({
+      ...o,
+      id: (o._id || o.id).toString(),
+      elapsedMinutes: Math.floor((now - new Date(o.createdAt).getTime()) / 60000),
+      items: (o.items || []).map((it: any) => ({
+        ...it,
+        id: (it._id || it.id).toString(),
+      })),
+    }));
+  }
+
+  /**
+   * KDS AGGREGATION: Gom nhóm các món đang Waiting và Cooking trên toàn chi nhánh
+   */
+  async getKitchenItemsSummary(
+    branchId: string | undefined,
+    restaurantId: string,
+    caller: JwtUser,
+  ): Promise<{
+    totalWaitingItems: number;
+    totalCookingItems: number;
+    summary: Array<{
+      menuItemId: string;
+      name: string;
+      waitingQty: number;
+      cookingQty: number;
+      totalActiveQty: number;
+      notes: string[];
+      tables: string[];
+    }>;
+  }> {
+    if (!restaurantId || !Types.ObjectId.isValid(restaurantId)) {
+      throw new BadRequestException('Mã nhà hàng không hợp lệ');
+    }
+    const restObjId = new Types.ObjectId(restaurantId);
+
+    const filter: any = {
+      restaurantId: restObjId,
+      status: { $nin: ['Paid', 'Cancelled'] },
+    };
+
+    // Phân lập chi nhánh
+    const isSuperAdmin = isSuperAdminUser(caller);
+    const isMainBranch = caller?.isMainBranch === true;
+    let effectiveBranchId = branchId;
+    if (!isSuperAdmin && !isMainBranch) {
+      if (!caller?.branchId) {
+        throw new ForbiddenException('Tài khoản chưa được gán chi nhánh hợp lệ');
+      }
+      if (branchId && branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền truy cập dữ liệu của chi nhánh khác');
+      }
+      effectiveBranchId = caller.branchId;
+    }
+
+    if (effectiveBranchId && effectiveBranchId !== 'all') {
+      filter.branchId = effectiveBranchId;
+    }
+
+    const orders = await this.orderModel.find(filter).lean();
+
+    let totalWaitingItems = 0;
+    let totalCookingItems = 0;
+    const summaryMap = new Map<
+      string,
+      {
+        menuItemId: string;
+        name: string;
+        waitingQty: number;
+        cookingQty: number;
+        totalActiveQty: number;
+        notes: string[];
+        tables: string[];
+      }
+    >();
+
+    for (const ord of orders) {
+      for (const it of ord.items || []) {
+        if (it.status === 'Waiting' || it.status === 'Cooking') {
+          const key = (it.menuItemId ? it.menuItemId.toString() : '') || it.name;
+          if (!summaryMap.has(key)) {
+            summaryMap.set(key, {
+              menuItemId: it.menuItemId ? it.menuItemId.toString() : '',
+              name: it.name,
+              waitingQty: 0,
+              cookingQty: 0,
+              totalActiveQty: 0,
+              notes: [],
+              tables: [],
+            });
+          }
+          const entry = summaryMap.get(key)!;
+          if (it.status === 'Waiting') {
+            entry.waitingQty += it.quantity;
+            totalWaitingItems += it.quantity;
+          } else if (it.status === 'Cooking') {
+            entry.cookingQty += it.quantity;
+            totalCookingItems += it.quantity;
+          }
+          entry.totalActiveQty += it.quantity;
+
+          if (it.note && it.note.trim() && !entry.notes.includes(it.note.trim())) {
+            entry.notes.push(it.note.trim());
+          }
+          const tableLabel = `${ord.tableName} (x${it.quantity})`;
+          if (!entry.tables.includes(tableLabel)) {
+            entry.tables.push(tableLabel);
+          }
+        }
+      }
+    }
+
+    const summary = Array.from(summaryMap.values()).sort(
+      (a, b) => b.totalActiveQty - a.totalActiveQty,
     );
 
-    if (!item) {
-      throw new NotFoundException('Không tìm thấy món ăn trong đơn hàng');
-    }
-
-    // Kiểm tra state transition hợp lệ cho item
-    OrderStateValidator.validateItemTransition(item.status, status, order.isPaid);
-
-    item.status = status;
-
-    // Single Source of Truth: Dùng Reducer tính Order.status
-    const derivedStatus = calculateOrderStatus(order.items, order.status);
-    if (derivedStatus !== order.status) {
-      OrderStateValidator.validateOrderTransition(order.status, derivedStatus);
-      order.status = derivedStatus;
-    }
-
-    await order.save();
-
-    // Phát sự kiện realtime
-    this.eventEmitter.emit('order.item_status_updated', {
-      orderId,
-      itemId,
-      status,
-      order: order.toObject(),
-      restaurantId,
-      branchId: order.branchId,
-    });
-
-    return order;
+    return {
+      totalWaitingItems,
+      totalCookingItems,
+      summary,
+    };
   }
 
   /**

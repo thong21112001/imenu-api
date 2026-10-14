@@ -173,14 +173,32 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     orderId: string;
     itemId: string;
     status: string;
+    previousStatus?: string;
     order: any;
     restaurantId: string;
     branchId?: string;
+    tableId?: string;
   }) {
     if (!payload?.restaurantId) return;
     const restRoom = `restaurant_${payload.restaurantId}`;
     this.server.to(restRoom).emit('order:item_status_updated', payload);
-    this.logger.log(`Broadcast [order:item_status_updated] to ${restRoom} (Item: ${payload.itemId} -> ${payload.status})`);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:item_status_updated', payload);
+    }
+
+    const tableId =
+      payload.tableId ||
+      payload.order?.tableId?._id ||
+      payload.order?.tableId;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('order:item_status_updated', payload);
+    }
+
+    this.logger.log(
+      `Broadcast [order:item_status_updated] to ${restRoom} (Item: ${payload.itemId} -> ${payload.status})`,
+    );
   }
 
   /**
@@ -341,5 +359,108 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (tableId) {
       this.server.to(`table_${tableId}`).emit('order:updated', payload);
     }
+  }
+
+  /**
+   * Lắng nghe sự kiện Order được xác nhận (WaitingConfirmation -> Preparing)
+   */
+  @OnEvent('order.confirmed')
+  handleOrderConfirmedEvent(payload: {
+    order: any;
+    restaurantId: string;
+    branchId?: string;
+    tableId?: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('order:confirmed', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:confirmed', payload);
+    }
+    const tableId = payload.tableId || payload.order?.tableId?._id || payload.order?.tableId;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('order:confirmed', payload);
+    }
+    this.logger.log(`Broadcast [order:confirmed] to ${restRoom} (Order: ${payload.order?.orderCode})`);
+  }
+
+  /**
+   * Lắng nghe sự kiện Hủy đơn hàng (Order Cancelled)
+   */
+  @OnEvent('order.cancelled')
+  handleOrderCancelledEvent(payload: {
+    order: any;
+    restaurantId: string;
+    branchId?: string;
+    tableId?: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('order:cancelled', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:cancelled', payload);
+    }
+    const tableId = payload.tableId || payload.order?.tableId?._id || payload.order?.tableId;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('order:cancelled', payload);
+    }
+    this.logger.log(`Broadcast [order:cancelled] to ${restRoom} (Order: ${payload.order?.orderCode})`);
+  }
+
+  /**
+   * Lắng nghe sự kiện Hủy món đơn lẻ (OrderItem Cancelled)
+   */
+  @OnEvent('order.item_cancelled')
+  handleOrderItemCancelledEvent(payload: {
+    orderId: string;
+    itemId: string;
+    reason?: string;
+    order: any;
+    restaurantId: string;
+    branchId?: string;
+    tableId?: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('order:item_cancelled', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:item_cancelled', payload);
+    }
+    const tableId = payload.tableId || payload.order?.tableId?._id || payload.order?.tableId;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('order:item_cancelled', payload);
+    }
+    this.logger.log(`Broadcast [order:item_cancelled] to ${restRoom} (Item: ${payload.itemId})`);
+  }
+
+  /**
+   * Lắng nghe sự kiện Thay đổi trạng thái Còn/Hết món (Menu Item Availability Changed)
+   */
+  @OnEvent('menu.availability_changed')
+  handleMenuAvailabilityChangedEvent(payload: {
+    menuItemId: string;
+    item: any;
+    isAvailable: boolean;
+    effectiveIsAvailable: boolean;
+    restaurantId: string;
+    branchId?: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('menu:availability_changed', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('menu:availability_changed', payload);
+    }
+    this.logger.log(
+      `Broadcast [menu:availability_changed] to ${restRoom} (Item: ${payload.menuItemId} -> ${payload.effectiveIsAvailable ? 'AVAILABLE' : 'OUT_OF_STOCK'})`,
+    );
   }
 }

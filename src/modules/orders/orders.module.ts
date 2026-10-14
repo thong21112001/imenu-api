@@ -7,6 +7,9 @@ import { IdempotencyKey, IdempotencyKeySchema } from './entities/idempotency-key
 import { Restaurant, RestaurantSchema } from '../restaurants/entities/restaurant.entity';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
+import { KitchenController } from './kitchen.controller';
+import { OrderItemsController } from './order-items.controller';
+import { MenuModule } from '../menu/menu.module';
 
 @Module({
   imports: [
@@ -17,8 +20,9 @@ import { OrdersController } from './orders.controller';
       { name: IdempotencyKey.name, schema: IdempotencyKeySchema },
       { name: Restaurant.name, schema: RestaurantSchema },
     ]),
+    MenuModule,
   ],
-  controllers: [OrdersController],
+  controllers: [OrdersController, KitchenController, OrderItemsController],
   providers: [OrdersService],
   exports: [OrdersService, MongooseModule],
 })
