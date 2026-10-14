@@ -98,9 +98,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
           return { success: false, message: 'Unauthorized: Restaurant mismatch' };
         }
       } else {
-        // 2. Với khách vãng lai, bắt buộc query handshake phải khớp restaurantId của bàn đã quét
+        // 2. Với khách vãng lai, bắt buộc query handshake (nếu có) phải khớp restaurantId của bàn đã quét
         const queryRestId = client.handshake.query?.restaurantId as string;
-        if (!queryRestId || queryRestId !== data.restaurantId) {
+        if (queryRestId && queryRestId !== data.restaurantId) {
           this.logger.warn(`[Security] Unauthorized guest join:restaurant attempt: Handshake rest [${queryRestId}] != requested [${data.restaurantId}]`);
           return { success: false, message: 'Unauthorized: Missing or invalid guest restaurant context' };
         }
