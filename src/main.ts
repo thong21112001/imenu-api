@@ -24,7 +24,9 @@ async function bootstrap() {
     origin: true, // Chap nhan origin tu request de ho tro gui credentials
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: 'Content-Type, Accept, Authorization, X-Requested-With',
+    allowedHeaders:
+      'Content-Type, Accept, Authorization, X-Requested-With, idempotency-key, x-idempotency-key, Idempotency-Key, X-Idempotency-Key',
+    exposedHeaders: 'X-Idempotent-Replay, x-idempotent-replay',
   });
 
   // 2. Chuan hoa URL path va rewrite /api/v1/* thanh /api/*
