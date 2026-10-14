@@ -2108,10 +2108,13 @@ export class OrdersService {
       status: { $nin: ['Paid', 'Cancelled'] },
     };
 
-    // 1. Cưỡng chế phân lập chi nhánh
+    // 1. Cưỡng chế phân lập chi nhánh: Chỉ Quản lý/Chủ quán tại Chi nhánh chính mới được xem toàn bộ các chi nhánh
     const isSuperAdmin = isSuperAdminUser(caller);
-    const isMainBranch = caller?.isMainBranch === true;
-    if (!isSuperAdmin && !isMainBranch) {
+    const roleSlug = (typeof caller?.role === 'string' ? caller.role : caller?.role?.slug || '').toLowerCase();
+    const isManagerOrAdmin = ['restaurant_admin', 'restaurant_manager', 'system_admin', 'super_admin'].includes(roleSlug);
+    const canSeeAllBranches = isSuperAdmin || (caller?.isMainBranch === true && isManagerOrAdmin);
+
+    if (!canSeeAllBranches) {
       if (!caller?.branchId) {
         throw new ForbiddenException('Tài khoản chưa được gán chi nhánh hợp lệ');
       }
@@ -2219,9 +2222,11 @@ export class OrdersService {
 
     // Phân lập chi nhánh
     const isSuperAdmin = isSuperAdminUser(caller);
-    const isMainBranch = caller?.isMainBranch === true;
+    const roleSlug = (typeof caller?.role === 'string' ? caller.role : caller?.role?.slug || '').toLowerCase();
+    const isManagerOrAdmin = ['restaurant_admin', 'restaurant_manager', 'system_admin', 'super_admin'].includes(roleSlug);
+    const canSeeAllBranches = isSuperAdmin || (caller?.isMainBranch === true && isManagerOrAdmin);
     let effectiveBranchId = branchId;
-    if (!isSuperAdmin && !isMainBranch) {
+    if (!canSeeAllBranches) {
       if (!caller?.branchId) {
         throw new ForbiddenException('Tài khoản chưa được gán chi nhánh hợp lệ');
       }
@@ -2621,6 +2626,21 @@ export class OrdersService {
       const menuItem = menuMap.get(raw.menuItemId);
       if (!menuItem) {
         throw new NotFoundException(`Không tìm thấy món ăn với ID: ${raw.menuItemId}`);
+      }
+
+      // Kiểm tra tính sẵn sàng phục vụ (Availability) của món ăn (kèm chi nhánh override)
+      let isAvailable = menuItem.isAvailable ?? true;
+      if (branchId && menuItem.branchOverrides && menuItem.branchOverrides.length > 0) {
+        const override = menuItem.branchOverrides.find((o) => o.branchId === branchId);
+        if (override && override.isAvailable !== undefined) {
+          isAvailable = override.isAvailable;
+        }
+      }
+
+      if (!isAvailable) {
+        throw new BadRequestException(
+          `Món ăn "${menuItem.name}" hiện đã tạm ngưng phục vụ hoặc hết món`,
+        );
       }
 
       // Tính giá hiệu lực (Effective Price) theo chi nhánh nếu có branchOverrides
