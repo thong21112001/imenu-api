@@ -506,7 +506,7 @@ async function main() {
     try {
       const demoLogin = await request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email: 'owner@sample.vn', password: 'Demo@123' }),
+        body: JSON.stringify({ email: 'owner@sample.vn', password: process.env.DEMO_USER_PASSWORD || '' }),
       });
 
       if (demoLogin.status === 200 && demoLogin.data.data?.accessToken) {

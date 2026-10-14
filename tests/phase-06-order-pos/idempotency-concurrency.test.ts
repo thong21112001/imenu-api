@@ -908,7 +908,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         username: process.env.SUPERADMIN_USERNAME || 'superadmin',
-        password: process.env.SUPERADMIN_PASSWORD || 'SuperAdmin@2026!',
+        password: process.env.SUPERADMIN_PASSWORD || '',
       }),
     });
     const superAdminToken = loginSuperAdmin.data?.data?.accessToken;

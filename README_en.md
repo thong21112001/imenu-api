@@ -215,6 +215,22 @@ npm run start:dev
 npm run build
 ```
 
+### Environment Configuration & Credentials Security
+
+Core authentication environment variables configured in `.env`:
+
+| Environment Variable | Purpose | Value in `.env.example` | Local Development Value (`.env`) |
+| :--- | :--- | :--- | :--- |
+| `SUPERADMIN_EMAIL` | Highest-level system administrator email | `superadmin@imenu.vn` | `superadmin@imenu.vn` |
+| `SUPERADMIN_PASSWORD` | Super Admin account password | `your_superadmin_password_here` | *(Set your secure local password)* |
+| `DEMO_USER_PASSWORD` | Seed password for 5 demo accounts (`owner`, `manager`, `cashier`, `kitchen`, `waiter`) | `your_demo_password_here` | *(Set your local demo password)* |
+
+> [!IMPORTANT]
+> **Credentials Security & Main Branch Merge Compliance**:
+> - All Git-tracked codebase files **strictly contain NO hardcoded passwords**.
+> - All `.env.example` template files contain placeholder values only (`your_demo_password_here`), ensuring 100% security when committing to Git and avoiding automated Secret Scanning alerts (GitHub Secret Scanning, TruffleHog, SonarQube).
+> - Active passwords must only be stored in your local `.env` file, which is strictly guarded by `.gitignore`.
+
 ---
 
 ## 10. 🧪 Automated Testing Suites

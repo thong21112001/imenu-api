@@ -215,6 +215,22 @@ npm run start:dev
 npm run build
 ```
 
+### Cấu hình Biến Môi trường & Bảo Mật Xác Thực (Credentials Security)
+
+Bảng các biến môi trường xác thực cốt lõi cần thiết lập trong file `.env`:
+
+| Biến môi trường | Mục đích | Giá trị trong `.env.example` | Giá trị chạy local (`.env`) |
+| :--- | :--- | :--- | :--- |
+| `SUPERADMIN_EMAIL` | Email tài khoản quản trị hệ thống cao nhất | `superadmin@imenu.vn` | `superadmin@imenu.vn` |
+| `SUPERADMIN_PASSWORD` | Mật khẩu tài khoản Super Admin | `your_superadmin_password_here` | *(Thiết lập mật khẩu an toàn nội bộ)* |
+| `DEMO_USER_PASSWORD` | Mật khẩu khởi tạo 5 tài khoản demo (`owner`, `manager`, `cashier`, `kitchen`, `waiter`) | `your_demo_password_here` | *(Thiết lập mật khẩu demo nội bộ)* |
+
+> [!IMPORTANT]
+> **Quy Tắc Bảo Mật & Phòng Chống Cảnh Báo Khi Gộp Nhánh Main**:
+> - Toàn bộ mã nguồn Git-tracked **tuyệt đối không chứa mật khẩu hardcode**.
+> - Tệp `.env.example` chỉ chứa placeholder an toàn (`your_demo_password_here`), cam kết không rò rỉ bí mật khi commit và vượt qua các bộ kiểm tra Secret Scanning (GitHub Secret Scanning, TruffleHog, SonarQube).
+> - Mật khẩu thật chỉ được lưu trong tệp `.env` cục bộ và được bảo vệ nghiêm ngặt bởi `.gitignore`.
+
 ---
 
 ## 10. 🧪 Bộ Kiểm Thử Tự Động (Automated Test Suites)

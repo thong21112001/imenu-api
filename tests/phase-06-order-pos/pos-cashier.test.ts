@@ -349,7 +349,7 @@ async function main() {
     // Đăng nhập Super Admin
     const loginSuperAdmin = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'superadmin@imenu.vn', password: 'SuperAdmin@2026!' }),
+      body: JSON.stringify({ email: 'superadmin@imenu.vn', password: process.env.SUPERADMIN_PASSWORD || '' }),
     });
     superAdminToken = loginSuperAdmin.data?.data?.accessToken;
 

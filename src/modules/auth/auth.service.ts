@@ -19,6 +19,7 @@ import { JwtPayload } from './interface/jwtPayload';
 import { JwtUser } from './interface/jwtUser';
 import { JwtConstants } from '../../shared/common/constants/envConstants';
 import { CANONICAL_UI_PERMISSION_IDS, ALL_SYSTEM_PERMISSION_IDS } from '../../shared/common/constants/permission.const';
+import { ENV } from '../../shared/configs/env.cnf';
 
 // Danh muc 17 quyen han chuan cua nha hang duoc dong bo voi frontend ma tran phan quyen
 const SYSTEM_PERMISSIONS = CANONICAL_UI_PERMISSION_IDS;
@@ -352,8 +353,8 @@ export class AuthService {
   }
 
   /**
-   * Tự động khởi tạo dữ liệu mẫu Nhà Hàng "Bếp Nhà" và tài khoản chủ quán:
-   * Email: owner@sample.vn / Mật khẩu: Demo@123
+   * Tự động khởi tạo dữ liệu mẫu Nhà Hàng "Bếp Nhà" và tài khoản chủ quán
+   * (Mật khẩu được đọc từ cấu hình biến môi trường DEMO_USER_PASSWORD)
    */
   async seedDemoOwner(): Promise<void> {
     try {
@@ -444,7 +445,12 @@ export class AuthService {
         },
       ];
 
-      const hashedPassword = await hashPassword('Demo@123');
+      const demoPassword = process.env.DEMO_USER_PASSWORD || ENV.DEMO_USER_PASSWORD;
+      if (!demoPassword) {
+        this.logger.warn('[Seed] DEMO_USER_PASSWORD chưa được cấu hình trong .env');
+        return;
+      }
+      const hashedPassword = await hashPassword(demoPassword);
 
       for (const acc of sampleAccounts) {
         const existing = await this.usersService.findByEmail(acc.email);
@@ -482,7 +488,7 @@ export class AuthService {
         }
       }
 
-      this.logger.log('[Seed] Đã tạo/đồng bộ 5 tài khoản demo vai trò (owner, manager, cashier, kitchen, waiter / Demo@123)');
+      this.logger.log('[Seed] Đã tạo/đồng bộ 5 tài khoản demo vai trò (owner, manager, cashier, kitchen, waiter)');
     } catch (err: any) {
       this.logger.warn(`Không thể seed tài khoản demo: ${err.message}`);
     }
