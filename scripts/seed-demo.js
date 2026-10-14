@@ -47,7 +47,12 @@ async function seed() {
   }
 
   const branch = rest.branches[0];
-  const hash = await bcrypt.hash('Demo@123', 10);
+  const demoPassword = process.env.DEMO_USER_PASSWORD || process.env.DEMO_PASSWORD;
+  if (!demoPassword) {
+    console.error('❌ Thiếu biến môi trường DEMO_USER_PASSWORD trong .env');
+    process.exit(1);
+  }
+  const hash = await bcrypt.hash(demoPassword, 10);
 
   const sampleAccounts = [
     {
@@ -116,7 +121,7 @@ async function seed() {
       },
       { upsert: true },
     );
-    console.log(`✅ Seeded ${acc.email} (${acc.roleSlug}) / Demo@123`);
+    console.log(`✅ Seeded ${acc.email} (${acc.roleSlug})`);
   }
 
   await mongoose.disconnect();

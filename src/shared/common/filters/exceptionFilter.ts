@@ -21,7 +21,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
+    let status =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
@@ -38,15 +38,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     // Xu ly validation error tu Mongoose
     if ((exception as any)?.name === 'ValidationError') {
+      status = HttpStatus.BAD_REQUEST;
       errorRes = 'ValidationError';
       message = (exception as any).message;
     }
 
-    // Xu ly duplicate key error tu MongoDB (code 11000)
+    // Xu ly duplicate key error tu MongoDB (code 11000) -> HTTP 409 Conflict (DEF-6.5-002)
     if ((exception as any)?.code === 11000) {
-      errorRes = 'DuplicateKeyError';
+      status = HttpStatus.CONFLICT;
+      errorRes = 'Conflict';
       const field = Object.keys((exception as any).keyValue || {}).join(', ');
-      message = `Gia tri truong '${field}' da ton tai trong he thong`;
+      message = field
+        ? `Xung đột dữ liệu: giá trị trường '${field}' đã tồn tại trong hệ thống`
+        : 'Xung đột dữ liệu: bản ghi đã tồn tại trong hệ thống';
     }
 
     this.logger.error(

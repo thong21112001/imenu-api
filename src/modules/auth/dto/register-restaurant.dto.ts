@@ -41,7 +41,7 @@ export class OwnerInfoDto {
   @IsNotEmpty({ message: 'Email không được để trống' })
   email: string;
 
-  @ApiProperty({ example: 'Demo@123' })
+  @ApiProperty({ example: 'YourPassword#2026' })
   @IsString()
   @MinLength(8, { message: 'Mật khẩu phải có tối thiểu 8 ký tự' })
   password: string;

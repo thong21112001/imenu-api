@@ -16,7 +16,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto, UpdateTableStatusDto } from './dto/update-table.dto';
-import { TransferTableDto, MergeTablesDto } from './dto/transfer-table.dto';
+import { TransferTableDto, MergeTablesDto, MoveTableItemsDto } from './dto/transfer-table.dto';
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../shared/common/decorators/require-permissions.decorator';
@@ -120,6 +120,19 @@ export class TablesController {
     @CurrentUser() caller?: JwtUser,
   ) {
     const result = await this.tablesService.mergeTables(dto, restaurantId, caller);
+    return new OkResponse({ message: result.message, data: result });
+  }
+
+  @ApiOperation({ summary: 'Chuyển món / Tách bàn giữa các bàn' })
+  @RequirePermissions(ResourceType.POS, ActionType.VIEW)
+  @HttpCode(HttpStatus.OK)
+  @Post('move-items')
+  async moveItems(
+    @Body() dto: MoveTableItemsDto,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
+  ) {
+    const result = await this.tablesService.moveItemsBetweenTables(dto, restaurantId, caller);
     return new OkResponse({ message: result.message, data: result });
   }
 

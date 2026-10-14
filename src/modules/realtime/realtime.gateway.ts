@@ -81,7 +81,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   /**
-   * Client chủ động join room cụ thể
+   * Client chủ động join room cụ thể (Hardened: Kiểm tra quyền hạn và tenant isolation)
    */
   @SubscribeMessage('join:restaurant')
   handleJoinRestaurant(
@@ -89,6 +89,23 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() data: { restaurantId: string; branchId?: string },
   ) {
     if (data?.restaurantId) {
+      // 1. Kiểm tra xác thực staff / admin nếu có JWT trong session
+      if (client.data?.user) {
+        const userRestId = client.data.user.restaurantId || client.data.user.user?.restaurantId;
+        const isSuperAdmin = client.data.user.role === 'SUPER_ADMIN' || client.data.user.user?.role === 'SUPER_ADMIN';
+        if (!isSuperAdmin && userRestId && userRestId !== data.restaurantId) {
+          this.logger.warn(`[Security] Unauthorized join:restaurant attempt: User from [${userRestId}] tried to join [${data.restaurantId}]`);
+          return { success: false, message: 'Unauthorized: Restaurant mismatch' };
+        }
+      } else {
+        // 2. Với khách vãng lai, bắt buộc query handshake phải khớp restaurantId của bàn đã quét
+        const queryRestId = client.handshake.query?.restaurantId as string;
+        if (!queryRestId || queryRestId !== data.restaurantId) {
+          this.logger.warn(`[Security] Unauthorized guest join:restaurant attempt: Handshake rest [${queryRestId}] != requested [${data.restaurantId}]`);
+          return { success: false, message: 'Unauthorized: Missing or invalid guest restaurant context' };
+        }
+      }
+
       const room = `restaurant_${data.restaurantId}`;
       client.join(room);
       if (data.branchId) {
@@ -105,6 +122,23 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() data: { tableId: string; restaurantId?: string },
   ) {
     if (data?.tableId) {
+      // Hardened: Kiểm tra quyền bàn
+      if (client.data?.user) {
+        const userRestId = client.data.user.restaurantId || client.data.user.user?.restaurantId;
+        const isSuperAdmin = client.data.user.role === 'SUPER_ADMIN' || client.data.user.user?.role === 'SUPER_ADMIN';
+        if (!isSuperAdmin && userRestId && data.restaurantId && userRestId !== data.restaurantId) {
+          this.logger.warn(`[Security] Unauthorized join:table attempt: User [${userRestId}] tried to join table in [${data.restaurantId}]`);
+          return { success: false, message: 'Unauthorized: Restaurant mismatch' };
+        }
+      } else {
+        // Khách vãng lai: Handshake tableId (nếu có) phải khớp tableId được yêu cầu
+        const queryTableId = client.handshake.query?.tableId as string;
+        if (queryTableId && queryTableId !== data.tableId) {
+          this.logger.warn(`[Security] Unauthorized guest join:table attempt: Handshake table [${queryTableId}] != requested [${data.tableId}]`);
+          return { success: false, message: 'Unauthorized: Table mismatch' };
+        }
+      }
+
       const room = `table_${data.tableId}`;
       client.join(room);
       if (data.restaurantId) {
@@ -183,5 +217,129 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       this.server.to(`table_${payload.tableId}`).emit('order:payment_completed', payload);
     }
     this.logger.log(`Broadcast [order:payment_completed] to ${restRoom} (Order: ${payload.order?.orderCode})`);
+  }
+
+  /**
+   * Lắng nghe sự kiện Round mới được thêm vào đơn hàng (Sub-phase 6.8)
+   */
+  @OnEvent('order.round_added')
+  handleOrderRoundAddedEvent(payload: {
+    order: any;
+    restaurantId: string;
+    branchId?: string;
+    roundNumber: number;
+    isCustomer?: boolean;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('order:round_added', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:round_added', payload);
+    }
+    const tableId = payload.order?.tableId?._id || payload.order?.tableId;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('order:round_added', payload);
+    }
+    this.logger.log(`Broadcast [order:round_added] to ${restRoom} (Order: ${payload.order?.orderCode}, Round: ${payload.roundNumber})`);
+  }
+
+  /**
+   * Lắng nghe sự kiện Round được thu ngân duyệt (Sub-phase 6.8)
+   */
+  @OnEvent('order.round_confirmed')
+  handleOrderRoundConfirmedEvent(payload: {
+    order: any;
+    restaurantId: string;
+    branchId?: string;
+    roundNumber: number;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('order:round_confirmed', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:round_confirmed', payload);
+    }
+    const tableId = payload.order?.tableId?._id || payload.order?.tableId;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('order:round_confirmed', payload);
+    }
+    this.logger.log(`Broadcast [order:round_confirmed] to ${restRoom} (Order: ${payload.order?.orderCode}, Round: ${payload.roundNumber})`);
+  }
+
+  /**
+   * Lắng nghe sự kiện Round bị hủy/từ chối (Sub-phase 6.8)
+   */
+  @OnEvent('order.round_cancelled')
+  handleOrderRoundCancelledEvent(payload: {
+    order: any;
+    restaurantId: string;
+    branchId?: string;
+    roundNumber: number;
+    reason?: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('order:round_cancelled', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:round_cancelled', payload);
+    }
+    const tableId = payload.order?.tableId?._id || payload.order?.tableId;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('order:round_cancelled', payload);
+    }
+    this.logger.log(`Broadcast [order:round_cancelled] to ${restRoom} (Order: ${payload.order?.orderCode}, Round: ${payload.roundNumber})`);
+  }
+
+  /**
+   * Lắng nghe sự kiện khách/nhân viên yêu cầu thanh toán (Sub-phase 6.8)
+   */
+  @OnEvent('order.payment_requested')
+  handleOrderPaymentRequestedEvent(payload: {
+    order: any;
+    restaurantId: string;
+    branchId?: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('order:payment_requested', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:payment_requested', payload);
+    }
+    const tableId = payload.order?.tableId?._id || payload.order?.tableId;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('order:payment_requested', payload);
+    }
+    this.logger.log(`Broadcast [order:payment_requested] to ${restRoom} (Order: ${payload.order?.orderCode})`);
+  }
+
+  /**
+   * Lắng nghe sự kiện cập nhật đơn hàng tổng quát (Sub-phase 6.8)
+   */
+  @OnEvent('order.updated')
+  handleOrderUpdatedEvent(payload: {
+    order: any;
+    restaurantId: string;
+    branchId?: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('order:updated', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:updated', payload);
+    }
+    const tableId = payload.order?.tableId?._id || payload.order?.tableId;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('order:updated', payload);
+    }
   }
 }

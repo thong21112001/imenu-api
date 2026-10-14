@@ -12,7 +12,7 @@ export class LoginDto {
   @IsString()
   username?: string;
 
-  @ApiProperty({ example: 'Demo@123' })
+  @ApiProperty({ example: 'YourPassword#2026' })
   @IsString()
   @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
   password: string;

@@ -653,7 +653,7 @@ async function main() {
     // Đăng nhập tài khoản demo cashier@sample.vn
     const loginDemoCashier = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'cashier@sample.vn', password: 'Demo@123' }),
+      body: JSON.stringify({ email: 'cashier@sample.vn', password: process.env.DEMO_USER_PASSWORD || '' }),
     });
 
     if (loginDemoCashier.status === 200 && loginDemoCashier.data.data?.accessToken) {

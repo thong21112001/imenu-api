@@ -19,7 +19,8 @@ export const ENV = {
   SWAGGER_PATH: process.env.SWAGGER_PATH || 'api-docs',
   SUPERADMIN_EMAIL: process.env.SUPERADMIN_EMAIL || 'superadmin@imenu.vn',
   SUPERADMIN_USERNAME: process.env.SUPERADMIN_USERNAME || 'superadmin',
-  SUPERADMIN_PASSWORD: process.env.SUPERADMIN_PASSWORD || 'SuperAdmin@2026!',
+  SUPERADMIN_PASSWORD: process.env.SUPERADMIN_PASSWORD || '',
   SUPERADMIN_FULLNAME: process.env.SUPERADMIN_FULLNAME || 'Quan Tri Vien He Thong iMenu',
   SUPERADMIN_PHONE: process.env.SUPERADMIN_PHONE || '0900000000',
+  DEMO_USER_PASSWORD: process.env.DEMO_USER_PASSWORD || '',
 };
