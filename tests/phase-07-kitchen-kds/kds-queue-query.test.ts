@@ -3,7 +3,7 @@ process.env.MONGODB_URL = process.env.TEST_MONGODB_URL || 'mongodb://localhost:2
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
+import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
@@ -623,6 +623,22 @@ async function main() {
     failed++;
   } finally {
     if (app) {
+      try {
+        const connection: Connection = app.get(getConnectionToken());
+        const restIds = [restAId, restBId].filter(Boolean).map((id) => new Types.ObjectId(id));
+        if (restIds.length > 0) {
+          await connection.collection('tables').deleteMany({ restaurantId: { $in: restIds } });
+          await connection.collection('table_zones').deleteMany({ restaurantId: { $in: restIds } });
+          await connection.collection('orders').deleteMany({ restaurantId: { $in: restIds } });
+          await connection.collection('menu_items').deleteMany({ restaurantId: { $in: restIds } });
+          await connection.collection('menu_categories').deleteMany({ restaurantId: { $in: restIds } });
+          await connection.collection('users').deleteMany({ restaurantId: { $in: restIds } });
+          await connection.collection('restaurants').deleteMany({ _id: { $in: restIds } });
+          console.log('  ✔ [Teardown] Đã dọn dẹp sạch sẽ toàn bộ dữ liệu Suite 1 (Zero Garbage)');
+        }
+      } catch (e: any) {
+        console.warn('Lỗi teardown Suite 1:', e.message);
+      }
       await app.close();
     }
   }
