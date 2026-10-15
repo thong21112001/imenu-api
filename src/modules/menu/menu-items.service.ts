@@ -10,6 +10,7 @@ import { QueryMenuItemDto } from './dto/query-menu-item.dto';
 import { generateSlug } from '../../shared/common/utils/slug.util';
 import { buildVietnameseRegex } from '../../shared/common/utils/vietnamese-search.util';
 import { JwtUser } from '../auth/interface/jwtUser';
+import { ActivityAction, ActivityModule } from '../activity-log/constants/audit-log.const';
 
 @Injectable()
 export class MenuItemsService {
@@ -235,8 +236,15 @@ export class MenuItemsService {
   /**
    * Cap nhat mon an
    */
-  async update(id: string, dto: UpdateMenuItemDto, restaurantId: string): Promise<any> {
+  async update(
+    id: string,
+    dto: UpdateMenuItemDto,
+    restaurantId: string,
+    caller?: JwtUser,
+  ): Promise<any> {
     const item = await this.findById(id, restaurantId);
+    const oldPrice = item.price;
+    const isPriceChanged = dto.price !== undefined && dto.price !== oldPrice;
 
     if (dto.name) {
       item.name = dto.name.trim();
@@ -329,6 +337,30 @@ export class MenuItemsService {
     }
 
     await item.save();
+
+    if (isPriceChanged) {
+      const callerId = (caller as any)?._id || caller?.userId || (caller as any)?.id;
+      this.eventEmitter.emit('activity.log', {
+        userId: callerId,
+        userName: caller?.fullName || 'Quản lý',
+        userRole: caller?.role?.name || 'ADMIN',
+        restaurantId: item.restaurantId?.toString(),
+        module: ActivityModule.MENU,
+        action: ActivityAction.UPDATE,
+        targetId: item._id?.toString(),
+        entityType: 'MenuItem',
+        description: `Thay đổi giá món "${item.name}" từ ${oldPrice.toLocaleString('vi-VN')}đ sang ${item.price.toLocaleString('vi-VN')}đ`,
+        previousData: { price: oldPrice },
+        newData: { price: item.price },
+        metadata: {
+          itemId: item._id?.toString(),
+          itemName: item.name,
+          oldPrice,
+          newPrice: item.price,
+        },
+        status: 'SUCCESS',
+      });
+    }
 
     const populated = await item.populate('category', 'name slug icon order isActive branchIds');
     return populated.toJSON ? populated.toJSON() : populated.toObject();

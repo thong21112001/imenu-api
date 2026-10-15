@@ -10,6 +10,7 @@ import { OrdersController } from './orders.controller';
 import { KitchenController } from './kitchen.controller';
 import { OrderItemsController } from './order-items.controller';
 import { MenuModule } from '../menu/menu.module';
+import { BillsModule } from '../bills/bills.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { MenuModule } from '../menu/menu.module';
       { name: Restaurant.name, schema: RestaurantSchema },
     ]),
     MenuModule,
+    BillsModule,
   ],
   controllers: [OrdersController, KitchenController, OrderItemsController],
   providers: [OrdersService],

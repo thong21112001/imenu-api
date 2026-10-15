@@ -28,6 +28,21 @@ export class ActivityLog {
   @Prop({ default: '' })
   description?: string;
 
+  @Prop({ trim: true, index: true })
+  branchId?: string;
+
+  @Prop({ default: '' })
+  entityType?: string;
+
+  @Prop({ type: Object, default: undefined })
+  previousData?: Record<string, any>;
+
+  @Prop({ type: Object, default: undefined })
+  newData?: Record<string, any>;
+
+  @Prop({ type: Object, default: undefined })
+  metadata?: Record<string, any>;
+
   @Prop({ default: '' })
   ip_address?: string;
 
@@ -43,4 +58,5 @@ export const ActivityLogSchema = SchemaFactory.createForClass(ActivityLog);
 
 ActivityLogSchema.index({ createdAt: -1 });
 ActivityLogSchema.index({ restaurantId: 1, createdAt: -1 });
+ActivityLogSchema.index({ restaurantId: 1, branchId: 1, createdAt: -1 });
 ActivityLogSchema.index({ module: 1, action: 1 });

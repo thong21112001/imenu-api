@@ -12,6 +12,9 @@ import { BranchStatus } from './entities/branch.schema';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { generateSlug } from '../../shared/common/utils/slug.util';
 import { User, UserDocument } from '../users/entities/user.entity';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ActivityAction, ActivityModule } from '../activity-log/constants/audit-log.const';
+import { maskBankAccount } from '../bills/helpers/vietqr.helper';
 
 @Injectable()
 export class RestaurantsService implements OnApplicationBootstrap {
@@ -22,6 +25,7 @@ export class RestaurantsService implements OnApplicationBootstrap {
     private readonly restaurantModel: Model<RestaurantDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -167,9 +171,42 @@ export class RestaurantsService implements OnApplicationBootstrap {
         oldBank.accountNo !== updateDto.bankAccount.accountNo ||
         oldBank.bankId !== updateDto.bankAccount.bankId
       ) {
+        const oldMasked = maskBankAccount(oldBank.accountNo);
+        const newMasked = maskBankAccount(updateDto.bankAccount.accountNo);
+        const callerId = user?._id || user?.userId || user?.id;
+
         this.logger.log(
-          `[AUDIT] Bank account changed for restaurant ${restaurant.name} (${restaurantId}) by user ${user?.userId || user?.id || 'system'}. Old: ${oldBank.bankId}/${oldBank.accountNo} -> New: ${updateDto.bankAccount.bankId}/${updateDto.bankAccount.accountNo}`,
+          `[AUDIT] Bank account changed for restaurant ${restaurant.name} (${restaurantId}) by user ${callerId || 'system'}. Old: ${oldBank.bankId}/${oldMasked} -> New: ${updateDto.bankAccount.bankId}/${newMasked}`,
         );
+
+        this.eventEmitter.emit('activity.log', {
+          userId: callerId,
+          userName: user?.fullName || 'Chủ nhà hàng',
+          userRole: user?.role?.name || user?.role || 'RESTAURANT_ADMIN',
+          restaurantId,
+          module: ActivityModule.SETTING,
+          action: ActivityAction.UPDATE,
+          targetId: restaurantId,
+          entityType: 'Restaurant',
+          description: `Thay đổi tài khoản ngân hàng nhà hàng. Cũ: ${oldBank.bankId || 'Chưa có'} - ${oldMasked} -> Mới: ${updateDto.bankAccount.bankId} - ${newMasked}`,
+          previousData: {
+            bankId: oldBank.bankId,
+            accountNo: oldMasked,
+            accountName: oldBank.accountName,
+          },
+          newData: {
+            bankId: updateDto.bankAccount.bankId,
+            accountNo: newMasked,
+            accountName: updateDto.bankAccount.accountName,
+          },
+          metadata: {
+            oldBankId: oldBank.bankId,
+            newBankId: updateDto.bankAccount.bankId,
+            oldAccountNoMasked: oldMasked,
+            newAccountNoMasked: newMasked,
+          },
+          status: 'SUCCESS',
+        });
       }
       restaurant.bankAccount = {
         ...restaurant.bankAccount,

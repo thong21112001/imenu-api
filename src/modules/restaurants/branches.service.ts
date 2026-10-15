@@ -13,6 +13,9 @@ import { CreateBranchDto, UpdateBranchDto, CloseBranchDto, DeactivateBranchDto }
 import { Order, OrderDocument } from '../orders/entities/order.entity';
 import { User, UserDocument } from '../users/entities/user.entity';
 import { JwtUser } from '../auth/interface/jwtUser';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ActivityAction, ActivityModule } from '../activity-log/constants/audit-log.const';
+import { maskBankAccount } from '../bills/helpers/vietqr.helper';
 
 @Injectable()
 export class BranchesService {
@@ -23,6 +26,7 @@ export class BranchesService {
     private readonly orderModel: Model<OrderDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findAll(restaurantId: string, caller?: JwtUser) {
@@ -150,7 +154,48 @@ export class BranchesService {
     if (dto.phone !== undefined) currentBranch.phone = dto.phone;
     if (dto.isMainBranch !== undefined && (!caller || caller.isMainBranch)) currentBranch.isMainBranch = dto.isMainBranch;
     if (dto.status !== undefined && (!caller || caller.isMainBranch)) currentBranch.status = dto.status;
-    if (dto.bankAccount !== undefined) currentBranch.bankAccount = dto.bankAccount;
+    if (dto.bankAccount !== undefined) {
+      const oldBank = currentBranch.bankAccount || ({} as any);
+      if (
+        oldBank.accountNo !== dto.bankAccount.accountNo ||
+        oldBank.bankId !== dto.bankAccount.bankId
+      ) {
+        const oldMasked = maskBankAccount(oldBank.accountNo);
+        const newMasked = maskBankAccount(dto.bankAccount.accountNo);
+        const callerId = (caller as any)?._id || caller?.userId || (caller as any)?.id;
+
+        this.eventEmitter.emit('activity.log', {
+          userId: callerId,
+          userName: caller?.fullName || 'Quản lý chi nhánh',
+          userRole: caller?.role?.name || 'BRANCH_MANAGER',
+          restaurantId,
+          branchId,
+          module: ActivityModule.SETTING,
+          action: ActivityAction.UPDATE,
+          targetId: branchId,
+          entityType: 'Branch',
+          description: `Thay đổi tài khoản ngân hàng chi nhánh "${currentBranch.name}". Cũ: ${oldBank.bankId || 'Chưa có'} - ${oldMasked} -> Mới: ${dto.bankAccount.bankId} - ${newMasked}`,
+          previousData: {
+            bankId: oldBank.bankId,
+            accountNo: oldMasked,
+            accountName: oldBank.accountName,
+          },
+          newData: {
+            bankId: dto.bankAccount.bankId,
+            accountNo: newMasked,
+            accountName: dto.bankAccount.accountName,
+          },
+          metadata: {
+            oldBankId: oldBank.bankId,
+            newBankId: dto.bankAccount.bankId,
+            oldAccountNoMasked: oldMasked,
+            newAccountNoMasked: newMasked,
+          },
+          status: 'SUCCESS',
+        });
+      }
+      currentBranch.bankAccount = dto.bankAccount;
+    }
     if (dto.openingHours !== undefined) currentBranch.openingHours = dto.openingHours;
     if (dto.tagline !== undefined) currentBranch.tagline = dto.tagline;
 

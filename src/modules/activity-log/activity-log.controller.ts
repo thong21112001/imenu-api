@@ -6,7 +6,9 @@ import { OkResponse } from '../../shared/common/dto/okResponse';
 import { RequirePermissions } from '../../shared/common/decorators/require-permissions.decorator';
 import { ActionType, ResourceType } from '../../shared/common/constants/permission.const';
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
+import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
+import { JwtUser } from '../auth/interface/jwtUser';
 
 @ApiTags('Activity Logs')
 @ApiBearerAuth('JWT-auth')
@@ -18,8 +20,12 @@ export class ActivityLogController {
   @ApiOperation({ summary: 'Truy vấn nhật ký kiểm toán hệ thống có phân trang & lọc module' })
   @RequirePermissions(ResourceType.SETTING, ActionType.VIEW)
   @Get()
-  async findAll(@Query() query: QueryActivityLogDto, @CurrentRestaurant() restaurantId: string) {
-    const result = await this.activityLogService.findAll(query, restaurantId);
+  async findAll(
+    @Query() query: QueryActivityLogDto,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const result = await this.activityLogService.findAll(query, restaurantId, user);
     return new OkResponse({ data: result });
   }
 }

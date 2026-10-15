@@ -28,6 +28,7 @@ import {
   CustomerCreateOrderDto,
   CustomerAddItemsDto,
   CustomerGetActiveOrderDto,
+  RequestPaymentDto,
 } from './dto/customer-order.dto';
 import { UpdateItemStatusDto } from './dto/update-item-status.dto';
 import {
@@ -43,6 +44,14 @@ import { QueryOrderDto } from './dto/query-order.dto';
 import { QueryKitchenOrdersDto } from './dto/query-kitchen-orders.dto';
 import { BatchKitchenItemsDto } from './dto/batch-kitchen-items.dto';
 import { isSuperAdminUser, JwtUser } from '../auth/interface/jwtUser';
+import { BillsService } from '../bills/bills.service';
+import { ReceiptData } from '../bills/interfaces/receipt-data.interface';
+import {
+  resolveEffectiveBankAccount,
+  generateVietQRMemo,
+  generateVietQRUrl,
+} from '../bills/helpers/vietqr.helper';
+import { ActivityAction, ActivityModule } from '../activity-log/constants/audit-log.const';
 
 @Injectable()
 export class OrdersService {
@@ -55,7 +64,9 @@ export class OrdersService {
     @InjectModel(Restaurant.name) private readonly restaurantModel: Model<RestaurantDocument>,
     @InjectModel(IdempotencyKey.name) private readonly idempotencyKeyModel: Model<IdempotencyKeyDocument>,
     private readonly eventEmitter: EventEmitter2,
+    private readonly billsService: BillsService,
   ) {}
+
 
   /**
    * Tạo đơn hàng mới từ POS hoặc QR bàn
@@ -871,7 +882,9 @@ export class OrdersService {
       phone?: string;
       address?: string;
       logoUrl?: string;
+      bankAccount?: any;
     };
+    bankAccount?: any;
     table: {
       id: string;
       code: string;
@@ -904,6 +917,8 @@ export class OrdersService {
       },
     });
 
+    const effectiveBank = resolveEffectiveBankAccount(restaurant, table.branchId?.toString());
+
     return {
       restaurant: {
         id: restaurant._id.toString(),
@@ -912,7 +927,9 @@ export class OrdersService {
         phone: restaurant.phone,
         address: restaurant.address,
         logoUrl: (restaurant as any).logoUrl,
+        bankAccount: effectiveBank,
       },
+      bankAccount: effectiveBank,
       table: {
         id: table._id.toString(),
         code: table.code,
@@ -1534,6 +1551,7 @@ export class OrdersService {
 
     OrderStateValidator.validateOrderTransition(order.status, 'Cancelled');
 
+    const previousSubTotal = order.subTotal || 0;
     const callerId = caller?._id || caller?.userId || caller?.id;
     const validUserOid = callerId && Types.ObjectId.isValid(callerId) ? new Types.ObjectId(callerId) : undefined;
     const now = new Date();
@@ -1594,6 +1612,29 @@ export class OrdersService {
       branchId: order.branchId,
     });
 
+    this.eventEmitter.emit('activity.log', {
+      action: ActivityAction.CANCEL || 'cancel',
+      module: ActivityModule.ORDER || 'order',
+      entityType: 'Order',
+      restaurantId: order.restaurantId.toString(),
+      branchId: order.branchId ? order.branchId.toString() : undefined,
+      targetId: order._id.toString(),
+      userId: validUserOid ? validUserOid.toString() : undefined,
+      userName: caller?.fullName || caller?.name || 'Hệ thống',
+      userRole: caller?.role,
+      previousData: { subTotal: previousSubTotal, totalAmount: order.totalAmount, status: order.status },
+      newData: { status: 'Cancelled', cancelReason: reason.trim() },
+      metadata: {
+        orderCode: order.orderCode,
+        reason: reason.trim(),
+        cancelledBy: validUserOid ? validUserOid.toString() : undefined,
+        previousSubTotal,
+        newSubTotal: 0,
+        lostRevenue: order.totalAmount,
+      },
+      description: `Hủy toàn bộ đơn hàng ${order.orderCode} (Bàn ${order.tableName}): ${reason.trim()}`,
+    });
+
     return order;
   }
 
@@ -1629,6 +1670,7 @@ export class OrdersService {
 
     OrderStateValidator.validateItemTransition(item.status, 'Cancelled', order.isPaid);
 
+    const previousSubTotal = order.subTotal || 0;
     const callerId = caller?._id || caller?.userId || caller?.id;
     const validUserOid = callerId && Types.ObjectId.isValid(callerId) ? new Types.ObjectId(callerId) : undefined;
 
@@ -1690,6 +1732,31 @@ export class OrdersService {
       order: order.toObject(),
       restaurantId,
       branchId: order.branchId,
+    });
+
+    this.eventEmitter.emit('activity.log', {
+      action: ActivityAction.CANCEL || 'cancel',
+      module: ActivityModule.ORDER || 'order',
+      entityType: 'Order',
+      restaurantId: order.restaurantId.toString(),
+      branchId: order.branchId ? order.branchId.toString() : undefined,
+      targetId: order._id.toString(),
+      userId: validUserOid ? validUserOid.toString() : undefined,
+      userName: caller?.fullName || caller?.name || 'Hệ thống',
+      userRole: caller?.role,
+      previousData: { subTotal: previousSubTotal, itemId, itemName: item.name, itemPrice: item.price, quantity: item.quantity },
+      newData: { subTotal: order.subTotal, totalAmount: order.totalAmount, itemStatus: 'Cancelled' },
+      metadata: {
+        orderCode: order.orderCode,
+        itemId,
+        itemName: item.name,
+        reason: reason.trim(),
+        cancelledBy: validUserOid ? validUserOid.toString() : undefined,
+        previousSubTotal,
+        newSubTotal: order.subTotal,
+        lostRevenue: previousSubTotal - order.subTotal,
+      },
+      description: `Hủy món ${item.name} (SL: ${item.quantity}) trong đơn ${order.orderCode}: ${reason.trim()}`,
     });
 
     return order;
@@ -2335,30 +2402,104 @@ export class OrdersService {
   }
 
   /**
-   * DOMAIN ACTION: Yêu cầu thanh toán (Served -> PaymentRequested)
+   * DOMAIN ACTION: Yêu cầu thanh toán (Preparing / Ready / Served -> PaymentRequested)
+   * Hỗ trợ xác thực bằng Staff JWT HOẶC bộ 3 QR (restaurantSlug, tableCode, qrToken)
    */
   async requestPayment(
     orderId: string,
-    restaurantId: string,
+    dto?: RequestPaymentDto,
+    restaurantId?: string,
     caller?: any,
+    qrAuth?: { restaurantSlug?: string; tableCode?: string; qrToken?: string },
   ): Promise<Order> {
-    const order: any = await this.findById(orderId, restaurantId, caller);
+    const qrSlug = qrAuth?.restaurantSlug || dto?.restaurantSlug;
+    const qrTable = qrAuth?.tableCode || dto?.tableCode;
+    const qrTok = qrAuth?.qrToken || dto?.qrToken;
+
+    let order: any;
+    if (qrSlug && qrTable && qrTok) {
+      const { restaurant, table } = await this.validateQrSession(qrSlug, qrTable, qrTok);
+      order = await this.orderModel.findOne({
+        _id: new Types.ObjectId(orderId),
+        restaurantId: restaurant._id,
+        tableId: table._id,
+      });
+      if (!order) {
+        throw new NotFoundException('Không tìm thấy đơn hàng tương ứng với bàn ăn này');
+      }
+    } else if (restaurantId) {
+      order = await this.findById(orderId, restaurantId, caller);
+    } else {
+      if (!Types.ObjectId.isValid(orderId)) {
+        throw new BadRequestException('Mã đơn hàng không hợp lệ');
+      }
+      order = await this.orderModel.findById(orderId);
+      if (!order) {
+        throw new NotFoundException('Không tìm thấy đơn hàng');
+      }
+    }
+
+    if (order.status === 'WaitingConfirmation') {
+      throw new BadRequestException('Không thể yêu cầu thanh toán cho đơn hàng chưa được xác nhận');
+    }
+    if (order.isPaid || order.status === 'Paid') {
+      throw new BadRequestException('Đơn hàng này đã được thanh toán trước đó');
+    }
+    if (order.status === 'Cancelled') {
+      throw new BadRequestException('Không thể yêu cầu thanh toán cho đơn hàng đã bị hủy');
+    }
+
+    const targetPaymentMethod = dto?.paymentMethod || order.paymentMethod || 'VietQR';
+
+    // Idempotent: nếu đơn đã ở PaymentRequested, cập nhật paymentMethod nếu có và trả về
+    if (order.status === 'PaymentRequested') {
+      if (dto?.paymentMethod && order.paymentMethod !== dto.paymentMethod) {
+        order.paymentMethod = dto.paymentMethod;
+        await order.save();
+      }
+
+      await this.tableModel.findByIdAndUpdate(order.tableId, { status: 'PaymentRequested' });
+
+      this.eventEmitter.emit('order.payment_requested', {
+        order: order.toObject(),
+        restaurantId: order.restaurantId.toString(),
+        branchId: order.branchId,
+      });
+
+      return order;
+    }
 
     OrderStateValidator.validateOrderTransition(order.status, 'PaymentRequested');
     order.status = 'PaymentRequested';
+    order.paymentMethod = targetPaymentMethod;
     await order.save();
+
+    // Cập nhật nguyên tử table.status = 'PaymentRequested'
+    const updatedTable = await this.tableModel.findByIdAndUpdate(
+      order.tableId,
+      { status: 'PaymentRequested' },
+      { new: true },
+    );
 
     this.eventEmitter.emit('order.payment_requested', {
       order: order.toObject(),
-      restaurantId,
+      restaurantId: order.restaurantId.toString(),
       branchId: order.branchId,
     });
+
+    if (updatedTable) {
+      this.eventEmitter.emit('table.status_updated', {
+        table: updatedTable.toObject(),
+        restaurantId: order.restaurantId.toString(),
+        branchId: updatedTable.branchId,
+      });
+    }
 
     return order;
   }
 
   /**
-   * DOMAIN ACTION: Quay lại trạng thái Served từ PaymentRequested
+   * DOMAIN ACTION: Hoàn tác yêu cầu thanh toán (PaymentRequested -> Served / Ready / Preparing)
    */
   async revertPaymentRequest(
     orderId: string,
@@ -2367,12 +2508,258 @@ export class OrdersService {
   ): Promise<Order> {
     const order: any = await this.findById(orderId, restaurantId, caller);
 
-    OrderStateValidator.validateOrderTransition(order.status, 'Served');
-    order.status = 'Served';
+    if (order.status !== 'PaymentRequested') {
+      throw new BadRequestException(
+        `Chỉ có thể hoàn tác yêu cầu thanh toán khi đơn ở trạng thái PaymentRequested (hiện tại: ${order.status})`,
+      );
+    }
+
+    const nextStatus = calculateOrderStatus(order.items || [], 'Served');
+    OrderStateValidator.validateOrderTransition(order.status, nextStatus);
+    order.status = nextStatus;
     await order.save();
+
+    const updatedTable = await this.tableModel.findByIdAndUpdate(
+      order.tableId,
+      { status: 'Occupied' },
+      { new: true },
+    );
+
+    this.eventEmitter.emit('order.updated', {
+      order: order.toObject(),
+      restaurantId,
+      branchId: order.branchId,
+    });
+
+    if (updatedTable) {
+      this.eventEmitter.emit('table.status_updated', {
+        table: updatedTable.toObject(),
+        restaurantId,
+        branchId: updatedTable.branchId,
+      });
+    }
 
     return order;
   }
+
+  /**
+   * Lấy thông tin VietQR động cho đơn hàng
+   */
+  async getVietQRForOrder(
+    orderId: string,
+    restaurantId?: string,
+    caller?: any,
+    qrAuth?: { restaurantSlug?: string; tableCode?: string; qrToken?: string },
+  ) {
+    let order: any;
+    let restaurant: any;
+
+    if (qrAuth?.restaurantSlug && qrAuth?.tableCode && qrAuth?.qrToken) {
+      const session = await this.validateQrSession(
+        qrAuth.restaurantSlug,
+        qrAuth.tableCode,
+        qrAuth.qrToken,
+      );
+      restaurant = session.restaurant;
+      order = await this.orderModel.findOne({
+        _id: new Types.ObjectId(orderId),
+        restaurantId: restaurant._id,
+        tableId: session.table._id,
+      });
+    } else if (restaurantId) {
+      order = await this.findById(orderId, restaurantId, caller);
+      restaurant = await this.restaurantModel.findById(order.restaurantId);
+    } else {
+      order = await this.orderModel.findById(orderId);
+      if (order) {
+        restaurant = await this.restaurantModel.findById(order.restaurantId);
+      }
+    }
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    const effectiveBank = resolveEffectiveBankAccount(restaurant, order.branchId?.toString());
+    if (!effectiveBank) {
+      throw new BadRequestException(
+        'Nhà hàng hoặc chi nhánh chưa cấu hình tài khoản ngân hàng nhận thanh toán VietQR',
+      );
+    }
+
+    const memo = generateVietQRMemo(order.orderCode);
+    const amount = order.totalAmount || 0;
+    const vietQrUrl = generateVietQRUrl({
+      bankId: effectiveBank.bankId,
+      accountNo: effectiveBank.accountNo,
+      template: effectiveBank.template,
+      amount,
+      memo,
+      accountName: effectiveBank.accountName,
+    });
+
+    return {
+      orderId: order._id.toString(),
+      orderCode: order.orderCode,
+      amount,
+      memo,
+      bankId: effectiveBank.bankId,
+      bankName: effectiveBank.bankName,
+      accountNo: effectiveBank.accountNo,
+      accountName: effectiveBank.accountName,
+      template: effectiveBank.template,
+      vietQrUrl,
+      resolvedFrom: effectiveBank.resolvedFrom,
+    };
+  }
+
+  /**
+   * Lấy ReceiptData hóa đơn nhiệt 80mm cho đơn hàng (PRE_BILL hoặc FINAL_BILL)
+   */
+  async getReceiptForOrder(
+    orderId: string,
+    restaurantId?: string,
+    caller?: any,
+    qrAuth?: { restaurantSlug?: string; tableCode?: string; qrToken?: string },
+  ): Promise<ReceiptData> {
+    let order: any;
+    let restaurant: any;
+
+    if (qrAuth?.restaurantSlug && qrAuth?.tableCode && qrAuth?.qrToken) {
+      const session = await this.validateQrSession(
+        qrAuth.restaurantSlug,
+        qrAuth.tableCode,
+        qrAuth.qrToken,
+      );
+      restaurant = session.restaurant;
+      order = await this.orderModel.findOne({
+        _id: new Types.ObjectId(orderId),
+        restaurantId: restaurant._id,
+        tableId: session.table._id,
+      });
+    } else if (restaurantId) {
+      order = await this.findById(orderId, restaurantId, caller);
+      restaurant = await this.restaurantModel.findById(order.restaurantId);
+    } else {
+      order = await this.orderModel.findById(orderId);
+      if (order) {
+        restaurant = await this.restaurantModel.findById(order.restaurantId);
+      }
+    }
+
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    const existingBillData = await this.billsService
+      .findByOrderId(order._id.toString(), order.restaurantId.toString(), caller)
+      .catch(() => null);
+    if (existingBillData?.receiptData) {
+      return existingBillData.receiptData;
+    }
+
+    let branchName = '';
+    let address = restaurant?.address || '';
+    let hotline = restaurant?.phone || '';
+    let wifiSsid = '';
+    let wifiPassword = '';
+
+    if (order.branchId && Array.isArray(restaurant?.branches)) {
+      const branch = restaurant.branches.find(
+        (b: any) =>
+          (b._id ? b._id.toString() : b.id ? b.id.toString() : '') === order.branchId.toString(),
+      );
+      if (branch) {
+        branchName = branch.name || '';
+        if (branch.address) address = branch.address;
+        if (branch.phone) hotline = branch.phone;
+      }
+    }
+
+    if (order.tableId) {
+      const table = await this.tableModel.findById(order.tableId);
+      if (table) {
+        wifiSsid = table.wifiSsid || '';
+        wifiPassword = table.wifiPassword || '';
+      }
+    }
+
+    const effectiveBank = resolveEffectiveBankAccount(restaurant, order.branchId?.toString());
+    const memo = generateVietQRMemo(order.orderCode);
+    let vietQrPayloadUrl = '';
+    if (effectiveBank) {
+      vietQrPayloadUrl = generateVietQRUrl({
+        bankId: effectiveBank.bankId,
+        accountNo: effectiveBank.accountNo,
+        template: effectiveBank.template,
+        amount: order.totalAmount,
+        memo,
+        accountName: effectiveBank.accountName,
+      });
+    }
+
+    const activeItems = (order.items || []).filter((it: any) => it.status !== 'Cancelled');
+    const receiptItems = activeItems.map((it: any) => {
+      const optionsNote = Array.isArray(it.selectedOptions)
+        ? it.selectedOptions.map((o: any) => o.valueName || o.name).filter(Boolean).join(', ')
+        : '';
+      return {
+        name: it.name,
+        quantity: it.quantity,
+        unitPrice: it.price,
+        amount: it.itemTotal || it.price * it.quantity,
+        selectedOptionsNote: optionsNote || undefined,
+        note: it.note || undefined,
+        roundNumber: it.roundNumber,
+      };
+    });
+
+    const receiptType = order.isPaid || order.status === 'Paid' ? 'FINAL_BILL' : 'PRE_BILL';
+
+    return {
+      header: {
+        restaurantName: restaurant?.name || 'Nhà hàng iMenu',
+        branchName,
+        address,
+        hotline,
+        wifiSsid: wifiSsid || undefined,
+        wifiPassword: wifiPassword || undefined,
+      },
+      metadata: {
+        receiptType,
+        orderCode: order.orderCode,
+        tableName: order.tableName,
+        cashierName: caller?.fullName || caller?.name || 'Thu ngân',
+        createdAt: order.createdAt,
+        paidAt: order.closedAt,
+      },
+      items: receiptItems,
+      financials: {
+        subTotal: order.subTotal,
+        discountAmount: order.discountAmount || 0,
+        taxableAmount: Math.max(0, order.subTotal - (order.discountAmount || 0)),
+        serviceFee: order.serviceFee || 0,
+        vatPercent: 0,
+        vatAmount: order.vatAmount || 0,
+        totalAmount: order.totalAmount,
+        paymentMethod: order.paymentMethod,
+      },
+      paymentQr: effectiveBank
+        ? {
+            vietQrPayloadUrl,
+            accountNo: effectiveBank.accountNo,
+            bankName: effectiveBank.bankName,
+            accountName: effectiveBank.accountName,
+            memo,
+          }
+        : undefined,
+      footer: {
+        thankYouMessage: 'Cảm ơn quý khách và hẹn gặp lại!',
+        softwareCredit: 'Hóa đơn khởi tạo bởi iMenu POS Cloud',
+      },
+    };
+  }
+
 
   /**
    * DOMAIN ACTION: Duyệt đơn hàng QR (WaitingConfirmation -> Preparing)
@@ -2469,11 +2856,11 @@ export class OrdersService {
     restaurantId: string,
     user?: any,
     idempotencyKey?: string,
-  ): Promise<{ order: Order; table: Table; changeAmount?: number } & { isReplay?: boolean }> {
+  ): Promise<{ order: Order; table: Table; bill?: any; changeAmount?: number } & { isReplay?: boolean }> {
     const restaurantOid = new Types.ObjectId(restaurantId);
     const endpoint = `POST /orders/${orderId}/pay`;
 
-    const executeBusinessLogic = async (): Promise<{ order: Order; table: Table; changeAmount?: number }> => {
+    const executeBusinessLogic = async (): Promise<{ order: Order; table: Table; bill?: any; changeAmount?: number }> => {
       const order: any = await this.findById(orderId, restaurantId, user);
 
       if (order.isPaid || order.status === 'Paid') {
@@ -2608,9 +2995,60 @@ export class OrdersService {
         changeAmount,
       });
 
+      // 6. TẠO HOẶC LẤY CHỨNG TỪ BILL BẤT BIẾN
+      let bill: any = null;
+      try {
+        bill = await this.billsService.createOrGetFromPaidOrder(
+          claimedOrder,
+          financial,
+          user,
+          {
+            amountReceived: effectiveAmountReceived,
+            changeAmount,
+            note: dto.note,
+            paymentMethod,
+          },
+        );
+      } catch (err: any) {
+        this.logger.error(
+          `Lỗi tạo chứng từ Bill cho đơn hàng ${claimedOrder.orderCode}: ${err.message}`,
+          err.stack,
+        );
+      }
+
+      // 7. GHI NHẬT KÝ KIỂM TOÁN TÀI CHÍNH
+      this.eventEmitter.emit('activity.log', {
+        action: ActivityAction.PAY || 'pay',
+        module: ActivityModule.ORDER || 'order',
+        entityType: 'Order',
+        restaurantId: claimedOrder.restaurantId.toString(),
+        branchId: claimedOrder.branchId ? claimedOrder.branchId.toString() : undefined,
+        targetId: claimedOrder._id.toString(),
+        userId: validUserOid ? validUserOid.toString() : undefined,
+        userName: user?.fullName || user?.name || 'Thu ngân',
+        userRole: user?.role,
+        newData: {
+          orderCode: claimedOrder.orderCode,
+          billCode: bill?.billCode,
+          subTotal: financial.subTotal,
+          discountAmount: financial.discountAmount,
+          serviceFee: financial.serviceFee,
+          vatAmount: financial.vatAmount,
+          totalAmount: financial.totalAmount,
+          paymentMethod,
+          cashierId: validUserOid ? validUserOid.toString() : undefined,
+        },
+        metadata: {
+          changeAmount,
+          amountReceived: effectiveAmountReceived,
+        },
+        description: `Thanh toán thành công đơn hàng ${claimedOrder.orderCode} - Tổng tiền: ${financial.totalAmount.toLocaleString('vi-VN')} đ (${paymentMethod})`,
+      });
+
       return {
         order: claimedOrder,
         table: table as any,
+        bill,
         ...(changeAmount !== undefined ? { changeAmount } : {}),
       };
     };
@@ -2623,6 +3061,75 @@ export class OrdersService {
       HttpStatus.OK,
       executeBusinessLogic,
     );
+  }
+
+  /**
+   * Hoàn tất thanh toán với Idempotency tự nhiên (Blueprint p. 27).
+   * Nếu đơn chưa Paid: thực thi pay(orderId, dto, restaurantId, user, idempotencyKey).
+   * Nếu đơn đã Paid (thuộc đúng restaurantId và branchId nếu caller bị giới hạn chi nhánh):
+   * trả về 200 OK kèm { order, table, bill, changeAmount: bill?.changeAmount || 0, isIdempotentReplay: true }.
+   */
+  async completePayment(
+    orderId: string,
+    dto: PayOrderDto,
+    restaurantId: string,
+    user?: any,
+    idempotencyKey?: string,
+  ): Promise<{ order: Order; table: Table; bill?: any; changeAmount?: number; isIdempotentReplay?: boolean }> {
+    const order: any = await this.orderModel.findById(orderId);
+    if (!order) {
+      throw new NotFoundException('Không tìm thấy đơn hàng');
+    }
+
+    if (order.restaurantId.toString() !== restaurantId.toString()) {
+      throw new ForbiddenException('Bạn không có quyền thao tác trên đơn hàng này');
+    }
+
+    // Branch isolation check
+    if (user?.branchId && order.branchId && order.branchId.toString() !== user.branchId.toString()) {
+      throw new ForbiddenException('Bạn không có quyền thao tác trên đơn hàng của chi nhánh khác');
+    }
+
+    if (order.isPaid || order.status === 'Paid') {
+      const existingBillData = await this.billsService
+        .findByOrderId(order._id.toString(), restaurantId, user)
+        .catch(() => null);
+      const table = await this.tableModel.findById(order.tableId);
+      const bill = existingBillData?.bill || existingBillData;
+      return {
+        order,
+        table: table as any,
+        bill,
+        changeAmount: bill?.changeAmount ?? 0,
+        isIdempotentReplay: true,
+      };
+    }
+
+    try {
+      return await this.pay(orderId, dto, restaurantId, user, idempotencyKey);
+    } catch (err: any) {
+      if (
+        err instanceof BadRequestException &&
+        (err.message.includes('đã được thanh toán') || err.message.includes('thao tác khác'))
+      ) {
+        const freshOrder: any = await this.orderModel.findById(orderId);
+        if (freshOrder && (freshOrder.isPaid || freshOrder.status === 'Paid')) {
+          const existingBillData = await this.billsService
+            .findByOrderId(freshOrder._id.toString(), restaurantId, user)
+            .catch(() => null);
+          const table = await this.tableModel.findById(freshOrder.tableId);
+          const bill = existingBillData?.bill || existingBillData;
+          return {
+            order: freshOrder,
+            table: table as any,
+            bill,
+            changeAmount: bill?.changeAmount ?? 0,
+            isIdempotentReplay: true,
+          };
+        }
+      }
+      throw err;
+    }
   }
 
   /**
