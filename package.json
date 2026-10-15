@@ -42,6 +42,8 @@
     "test:phase7": "npm run test:phase7:query && npm run test:phase7:transitions && npm run test:phase7:concurrency && npm run test:phase7:out-of-stock",
     "test:phase7:all": "ts-node tests/phase-07-kitchen-kds/run-all-phase7.ts --mode=dev",
     "test:phase7:acceptance": "ts-node tests/phase-07-kitchen-kds/run-all-phase7.ts --mode=acceptance",
+    "test:phase8": "ts-node tests/phase-08-payment-bill/run-all-phase8.ts",
+    "test:phase8:all": "ts-node tests/phase-08-payment-bill/run-all-phase8.ts",
     "seed": "ts-node src/database/seed.ts",
     "seed:clean": "ts-node src/database/seed.ts --clean"
   },
