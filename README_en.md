@@ -21,7 +21,7 @@
 2. [Technology Stack & System Architecture](#2-technology-stack--system-architecture)
 3. [Multi-Tenant & Multi-Branch Isolation Architecture](#3-multi-tenant--multi-branch-isolation-architecture)
 4. [Role-Based Access Control (RBAC) Matrix](#4-role-based-access-control-rbac-matrix)
-5. [Key Feature Highlights (Phase 1 to Phase 6)](#5-key-feature-highlights-phase-1-to-phase-6)
+5. [Key Feature Highlights (Phase 1 to Phase 7)](#5-key-feature-highlights-phase-1-to-phase-7)
 6. [Real-time WebSocket Kitchen Display System (KDS) Hub](#6-real-time-websocket-kitchen-display-system-kds-hub)
 7. [Table Lifecycle & Multi-Branch QR Code Generation](#7-table-lifecycle--multi-branch-qr-code-generation)
 8. [Core API Endpoints Reference](#8-core-api-endpoints-reference)
@@ -102,35 +102,31 @@ Standardized role matrix:
 
 ---
 
-## 5. 🚀 Key Feature Highlights (Phase 1 to Phase 6)
+## 5. 🚀 Key Feature Highlights (Phase 1 to Phase 7)
 
 - **Phase 1: Foundation & Security**: Modular NestJS setup, JWT Auth, Swagger `/api-docs`, Winston logging, MongoDB schemas.
 - **Phase 2: Multi-Restaurant & Branch Lifecycle**: Auto-provisioned main branch, temporary closing/re-opening hours, independent VietQR banking and phone numbers per branch, accounting protection (disallow physical deletion of branches with historical orders).
 - **Phase 3: Staff RBAC & Branch Transfers**: User locking/unlocking, staff branch transfers, protection of system default roles.
 - **Phase 4: Menu Engineering & Toppings**: Category and dish CRUD, option/topping groups, per-branch price overrides, per-branch out-of-stock toggles, Vietnamese unaccented regex search (`pho bo` matches `Phở bò`), and soft-deletion.
 - **Phase 5: Orders, POS, Realtime KDS & QR Lifecycle**: Interactive table maps, table transfer, table merge, POS VietQR payments, two-way WebSocket KDS updates, and dynamic per-branch table QR generation.
-- **Phase 6: Order Operations & POS ✅ (ACCEPTED — OFFICIALLY CLOSED)**: Complete order lifecycle with state machine transitions, multi-round customer QR ordering, POS order approval and management, VAT/service-fee/discount billing, cash payment (with change calculation) and VietQR settlement, idempotency key protection against duplicate payments, atomic concurrent payment claims, table-order synchronization (transfer, merge, move items, split billing) with CAS locks and OCC retry, advanced order querying (date/time filters, staff, multi-status, safe regex search, branch isolation), Frontend Monorepo integration with bill preview and WebSocket realtime room security, and cross-app browser E2E validation.
+- **Phase 6: Order Operations & POS ✅ (ACCEPTED — OFFICIALLY CLOSED)**: Complete order lifecycle with state machine transitions, multi-round customer QR ordering, POS order approval and management, VAT/service-fee/discount billing, cash payment (with change calculation) and VietQR settlement, idempotency key protection against duplicate payments, atomic concurrent payment claims, table-order synchronization with CAS locks and OCC retry, advanced order querying, Frontend Monorepo integration with bill preview and WebSocket room security, and cross-app browser E2E validation.
+- **Phase 7: Kitchen Display System (KDS) & Realtime Dish Dispatching ✅ (ACCEPTED — OFFICIALLY CLOSED)**: Industrial-grade high-contrast Dark Mode KDS interface, strict FIFO queue ordering (`createdAt ASC`), items summary aggregation (`GET /api/kitchen/items-summary`), granular item status transitions (`WaitingConfirmation` → `Waiting` → `Cooking` → `Ready` → `Served`) with automatic order status upgrades (`Preparing`, `Ready`, `Served`), batch round updates, branch-isolated 86 out-of-stock management, 3-way real-time WebSocket pairing (KDS ↔ POS ↔ Customer QR Menu) with audible Chime alerts, and adversarial security hardening preventing cross-branch IDOR, race conditions, and unauthenticated WebSocket room leakage.
 
-### Phase 6 — Detailed 9 Sub-phase Scope
+### Phase 7 — Detailed 6 Sub-phase Scope
 
 | Sub-phase | Name | Description |
 | :---: | :--- | :--- |
-| 6.1 | Core Order & Table Lifecycle | Order lifecycle foundation, table binding, round (`rounds[]`) and item (`items[]`) data structures |
-| 6.2 | State Machine & Business Invariants | Order state machine (`WaitingConfirmation` → `Preparing` → `Ready` → `Served` → `Paid` / `Cancelled`), round/item approval and cancellation, `subTotal` recalculation, RBAC-guarded transitions |
-| 6.3 | POS Cashier & Billing Flows | POS cashier workflows, VAT, service fees, discounts, cash payment (`changeAmount`), VietQR, quick-pay |
-| 6.4 | Customer QR Ordering | Customer QR scan multi-round ordering (`WaitingConfirmation` batches), staff approval, duplicate order prevention |
-| 6.5 | Idempotency Key & Concurrency Control | `X-Idempotency-Key` header for duplicate request replay, Atomic Payment Claim for concurrent POS threads, financial invariant protection |
-| 6.6 | Table ↔ Order Sync & Transfer/Merge | Table transfer, merge, move items between tables, split billing, CAS locks, OCC retry |
-| 6.7 | Order Query & Multi-Branch Optimization | Date/time range filters, staff filters, multi-status, payment method, safe regex search, deterministic pagination, compound indexes, strict branch isolation |
-| 6.8 | Frontend Monorepo Integration | Integration with `imenu-menudientu`, public QR table context endpoint (`GET /api/orders/public/table-context`), QR order POS approval & KDS guard, bill preview, WebSocket Realtime room security (`AUD-6.8-01`) |
-| 6.9 | Master Hardening & Final Closure Gate | Browser E2E 9 checkpoints, Master Test Orchestrator, thermal printer architecture spec for Phase 8, 365-test acceptance framework |
+| 7.1 | KDS Queue Engine & FIFO Ordering | Strict FIFO queue (`createdAt ASC`), branch/zone/status filtering, exclusion of `Paid`/`Cancelled` orders, item count aggregation |
+| 7.2 | Item Status State Machine & Auto Upgrade | Granular item status transitions (`start-cooking`, `mark-ready`, `mark-served`), batch updates, automatic order status progression to `Preparing`, `Ready`, `Served`, negative guards |
+| 7.3 | Out-of-Stock (86) Management & Branch Isolation | Kitchen menu queries, branch-isolated 86 stockout toggles, Blueprint Edge Case #2 (active orders proceed, new QR orders blocked 400) |
+| 7.4 | Cross-App Realtime WebSocket Pairing | 3-way sync between KDS ↔ POS ↔ Diner, real-time tracking drawer, audible chime notifications on new order / completion |
+| 7.5 | Modern KDS User Interface | High-contrast Dark Mode screen, visual order cards, elapsed timers with 15-minute delay alerts, one-touch 86 modal |
+| 7.6 | Hardening, Adversarial Audit & Closure | Full resolution of AUD-7.1 to AUD-7.6: Cross-branch cook IDOR sealed, `perm-kds-cook` vs `perm-kds-out` separation, Atomic OCC updates against race conditions, guest WebSocket room isolation, UI rollback |
 
-### Phase 6 — Known Limitations & Architecture Boundaries
+### Known Limitations & Architecture Boundaries
 
-- **Hardware thermal printer**: Phase 6 provides only an architecture specification document (`thermal-printer-spec.md`). No hardware driver, WebUSB/WebSerial transport, or ESC/POS binary builder has been implemented. Actual hardware integration is planned for Phase 8.
-- **Redis Pub/Sub & multi-node distributed messaging**: Not implemented. The current realtime system uses EventEmitter2 + Socket.IO on a single process. Distributed multi-node messaging remains a future scaling scope.
-- **Phase 7 KDS**: Advanced KDS functionality belongs to Phase 7 and is not within Phase 6 scope.
-- **Table release evidence**: The test suite verifies the final table state (`Available`) and payment idempotency. However, this evidence does not independently prove the exact number of physical database mutations for the table release operation.
+- **Hardware thermal printer**: Phase 6 provides an architecture specification document (`thermal-printer-spec.md`). No hardware driver, WebUSB/WebSerial transport, or ESC/POS binary builder has been implemented. Hardware integration is planned for **Phase 8**.
+- **Redis Pub/Sub & multi-node distributed messaging**: Not implemented. The current realtime system uses EventEmitter2 + Socket.IO on a single process combined with `BroadcastChannel` for browsers. Distributed multi-node messaging remains a future scaling scope.
 
 ---
 
@@ -191,6 +187,14 @@ Interactive documentation available at: `http://localhost:3001/api-docs`
 | | `GET` | `/api/orders/public/table-context` | Public table context for QR menus | Public |
 | | `POST` | `/api/orders/customer` | Customer QR order placement | Public |
 | | `POST` | `/api/orders/customer/items` | Customer add items (subsequent rounds) | Public |
+| **Kitchen / KDS** | `GET` | `/api/kitchen/orders` | Active order queue for KDS (FIFO ordered) | KITCHEN.VIEW |
+| | `GET` | `/api/kitchen/items-summary` | Summary of waiting & cooking items by branch | KITCHEN.VIEW |
+| | `GET` | `/api/kitchen/menu-items` | Dish list with per-branch stockout status | KITCHEN.VIEW |
+| | `PATCH` | `/api/kitchen/menu-items/:id/availability` | Kitchen 86 stockout toggle per branch | KITCHEN.UPDATE (perm-kds-out) |
+| | `POST` | `/api/order-items/:id/start-cooking` | Start cooking order item (Cooking) | KITCHEN.UPDATE (perm-kds-cook) |
+| | `POST` | `/api/order-items/:id/mark-ready` | Mark order item cooked (Ready) | KITCHEN.UPDATE (perm-kds-cook) |
+| | `POST` | `/api/order-items/:id/mark-served` | Mark order item delivered to table (Served) | KITCHEN.UPDATE (perm-kds-cook) |
+| | `POST` | `/api/orders/:id/kitchen/batch-update` | Batch update items by round or order | KITCHEN.UPDATE (perm-kds-cook) |
 
 ---
 
@@ -283,32 +287,34 @@ npm run test:phase6:sync         # Sub-phase 6.6: Table Sync (38 tests)
 npm run test:phase6:query        # Sub-phase 6.7: Order Query (42 tests)
 npm run test:phase6:integration  # Sub-phase 6.8: Frontend Monorepo Integration (29 tests)
 
-# Cross-app browser E2E tests (requires API:3001, Admin:3003, Menu:3005):
+# Phase 7 (Kitchen / KDS - 50 tests):
+npm run test:phase7:all
+
+# Cross-app browser E2E tests:
 npm run test:phase6:e2e
+npm run test:phase7:e2e
 ```
 
-> **Note:** `npm run test:phase6` runs 6 core backend suites (241 tests). To run the full 270 backend + 9 SDK + 9 E2E + 77 regression = 365 tests, use `npm run test:phase6:acceptance`. There is no standalone `test:sdk` script in `package.json`; the SDK Contract suite (9 tests) is executed directly by the Master Test Orchestrator.
-
-### 365-Test Reconciliation Matrix
+### 415-Test Ecosystem Reconciliation Matrix
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  IMENU TEST ECOSYSTEM — 365 VERIFIED AUTOMATED TEST CASES                │
+│  IMENU TEST ECOSYSTEM — 415 VERIFIED AUTOMATED TEST CASES                │
 ├────────────────────────────────┬──────────────────────┬────────────────┤
 │ Test Group                      │ Source Location       │ Test Count     │
 ├────────────────────────────────┼──────────────────────┼────────────────┤
-│ 1. Phase 6 Backend (7 suites)  │ tests/phase-06-order │ 270            │
-│ 2. Frontend SDK Contract       │ imenu-menudientu     │ 9              │
-│ 3. Browser E2E (9 checkpoints) │ scripts/e2e-order    │ 9              │
-│ 4. Phase 2–5 Regression        │ tests/phase-02..05   │ 77             │
+│ 1. Phase 7 Kitchen / KDS       │ tests/phase-07-kitch │ 50             │
+│ 2. Phase 6 Orders & POS        │ tests/phase-06-order │ 288            │
+│ 3. Phases 2–5 Regression       │ tests/phase-02..05   │ 77             │
 ├────────────────────────────────┴──────────────────────┼────────────────┤
-│ TOTAL ECOSYSTEM (ACCEPTANCE CLOSURE REQUIREMENT)       │ 365 TESTS      │
+│ TOTAL ECOSYSTEM (ACCEPTANCE CLOSURE REQUIREMENT)       │ 415 TESTS      │
 └───────────────────────────────────────────────────────┴────────────────┘
 ```
 
 ### Detailed Test Documentation
 
 - **Master test index:** [tests/README.md](tests/README.md) (Vietnamese) | [tests/README_en.md](tests/README_en.md) (English)
+- **Phase 7 detailed documentation:** [tests/phase-07-kitchen-kds/README.md](tests/phase-07-kitchen-kds/README.md) (Vietnamese) | [tests/phase-07-kitchen-kds/README_en.md](tests/phase-07-kitchen-kds/README_en.md) (English)
 - **Phase 6 detailed documentation:** [tests/phase-06-order-pos/README.md](tests/phase-06-order-pos/README.md) (Vietnamese) | [tests/phase-06-order-pos/README_en.md](tests/phase-06-order-pos/README_en.md) (English)
 - **Thermal printer spec (Phase 8):** [tests/phase-06-order-pos/thermal-printer-spec.md](tests/phase-06-order-pos/thermal-printer-spec.md)
 
@@ -316,25 +322,24 @@ npm run test:phase6:e2e
 
 ## 11. 📊 Project Status & Acceptance
 
-### Phase 6 Status: ✅ ACCEPTED — OFFICIALLY CLOSED
+### Phase 7 Status: ✅ ACCEPTED — OFFICIALLY CLOSED
 
-Phase 6 (Order & POS) has completed all 9 sub-phases (6.1 through 6.9) and has been officially accepted through the Master Closure Gate verification process.
+Phase 7 (Kitchen Display System & Realtime Dish Dispatching) has completed all 6 sub-phases (7.1 through 7.6) and has been officially accepted through the Master Phase 7 Closure Gate verification process.
 
-**Final acceptance results:**
+**Phase 7 Acceptance Results:**
 
 | Test Group | Test Count | Result |
 | :--- | :---: | :---: |
-| Phase 6 Backend (7 suites) | 270 | ✅ PASS |
-| Frontend SDK Contract | 9 | ✅ PASS |
-| Browser E2E (9 checkpoints) | 9 | ✅ PASS |
-| Phase 2–5 Regression (5 suites) | 77 | ✅ PASS |
-| **TOTAL** | **365** | **365/365 PASS** |
+| Phase 7 Backend Suites (4 suites) | 30 | ✅ PASS |
+| Frontend SDK Contract Suite | 14 | ✅ PASS |
+| Browser E2E KDS Lifecycle | 6 | ✅ PASS |
+| Phase 6 Full Regression | 288 | ✅ PASS |
+| Phases 2–5 Core Regression | 77 | ✅ PASS |
+| **TOTAL ECOSYSTEM** | **415** | **415/415 PASS (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0
 - **BLOCKED:** 0
-
-> **Note:** The 365/365 PASS result is reported by the Master Test Orchestrator (`run-all-phase6.ts --mode=acceptance`). Phase 6 is a completed milestone; the iMenu project continues development on subsequent phases.
 
 ### Overall Roadmap
 
@@ -346,4 +351,5 @@ Phase 6 (Order & POS) has completed all 9 sub-phases (6.1 through 6.9) and has b
 | Phase 4: Menu Engineering & Toppings | ✅ Completed |
 | Phase 5: Orders, POS & Realtime KDS | ✅ Completed |
 | Phase 6: Order Operations & POS | ✅ Accepted & Officially Closed |
-| Phase 7+: Subsequent phases | 🔜 Not yet started |
+| Phase 7: Kitchen Display System (KDS) | ✅ Accepted & Officially Closed |
+| Phase 8+: Hardware Integration & Thermal Printing | 🔜 Next Milestone |

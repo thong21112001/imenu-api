@@ -141,10 +141,9 @@ export class RolesService {
         permissions: [
           { resource: ResourceType.TABLE, actions: [ActionType.VIEW] },
           { resource: ResourceType.POS, actions: [ActionType.VIEW, ActionType.CREATE] },
-          { resource: ResourceType.KITCHEN, actions: [ActionType.VIEW] },
         ],
         permissionIds: [
-          'perm-menu-view', 'perm-pos-view', 'perm-pos-order',
+          'perm-table-view', 'perm-pos-view', 'perm-pos-order',
         ],
       },
     ];
@@ -167,22 +166,21 @@ export class RolesService {
             },
           );
         } else {
-          // Voi cac role he thong khac (isSystem: true): Dong bo permissionIds theo seed definition
-          // de tranh mat quyen do chuyen doi subdoc->permId khong 1:1 (vi du perm-kds-cook va perm-kds-out
-          // cung map sang KITCHEN:UPDATE, khi convert nguoc lai chi con 1 trong 2)
+          // Voi cac role he thong khac (isSystem: true): Dong bo permissionIds va permissions theo seed definition
           const seedPermIds = (roleData as any).permissionIds || [];
           const existingPermIds = exists.permissionIds || [];
           const needsSync = seedPermIds.length > 0 && (
             existingPermIds.length === 0 ||
             existingPermIds.length !== seedPermIds.length ||
-            !seedPermIds.every((id: string) => existingPermIds.includes(id))
+            !seedPermIds.every((id: string) => existingPermIds.includes(id)) ||
+            JSON.stringify(exists.permissions) !== JSON.stringify(roleData.permissions)
           );
           if (needsSync) {
             await this.roleModel.updateOne(
               { _id: exists._id },
-              { $set: { permissionIds: seedPermIds } },
+              { $set: { permissionIds: seedPermIds, permissions: roleData.permissions } },
             );
-            this.logger.log(`[Seed] Đồng bộ permissionIds cho vai trò: ${roleData.name} (${seedPermIds.length} quyền)`);
+            this.logger.log(`[Seed] Đồng bộ permissionIds & permissions cho vai trò: ${roleData.name} (${seedPermIds.length} quyền)`);
           }
         }
       }

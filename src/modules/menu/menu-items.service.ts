@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MenuItem, MenuItemDocument } from './entities/menu-item.entity';
 import { MenuCategory, MenuCategoryDocument } from './entities/menu-category.entity';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
@@ -17,6 +18,7 @@ export class MenuItemsService {
     private readonly itemModel: Model<MenuItemDocument>,
     @InjectModel(MenuCategory.name)
     private readonly categoryModel: Model<MenuCategoryDocument>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -395,6 +397,17 @@ export class MenuItemsService {
       resObj.effectiveIsAvailable = override?.isAvailable !== undefined ? override.isAvailable : resObj.isAvailable;
       resObj.branchId = targetBranchId;
     }
+
+    // Phát sự kiện realtime thay đổi trạng thái Còn/Hết món
+    const effectiveIsAvailable = resObj.effectiveIsAvailable !== undefined ? resObj.effectiveIsAvailable : resObj.isAvailable;
+    this.eventEmitter.emit('menu.availability_changed', {
+      menuItemId: item._id.toString(),
+      item: resObj,
+      isAvailable: resObj.isAvailable,
+      effectiveIsAvailable,
+      restaurantId,
+      branchId: targetBranchId && targetBranchId !== 'all' ? targetBranchId : undefined,
+    });
 
     return resObj;
   }
