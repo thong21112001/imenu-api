@@ -400,6 +400,72 @@ async function main() {
       failed++;
     }
 
+    // ------------------------------------------------------------------------
+    // TC-05: AUD-7.3 Hardening - Chống Xung Đột Chéo Cross-Actor Race Condition (Pay vs Mark-Ready)
+    // ------------------------------------------------------------------------
+    // 1. Tạo bàn và đơn mới có 2 món
+    const tHrd = await request('/tables', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({ name: 'Bàn OCC Race', code: `BOR-${ts}`, zoneId, branchId }),
+    });
+    const tableHrdId = tHrd.data?.data?.id || tHrd.data?.data?._id;
+
+    const ordHrdRes = await request('/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        tableId: tableHrdId,
+        items: [
+          { menuItemId: itemM1, quantity: 1 },
+          { menuItemId: itemM2, quantity: 1 },
+        ],
+      }),
+    });
+    const ordHrdId = ordHrdRes.data?.data?.id || ordHrdRes.data?.data?._id;
+    const ordHrdItemId = ordHrdRes.data?.data?.items?.[0]?.id || ordHrdRes.data?.data?.items?.[0]?._id;
+
+    // Chuyển món sang Cooking
+    await request(`/order-items/${ordHrdItemId}/start-cooking`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${kitchenToken}` },
+      body: JSON.stringify({ orderId: ordHrdId }),
+    });
+
+    // 2. Chạy đồng thời Thu ngân gọi pay() và Bếp gọi mark-ready
+    const [payRaceRes, cookRaceRes] = await Promise.all([
+      request(`/orders/${ordHrdId}/pay`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ownerToken}` },
+        body: JSON.stringify({ paymentMethod: 'Cash', cashGiven: 500000 }),
+      }),
+      request(`/order-items/${ordHrdItemId}/mark-ready`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${kitchenToken}` },
+        body: JSON.stringify({ orderId: ordHrdId }),
+      }),
+    ]);
+
+    // 3. Kiểm tra DB: Đơn hàng bắt buộc phải bảo toàn trạng thái Paid, không bao giờ bị KDS overwrite thành Preparing/Ready
+    const ordHrdFinal = (await request(`/orders/${ordHrdId}`, { headers: { Authorization: `Bearer ${ownerToken}` } })).data?.data;
+
+    if (
+      payRaceRes.status === 200 &&
+      ordHrdFinal?.status === 'Paid' &&
+      ordHrdFinal?.isPaid === true
+    ) {
+      pass('TC-05: AUD-7.3 Hardening - Atomic OCC Filter bảo vệ toàn vẹn: Không thể ghi đè đơn Paid/Cancelled dù có race condition từ KDS');
+      passed++;
+    } else {
+      fail('TC-05: AUD-7.3 Hardening thất bại', {
+        payRaceStatus: payRaceRes.status,
+        cookRaceStatus: cookRaceRes.status,
+        finalStatus: ordHrdFinal?.status,
+        isPaid: ordHrdFinal?.isPaid,
+      });
+      failed++;
+    }
+
   } catch (err: any) {
     fail('FATAL EXCEPTION TRONG TEST SUITE 3', err.message || err);
     failed++;

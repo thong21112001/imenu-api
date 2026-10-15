@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsBoolean, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class QueryKitchenOrdersDto {
@@ -26,6 +26,7 @@ export class QueryKitchenOrdersDto {
   @ApiPropertyOptional({ description: 'Tìm kiếm theo mã đơn hoặc tên bàn' })
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 
   @ApiPropertyOptional({ description: 'Bao gồm cả đơn/round WaitingConfirmation (mặc định: true)' })

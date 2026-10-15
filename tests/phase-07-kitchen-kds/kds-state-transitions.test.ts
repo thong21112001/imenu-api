@@ -504,6 +504,162 @@ async function main() {
       failed++;
     }
 
+    // ------------------------------------------------------------------------
+    // TC-09: AUD-7.1 Hardening - Bếp Chi Nhánh Chính Bị Chặn Thao Tác Đơn Chi Nhánh Khác
+    // ------------------------------------------------------------------------
+    // 1. Tạo Chi nhánh 2
+    const brSubRes = await request('/branches', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        name: `Chi nhánh Hardening ${ts}`,
+        code: `CN-HRD-${ts}`,
+        phone: '0905550099',
+        address: '789 Đường Hardening',
+      }),
+    });
+    const branchSubId = (brSubRes.data?.data?.id || brSubRes.data?.data?._id || '').toString();
+
+    // 2. Tạo Zone & Bàn tại Chi nhánh 2
+    const zSub = await request('/table-zones', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({ name: 'Khu Sub', branchId: branchSubId }),
+    });
+    const zoneSubId = zSub.data?.data?.id || zSub.data?.data?._id;
+
+    const tSub = await request('/tables', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({ name: 'Bàn Sub 01', code: `BS01-${ts}`, zoneId: zoneSubId, branchId: branchSubId }),
+    });
+    const tableSubId = tSub.data?.data?.id || tSub.data?.data?._id;
+
+    // 3. Tạo Đơn tại Chi nhánh 2
+    const ordSubRes = await request('/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        tableId: tableSubId,
+        branchId: branchSubId,
+        items: [{ menuItemId: itemMonAId, quantity: 1 }],
+      }),
+    });
+    const ordSubItemId = ordSubRes.data?.data?.items?.[0]?.id || ordSubRes.data?.data?.items?.[0]?._id;
+
+    // 4. Bếp viên Chi nhánh 1 (Main Branch) gọi start-cooking món ở Chi nhánh 2 -> BỊ CHẶN 403 Forbidden
+    const crossBranchCook = await request(`/order-items/${ordSubItemId}/start-cooking`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${kitchenToken}` },
+    });
+
+    if (crossBranchCook.status === 403) {
+      pass('TC-09: AUD-7.1 Hardening - Đầu bếp Trụ sở chính bị chặn 403 Forbidden khi thao tác trên đơn hàng chi nhánh khác');
+      passed++;
+    } else {
+      fail('TC-09: AUD-7.1 Hardening thất bại', { crossBranchStatus: crossBranchCook.status });
+      failed++;
+    }
+
+    // ------------------------------------------------------------------------
+    // TC-10: AUD-7.2 Hardening - Phân Quyền Chi Tiết Custom Role (perm-kds-cook vs perm-kds-out)
+    // ------------------------------------------------------------------------
+    // 1. Tạo vai trò chỉ có quyền Nấu món (perm-kds-cook)
+    const rCookOnly = await request('/roles', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        name: `Đầu bếp chuyền ${ts}`,
+        slug: `cook_only_${ts}`,
+        description: 'Chỉ được nấu và xong món',
+        permissionIds: ['perm-kds-view', 'perm-kds-cook'],
+      }),
+    });
+    const roleCookOnlyId = rCookOnly.data?.data?.id || rCookOnly.data?.data?._id;
+
+    const uCookOnly = await request('/users', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        fullName: 'Bếp viên Chuyền',
+        phone: '0905551111',
+        email: `cookonly.${ts}@imenu.test`,
+        password: 'Password@123',
+        roleId: roleCookOnlyId,
+        branchId,
+      }),
+    });
+    const cookOnlyLogin = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: `cookonly.${ts}@imenu.test`, password: 'Password@123' }),
+    });
+    const cookOnlyToken = cookOnlyLogin.data?.data?.accessToken;
+
+    // 2. Tạo vai trò chỉ có quyền Báo hết món (perm-kds-out)
+    const rOutOnly = await request('/roles', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        name: `Kiểm kho bếp ${ts}`,
+        slug: `out_only_${ts}`,
+        description: 'Chỉ được báo hết món từ bếp',
+        permissionIds: ['perm-kds-view', 'perm-kds-out'],
+      }),
+    });
+    const roleOutOnlyId = rOutOnly.data?.data?.id || rOutOnly.data?.data?._id;
+
+    const uOutOnly = await request('/users', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        fullName: 'Thủ kho Bếp',
+        phone: '0905552222',
+        email: `outonly.${ts}@imenu.test`,
+        password: 'Password@123',
+        roleId: roleOutOnlyId,
+        branchId,
+      }),
+    });
+    const outOnlyLogin = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: `outonly.${ts}@imenu.test`, password: 'Password@123' }),
+    });
+    const outOnlyToken = outOnlyLogin.data?.data?.accessToken;
+
+    // 3. Người chỉ có perm-kds-cook cố tình báo hết món -> BỊ CHẶN 403 Forbidden
+    const cookTriesOut = await request(`/kitchen/menu-items/${itemMonAId}/availability`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${cookOnlyToken}` },
+      body: JSON.stringify({ isAvailable: false }),
+    });
+
+    // 4. Tạo bàn mới cho TC-10 và kiểm tra người chỉ có perm-kds-out cố tình gọi start-cooking món -> BỊ CHẶN 403 Forbidden
+    const tableHardeningId = await createTable(`Bàn Hardening ${ts}`, `ST-TH-${ts}`);
+
+    const oRes10 = await request('/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        tableId: tableHardeningId,
+        branchId,
+        items: [{ menuItemId: itemMonAId, quantity: 1 }],
+      }),
+    });
+    const item10Id = oRes10.data?.data?.items?.[0]?.id || oRes10.data?.data?.items?.[0]?._id;
+
+    const outTriesCook = await request(`/order-items/${item10Id}/start-cooking`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${outOnlyToken}` },
+    });
+
+    if (cookTriesOut.status === 403 && outTriesCook.status === 403) {
+      pass('TC-10: AUD-7.2 Hardening - Phân quyền phân định tuyệt đối: perm-kds-cook không thể báo hết món, perm-kds-out không thể nấu món (Cả 2 bị chặn 403 Forbidden)');
+      passed++;
+    } else {
+      fail('TC-10: AUD-7.2 Hardening thất bại', { cookTriesOutStatus: cookTriesOut.status, outTriesCookStatus: outTriesCook.status });
+      failed++;
+    }
+
   } catch (err: any) {
     fail('FATAL EXCEPTION TRONG TEST SUITE 2', err.message || err);
     failed++;

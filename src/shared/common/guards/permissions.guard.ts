@@ -68,9 +68,19 @@ export class PermissionsGuard implements CanActivate {
       });
     }
 
+    // 5. Hardening AUD-7.2: Kiem tra chi tiet permissionId neu duoc yeu cau
+    if (hasPermission && required.permissionId && Array.isArray(role.permissionIds) && role.permissionIds.length > 0) {
+      const requiredIds = [required.permissionId, ...(required.alternatePermissionIds || [])];
+      const hasSpecificId = role.permissionIds.some((id: string) => requiredIds.includes(id));
+      if (!hasSpecificId) {
+        hasPermission = false;
+      }
+    }
+
     if (!hasPermission) {
+      const detailMsg = required.permissionId ? ` (Yêu cầu ${required.permissionId})` : '';
       throw new ForbiddenException(
-        `Ban khong co quyen thuc hien thao tac: ${required.resource}.${required.action}`,
+        `Ban khong co quyen thuc hien thao tac: ${required.resource}.${required.action}${detailMsg}`,
       );
     }
 

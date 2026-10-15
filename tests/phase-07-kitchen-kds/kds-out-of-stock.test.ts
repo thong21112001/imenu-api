@@ -421,6 +421,47 @@ async function main() {
       failed++;
     }
 
+    // ------------------------------------------------------------------------
+    // TC-06: AUD-7.4 Hardening - Phân Lập Phòng WebSocket Khách Bàn vs Nhân Viên Quán
+    // ------------------------------------------------------------------------
+    // 1. Guest socket cố tình emit join:restaurant -> Bị từ chối { success: false }
+    const joinRestPromise = new Promise<{ success: boolean; message: string }>((resolve) => {
+      tableSocket.emit('join:restaurant', { restaurantId: restId }, (res: any) => {
+        resolve(res);
+      });
+    });
+    const joinRestAck = await joinRestPromise;
+
+    // 2. Kiểm tra bàn khách không nhận được sự kiện order:created của bàn khác
+    let guestReceivedOtherTableOrder = false;
+    const otherOrderListener = (payload: any) => {
+      if (payload?.order?.tableId === tableMainId || payload?.tableId === tableMainId) {
+        guestReceivedOtherTableOrder = true;
+      }
+    };
+    tableSocket.on('order:created', otherOrderListener);
+
+    // Kích hoạt order mới trên tableMainId (bàn khác tableTriggerId của guest)
+    await request('/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        tableId: tableMainId,
+        items: [{ menuItemId: itemPhoId, quantity: 1 }],
+      }),
+    });
+
+    await new Promise((r) => setTimeout(r, 400));
+    tableSocket.off('order:created', otherOrderListener);
+
+    if (joinRestAck?.success === false && !guestReceivedOtherTableOrder) {
+      pass('TC-06: AUD-7.4 Hardening - Khách vãng lai bị chặn join phòng nhà hàng và tuyệt đối không nhận đơn hàng của bàn khác');
+      passed++;
+    } else {
+      fail('TC-06: AUD-7.4 Hardening thất bại', { joinRestAck, guestReceivedOtherTableOrder });
+      failed++;
+    }
+
   } catch (err: any) {
     fail('FATAL EXCEPTION TRONG TEST SUITE 4', err.message || err);
     failed++;

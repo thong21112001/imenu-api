@@ -65,9 +65,10 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const restId = client.handshake.query?.restaurantId as string;
 
       if (tableId && restId) {
-        client.join(`restaurant_${restId}`);
+        // Hardening AUD-7.4: Khách vãng lai CHỈ tham gia room bàn riêng và room public thực đơn
+        client.join(`public_menu_${restId}`);
         client.join(`table_${tableId}`);
-        this.logger.log(`Guest [${client.id}] joined table room table_${tableId}`);
+        this.logger.log(`Guest [${client.id}] joined table room table_${tableId} and public_menu_${restId}`);
       }
 
       this.logger.log(`Socket client connected: ${client.id}`);
@@ -89,21 +90,17 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() data: { restaurantId: string; branchId?: string },
   ) {
     if (data?.restaurantId) {
-      // 1. Kiểm tra xác thực staff / admin nếu có JWT trong session
-      if (client.data?.user) {
-        const userRestId = client.data.user.restaurantId || client.data.user.user?.restaurantId;
-        const isSuperAdmin = client.data.user.role === 'SUPER_ADMIN' || client.data.user.user?.role === 'SUPER_ADMIN';
-        if (!isSuperAdmin && userRestId && userRestId !== data.restaurantId) {
-          this.logger.warn(`[Security] Unauthorized join:restaurant attempt: User from [${userRestId}] tried to join [${data.restaurantId}]`);
-          return { success: false, message: 'Unauthorized: Restaurant mismatch' };
-        }
-      } else {
-        // 2. Với khách vãng lai, bắt buộc query handshake (nếu có) phải khớp restaurantId của bàn đã quét
-        const queryRestId = client.handshake.query?.restaurantId as string;
-        if (queryRestId && queryRestId !== data.restaurantId) {
-          this.logger.warn(`[Security] Unauthorized guest join:restaurant attempt: Handshake rest [${queryRestId}] != requested [${data.restaurantId}]`);
-          return { success: false, message: 'Unauthorized: Missing or invalid guest restaurant context' };
-        }
+      // 1. Hardening AUD-7.4: Chỉ nhân viên/quản lý có JWT hợp lệ mới được join phòng restaurant_${restId}
+      if (!client.data?.user) {
+        this.logger.warn(`[Security] Unauthorized guest join:restaurant attempt: Guests cannot join staff restaurant room`);
+        return { success: false, message: 'Unauthorized: Guests cannot join staff restaurant room' };
+      }
+
+      const userRestId = client.data.user.restaurantId || client.data.user.user?.restaurantId;
+      const isSuperAdmin = client.data.user.role === 'SUPER_ADMIN' || client.data.user.user?.role === 'SUPER_ADMIN';
+      if (!isSuperAdmin && userRestId && userRestId !== data.restaurantId) {
+        this.logger.warn(`[Security] Unauthorized join:restaurant attempt: User from [${userRestId}] tried to join [${data.restaurantId}]`);
+        return { success: false, message: 'Unauthorized: Restaurant mismatch' };
       }
 
       const room = `restaurant_${data.restaurantId}`;
@@ -142,7 +139,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const room = `table_${data.tableId}`;
       client.join(room);
       if (data.restaurantId) {
-        client.join(`restaurant_${data.restaurantId}`);
+        if (client.data?.user) {
+          client.join(`restaurant_${data.restaurantId}`);
+        } else {
+          // Hardening AUD-7.4: Khách vãng lai chỉ join room public_menu
+          client.join(`public_menu_${data.restaurantId}`);
+        }
       }
       return { success: true, message: `Joined ${room}` };
     }
@@ -453,14 +455,16 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }) {
     if (!payload?.restaurantId) return;
     const restRoom = `restaurant_${payload.restaurantId}`;
+    const publicMenuRoom = `public_menu_${payload.restaurantId}`;
     this.server.to(restRoom).emit('menu:availability_changed', payload);
+    this.server.to(publicMenuRoom).emit('menu:availability_changed', payload);
 
     if (payload.branchId) {
       const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
       this.server.to(branchRoom).emit('menu:availability_changed', payload);
     }
     this.logger.log(
-      `Broadcast [menu:availability_changed] to ${restRoom} (Item: ${payload.menuItemId} -> ${payload.effectiveIsAvailable ? 'AVAILABLE' : 'OUT_OF_STOCK'})`,
+      `Broadcast [menu:availability_changed] to ${restRoom} & ${publicMenuRoom} (Item: ${payload.menuItemId} -> ${payload.effectiveIsAvailable ? 'AVAILABLE' : 'OUT_OF_STOCK'})`,
     );
   }
 }

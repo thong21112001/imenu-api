@@ -618,6 +618,43 @@ async function main() {
       failed++;
     }
 
+    // ------------------------------------------------------------------------
+    // TC-09: AUD-7.5 Hardening - Input Validation, ZoneId Check & Invariant Status Protection
+    // ------------------------------------------------------------------------
+    // 1. ZoneId sai format -> 400 Bad Request
+    const badZoneRes = await request('/kitchen/orders?zoneId=invalid-zone-id', {
+      headers: { Authorization: `Bearer ${kitchenA1Token}` },
+    });
+
+    // 2. Search quá dài (>100 chars) -> 400 Bad Request
+    const longSearchStr = 'a'.repeat(105);
+    const badSearchRes = await request(`/kitchen/orders?search=${longSearchStr}`, {
+      headers: { Authorization: `Bearer ${kitchenA1Token}` },
+    });
+
+    // 3. Cố tình truy vấn status=Paid -> Không trả về đơn Paid nào (Zero leakage)
+    const paidQueryRes = await request('/kitchen/orders?status=Paid', {
+      headers: { Authorization: `Bearer ${kitchenA1Token}` },
+    });
+    const paidOrders = paidQueryRes.data?.data || [];
+
+    if (
+      badZoneRes.status === 400 &&
+      badSearchRes.status === 400 &&
+      paidQueryRes.status === 200 &&
+      paidOrders.length === 0
+    ) {
+      pass('TC-09: AUD-7.5 Hardening - Chặn zoneId lỗi 400, search dài 400 và bảo vệ tuyệt đối không lọt đơn Paid trên KDS');
+      passed++;
+    } else {
+      fail('TC-09: AUD-7.5 Hardening thất bại', {
+        badZoneStatus: badZoneRes.status,
+        badSearchStatus: badSearchRes.status,
+        paidOrdersCount: paidOrders.length,
+      });
+      failed++;
+    }
+
   } catch (err: any) {
     fail('FATAL EXCEPTION TRONG TEST SUITE 1', err.message || err);
     failed++;

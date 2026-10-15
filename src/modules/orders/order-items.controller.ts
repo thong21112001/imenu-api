@@ -24,7 +24,7 @@ export class OrderItemsController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @ApiOperation({ summary: 'Bếp bắt đầu nấu món ăn trực tiếp qua ID món (Waiting -> Cooking)' })
-  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE)
+  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE, 'perm-kds-cook')
   @HttpCode(HttpStatus.OK)
   @Post(':id/start-cooking')
   async startCooking(
@@ -40,7 +40,7 @@ export class OrderItemsController {
   }
 
   @ApiOperation({ summary: 'Bếp hoàn tất món ăn trực tiếp qua ID món (Cooking -> Ready)' })
-  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE)
+  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE, 'perm-kds-cook')
   @HttpCode(HttpStatus.OK)
   @Post(':id/mark-ready')
   async markReady(
@@ -56,7 +56,7 @@ export class OrderItemsController {
   }
 
   @ApiOperation({ summary: 'Báo đã phục vụ món ăn trực tiếp qua ID món (Ready -> Served)' })
-  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE)
+  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE, 'perm-kds-cook')
   @HttpCode(HttpStatus.OK)
   @Post(':id/mark-served')
   async markServed(

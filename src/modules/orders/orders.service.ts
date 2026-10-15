@@ -1776,10 +1776,13 @@ export class OrdersService {
         throw new NotFoundException('Không tìm thấy đơn hàng chứa món ăn này');
       }
 
-      // Phân lập chi nhánh
+      // Phân lập chi nhánh chặt chẽ (AUD-7.1)
       const isSuperAdmin = isSuperAdminUser(caller);
-      const isMainBranch = caller?.isMainBranch === true;
-      if (!isSuperAdmin && !isMainBranch && caller?.branchId) {
+      const roleSlug = (typeof caller?.role === 'string' ? caller.role : caller?.role?.slug || '').toLowerCase();
+      const isManagerOrAdmin = ['restaurant_admin', 'restaurant_manager', 'system_admin', 'super_admin'].includes(roleSlug);
+      const canOperateAllBranches = isSuperAdmin || (caller?.isMainBranch === true && isManagerOrAdmin);
+
+      if (!canOperateAllBranches && caller?.branchId) {
         if (order.branchId && order.branchId !== caller.branchId) {
           throw new ForbiddenException('Bạn không có quyền thao tác trên đơn hàng của chi nhánh khác');
         }
@@ -1860,11 +1863,16 @@ export class OrdersService {
         order.status = derivedStatus;
       }
 
-      // Cập nhật OCC nguyên tử với updatedAt
+      // Cập nhật OCC nguyên tử với updatedAt và chốt chặn trạng thái bất biến (AUD-7.3)
       const updateFilter: any = {
         _id: order._id,
         restaurantId: order.restaurantId,
+        isPaid: { $ne: true },
+        status: { $nin: ['Paid', 'Cancelled'] },
       };
+      if (!canOperateAllBranches && caller?.branchId) {
+        updateFilter.branchId = caller.branchId;
+      }
       if (order.updatedAt) {
         updateFilter.updatedAt = order.updatedAt;
       }
@@ -2010,6 +2018,18 @@ export class OrdersService {
         throw new BadRequestException('Không thể thay đổi món của đơn hàng đã hủy (Cancelled)');
       }
 
+      // Phân lập chi nhánh chặt chẽ (AUD-7.1)
+      const isSuperAdmin = isSuperAdminUser(caller);
+      const roleSlug = (typeof caller?.role === 'string' ? caller.role : caller?.role?.slug || '').toLowerCase();
+      const isManagerOrAdmin = ['restaurant_admin', 'restaurant_manager', 'system_admin', 'super_admin'].includes(roleSlug);
+      const canOperateAllBranches = isSuperAdmin || (caller?.isMainBranch === true && isManagerOrAdmin);
+
+      if (!canOperateAllBranches && caller?.branchId) {
+        if (order.branchId && order.branchId !== caller.branchId) {
+          throw new ForbiddenException('Bạn không có quyền thao tác trên đơn hàng của chi nhánh khác');
+        }
+      }
+
       let eligibleItems = (order.items || []).filter(
         (it: any) => it.status !== 'Cancelled' && it.status !== 'WaitingConfirmation',
       );
@@ -2048,10 +2068,16 @@ export class OrdersService {
         order.status = derivedStatus;
       }
 
+      // Cập nhật OCC nguyên tử với updatedAt và chốt chặn trạng thái bất biến (AUD-7.3)
       const updateFilter: any = {
         _id: order._id,
         restaurantId: order.restaurantId,
+        isPaid: { $ne: true },
+        status: { $nin: ['Paid', 'Cancelled'] },
       };
+      if (!canOperateAllBranches && caller?.branchId) {
+        updateFilter.branchId = caller.branchId;
+      }
       if (order.updatedAt) {
         updateFilter.updatedAt = order.updatedAt;
       }
@@ -2133,18 +2159,19 @@ export class OrdersService {
       filter.status.$nin.push('WaitingConfirmation');
     }
 
-    // 3. Lọc theo khu vực bàn ăn (zoneId)
+    // 3. Lọc theo khu vực bàn ăn (zoneId) (AUD-7.5: validate ObjectId)
     if (query.zoneId) {
-      if (Types.ObjectId.isValid(query.zoneId)) {
-        const zoneTables = await this.tableModel
-          .find({
-            zoneId: new Types.ObjectId(query.zoneId),
-            restaurantId: restObjId,
-          })
-          .select('_id');
-        const tableIds = zoneTables.map((t) => t._id);
-        filter.tableId = { $in: tableIds };
+      if (!Types.ObjectId.isValid(query.zoneId)) {
+        throw new BadRequestException('Mã khu vực không hợp lệ');
       }
+      const zoneTables = await this.tableModel
+        .find({
+          zoneId: new Types.ObjectId(query.zoneId),
+          restaurantId: restObjId,
+        })
+        .select('_id');
+      const tableIds = zoneTables.map((t) => t._id);
+      filter.tableId = { $in: tableIds };
     }
 
     // 4. Lọc theo bàn (tableId)
@@ -2155,13 +2182,16 @@ export class OrdersService {
       filter.tableId = new Types.ObjectId(query.tableId);
     }
 
-    // 5. Lọc theo trạng thái
+    // 5. Lọc theo trạng thái (AUD-7.5: Chống override $nin Paid / Cancelled)
     if (query.status && query.status.trim() !== '' && query.status !== 'all') {
-      const statuses = query.status.split(',').map((s) => s.trim()).filter(Boolean);
-      if (statuses.length === 1) {
-        filter.status = statuses[0];
-      } else if (statuses.length > 1) {
-        filter.status = { $in: statuses };
+      const rawStatuses = query.status.split(',').map((s) => s.trim()).filter(Boolean);
+      const allowedStatuses = rawStatuses.filter((s) => s !== 'Paid' && s !== 'Cancelled');
+      if (allowedStatuses.length === 1) {
+        filter.status = allowedStatuses[0];
+      } else if (allowedStatuses.length > 1) {
+        filter.status = { $in: allowedStatuses };
+      } else {
+        filter.status = { $in: [] };
       }
     }
 

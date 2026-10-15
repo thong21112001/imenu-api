@@ -118,7 +118,7 @@ export class KitchenController {
   }
 
   @ApiOperation({ summary: 'Bắt đầu nấu hàng loạt món trong vé bếp hoặc đợt gọi' })
-  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE)
+  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE, 'perm-kds-cook')
   @HttpCode(HttpStatus.OK)
   @Post('orders/:orderId/start-cooking-all')
   async startCookingAll(
@@ -141,7 +141,7 @@ export class KitchenController {
   }
 
   @ApiOperation({ summary: 'Hoàn tất hàng loạt món trong vé bếp hoặc đợt gọi' })
-  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE)
+  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE, 'perm-kds-cook')
   @HttpCode(HttpStatus.OK)
   @Post('orders/:orderId/mark-ready-all')
   async markReadyAll(
@@ -164,7 +164,7 @@ export class KitchenController {
   }
 
   @ApiOperation({ summary: 'Bếp xem danh sách thực đơn và tình trạng Còn/Hết món theo chi nhánh' })
-  @RequirePermissions(ResourceType.KITCHEN, ActionType.VIEW)
+  @RequirePermissions(ResourceType.KITCHEN, ActionType.VIEW, 'perm-kds-view')
   @ApiQuery({ name: 'branchId', required: false })
   @Get('menu-items')
   async getKitchenMenuItems(
@@ -185,7 +185,7 @@ export class KitchenController {
   }
 
   @ApiOperation({ summary: 'Bếp báo hết nguyên liệu / bật tắt trạng thái Còn món theo chi nhánh' })
-  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE)
+  @RequirePermissions(ResourceType.KITCHEN, ActionType.UPDATE, 'perm-kds-out', ['perm-menu-status'])
   @Patch('menu-items/:id/availability')
   async toggleItemAvailability(
     @Param('id') itemId: string,
