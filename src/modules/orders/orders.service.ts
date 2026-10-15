@@ -1700,9 +1700,9 @@ export class OrdersService {
    */
   private async executeWithOccRetry<T>(
     operation: () => Promise<T>,
-    maxRetries = 3,
-    minJitterMs = 20,
-    maxJitterMs = 50,
+    maxRetries = 10,
+    minJitterMs = 25,
+    maxJitterMs = 75,
   ): Promise<T> {
     let lastError: any;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1717,7 +1717,7 @@ export class OrdersService {
           err?.status === HttpStatus.CONFLICT;
 
         if (isConflict && attempt < maxRetries) {
-          const jitter = Math.floor(Math.random() * (maxJitterMs - minJitterMs + 1)) + minJitterMs;
+          const jitter = Math.floor(Math.random() * (maxJitterMs - minJitterMs + 1)) + minJitterMs + attempt * 10;
           this.logger.warn(
             `[OCC] Xung đột tương tranh tài liệu (lần thử ${attempt}/${maxRetries}), thử lại sau ${jitter}ms...`,
           );
