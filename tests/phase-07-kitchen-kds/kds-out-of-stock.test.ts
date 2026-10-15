@@ -272,15 +272,19 @@ async function main() {
     });
     const phoInMain = (menuMainCheck.data?.data?.items || menuMainCheck.data?.data || []).find((i: any) => (i.id || i._id) === itemPhoId);
 
-    if (
-      toggleSubRes.status === 200 &&
-      phoInSub?.effectiveIsAvailable === false &&
-      phoInMain?.effectiveIsAvailable === true
-    ) {
-      pass('TC-02 & TC-03: 86 Out-of-Stock & Branch Isolation - Bếp chi nhánh báo hết món chỉ áp dụng cho chi nhánh đó, không ảnh hưởng chi nhánh khác');
+    if (toggleSubRes.status === 200) {
+      pass('TC-02: 86 Out-of-Stock - PATCH /api/kitchen/menu-items/:id/availability cập nhật thành công');
       passed++;
     } else {
-      fail('TC-02 & TC-03: Branch Isolation thất bại', { phoInSub, phoInMain });
+      fail('TC-02: 86 Out-of-Stock thất bại', toggleSubRes);
+      failed++;
+    }
+
+    if (phoInSub?.effectiveIsAvailable === false && phoInMain?.effectiveIsAvailable === true) {
+      pass('TC-03: Branch Isolation - Bếp chi nhánh báo hết món chỉ áp dụng cho chi nhánh đó, không ảnh hưởng chi nhánh khác');
+      passed++;
+    } else {
+      fail('TC-03: Branch Isolation thất bại', { phoInSub, phoInMain });
       failed++;
     }
 
