@@ -11,6 +11,7 @@ import {
   HttpStatus,
   Headers,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
@@ -140,45 +141,44 @@ export class OrdersController {
     @Param('id') id: string,
     @Body() dto: RequestPaymentDto,
   ) {
+    if (!dto?.restaurantSlug || !dto?.tableCode || !dto?.qrToken) {
+      throw new BadRequestException('Thiếu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken)');
+    }
     const order = await this.ordersService.requestPayment(id, dto);
     return new OkResponse({ message: 'Yêu cầu thanh toán thành công', data: order });
   }
 
-  @ApiOperation({ summary: 'Lấy thông tin VietQR động cho đơn hàng (Khách QR hoặc Staff)' })
+  @ApiOperation({ summary: 'Lấy thông tin VietQR động cho đơn hàng (Khách QR Public)' })
   @Public()
-  @Get(['customer/:id/vietqr', 'public/customer/:id/vietqr', ':id/vietqr'])
-  async getVietQR(
+  @Get(['customer/:id/vietqr', 'public/customer/:id/vietqr'])
+  async getCustomerVietQR(
     @Param('id') id: string,
     @Query('restaurantSlug') restaurantSlug?: string,
     @Query('tableCode') tableCode?: string,
     @Query('qrToken') qrToken?: string,
-    @CurrentRestaurant() restaurantId?: string,
-    @CurrentUser() user?: JwtUser,
   ) {
-    const qrAuth =
-      restaurantSlug && tableCode && qrToken
-        ? { restaurantSlug, tableCode, qrToken }
-        : undefined;
-    const vietQr = await this.ordersService.getVietQRForOrder(id, restaurantId, user, qrAuth);
+    if (!restaurantSlug || !tableCode || !qrToken) {
+      throw new BadRequestException('Thiếu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken)');
+    }
+    const qrAuth = { restaurantSlug, tableCode, qrToken };
+    const vietQr = await this.ordersService.getVietQRForOrder(id, undefined, undefined, qrAuth);
     return new OkResponse({ message: 'Lấy thông tin VietQR thành công', data: vietQr });
   }
 
-  @ApiOperation({ summary: 'Lấy dữ liệu in hóa đơn 80mm ESC/POS (Pre-bill hoặc Final Bill)' })
+  @ApiOperation({ summary: 'Lấy dữ liệu in hóa đơn 80mm ESC/POS (Khách QR Public)' })
   @Public()
-  @Get(['customer/:id/receipt', 'public/customer/:id/receipt', ':id/receipt'])
-  async getReceipt(
+  @Get(['customer/:id/receipt', 'public/customer/:id/receipt'])
+  async getCustomerReceipt(
     @Param('id') id: string,
     @Query('restaurantSlug') restaurantSlug?: string,
     @Query('tableCode') tableCode?: string,
     @Query('qrToken') qrToken?: string,
-    @CurrentRestaurant() restaurantId?: string,
-    @CurrentUser() user?: JwtUser,
   ) {
-    const qrAuth =
-      restaurantSlug && tableCode && qrToken
-        ? { restaurantSlug, tableCode, qrToken }
-        : undefined;
-    const receipt = await this.ordersService.getReceiptForOrder(id, restaurantId, user, qrAuth);
+    if (!restaurantSlug || !tableCode || !qrToken) {
+      throw new BadRequestException('Thiếu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken)');
+    }
+    const qrAuth = { restaurantSlug, tableCode, qrToken };
+    const receipt = await this.ordersService.getReceiptForOrder(id, undefined, undefined, qrAuth);
     return new OkResponse({ message: 'Lấy dữ liệu hóa đơn thành công', data: receipt });
   }
 
@@ -379,15 +379,39 @@ export class OrdersController {
     return new OkResponse({ message: 'Hủy món thành công', data: order });
   }
 
-  @ApiOperation({ summary: 'Yêu cầu thanh toán (Hỗ trợ Staff JWT hoặc QR credentials)' })
-  @Public()
+  @ApiOperation({ summary: 'Lấy thông tin VietQR động cho đơn hàng (Staff POS)' })
+  @RequirePermissions(ResourceType.POS, ActionType.VIEW, 'perm-pos-view', ['perm-bill-view', 'perm-pos-pay'])
+  @Get(':id/vietqr')
+  async getStaffVietQR(
+    @Param('id') id: string,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const vietQr = await this.ordersService.getVietQRForOrder(id, restaurantId, user);
+    return new OkResponse({ message: 'Lấy thông tin VietQR thành công', data: vietQr });
+  }
+
+  @ApiOperation({ summary: 'Lấy dữ liệu in hóa đơn 80mm ESC/POS (Staff POS)' })
+  @RequirePermissions(ResourceType.POS, ActionType.VIEW, 'perm-pos-view', ['perm-bill-view', 'perm-pos-pay'])
+  @Get(':id/receipt')
+  async getStaffReceipt(
+    @Param('id') id: string,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const receipt = await this.ordersService.getReceiptForOrder(id, restaurantId, user);
+    return new OkResponse({ message: 'Lấy dữ liệu hóa đơn thành công', data: receipt });
+  }
+
+  @ApiOperation({ summary: 'Yêu cầu thanh toán đơn hàng (Staff POS)' })
+  @RequirePermissions(ResourceType.POS, ActionType.UPDATE)
   @HttpCode(HttpStatus.OK)
   @Post(':id/request-payment')
   async requestPayment(
     @Param('id') id: string,
-    @Body() dto?: RequestPaymentDto,
-    @CurrentRestaurant() restaurantId?: string,
-    @CurrentUser() user?: JwtUser,
+    @Body() dto: RequestPaymentDto | undefined,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
   ) {
     const order = await this.ordersService.requestPayment(id, dto, restaurantId, user);
     return new OkResponse({ message: 'Yêu cầu thanh toán thành công', data: order });

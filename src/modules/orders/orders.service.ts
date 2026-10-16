@@ -2430,13 +2430,9 @@ export class OrdersService {
     } else if (restaurantId) {
       order = await this.findById(orderId, restaurantId, caller);
     } else {
-      if (!Types.ObjectId.isValid(orderId)) {
-        throw new BadRequestException('Mã đơn hàng không hợp lệ');
-      }
-      order = await this.orderModel.findById(orderId);
-      if (!order) {
-        throw new NotFoundException('Không tìm thấy đơn hàng');
-      }
+      throw new BadRequestException(
+        'Yêu cầu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken) hoặc quyền truy cập của nhân viên',
+      );
     }
 
     if (order.status === 'WaitingConfirmation') {
@@ -2582,10 +2578,9 @@ export class OrdersService {
       order = await this.findById(orderId, restaurantId, caller);
       restaurant = await this.restaurantModel.findById(order.restaurantId);
     } else {
-      order = await this.orderModel.findById(orderId);
-      if (order) {
-        restaurant = await this.restaurantModel.findById(order.restaurantId);
-      }
+      throw new BadRequestException(
+        'Yêu cầu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken) hoặc quyền truy cập của nhân viên',
+      );
     }
 
     if (!order) {
@@ -2653,10 +2648,9 @@ export class OrdersService {
       order = await this.findById(orderId, restaurantId, caller);
       restaurant = await this.restaurantModel.findById(order.restaurantId);
     } else {
-      order = await this.orderModel.findById(orderId);
-      if (order) {
-        restaurant = await this.restaurantModel.findById(order.restaurantId);
-      }
+      throw new BadRequestException(
+        'Yêu cầu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken) hoặc quyền truy cập của nhân viên',
+      );
     }
 
     if (!order) {
@@ -2938,7 +2932,11 @@ export class OrdersService {
         restaurantId: order.restaurantId,
         isPaid: { $ne: true },
         status: { $in: ['Preparing', 'Ready', 'Served', 'PaymentRequested'] },
+        items: { $size: (order.items || []).length },
       };
+      if (order.subTotal !== undefined && order.subTotal !== null) {
+        claimFilter.subTotal = order.subTotal;
+      }
       if (order.branchId) {
         claimFilter.branchId = order.branchId;
       }
@@ -2965,7 +2963,7 @@ export class OrdersService {
       // Nếu atomic claim trả về null: request khác đã thanh toán hoặc dữ liệu bị thay đổi đồng thời
       if (!claimedOrder) {
         throw new BadRequestException(
-          'Đơn hàng này đã được thanh toán hoặc trạng thái đã bị thay đổi bởi thao tác khác',
+          'Đơn hàng đã có thay đổi (gọi thêm món hoặc hủy món) trong lúc thanh toán hoặc đã được thanh toán bởi thao tác khác. Vui lòng tải lại đơn trước khi thu tiền.',
         );
       }
 
