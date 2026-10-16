@@ -455,6 +455,40 @@ async function main() {
       failed++;
     }
 
+    // TC-9.2-AUD-01: Hardening AUD-9.1 & AUD-9.4: Cô lập chi nhánh con & Giới hạn khoảng cách ngày <= 366
+    try {
+      // 1. Child branch passes branchId=all -> 403 Forbidden
+      const resB2All = await request(`/reports/revenue?startDate=${todayStr}&endDate=${todayStr}&branchId=all`, {
+        headers: { Authorization: `Bearer ${branch2StaffToken}` },
+      });
+      // 2. Child branch passes no branchId -> branchBreakdown contains ONLY child branch
+      const resB2Own = await request(`/reports/revenue?startDate=${todayStr}&endDate=${todayStr}`, {
+        headers: { Authorization: `Bearer ${branch2StaffToken}` },
+      });
+      // 3. Exceeding 366 days -> 400 Bad Request
+      const resLongRange = await request('/reports/revenue?startDate=2024-01-01&endDate=2026-01-01', {
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      });
+
+      const isB2Blocked = resB2All.status === 403;
+      const isB2Isolated =
+        resB2Own.status === 200 &&
+        Array.isArray(resB2Own.data?.data?.branchBreakdown) &&
+        resB2Own.data.data.branchBreakdown.length === 1 &&
+        resB2Own.data.data.branchBreakdown[0].branchId === branch2Id;
+      const isRangeLimited = resLongRange.status === 400;
+
+      if (isB2Blocked && isB2Isolated && isRangeLimited) {
+        pass('TC-9.2-AUD-01: [AUD-9.1 & AUD-9.4] Chặn branchId=all cho chi nhánh con, cô lập branchBreakdown, và chặn khoảng thời gian > 366 ngày');
+        passed++;
+      } else {
+        throw new Error(`Kiểm tra hardening thất bại: isB2Blocked=${isB2Blocked}, isB2Isolated=${isB2Isolated}, isRangeLimited=${isRangeLimited}`);
+      }
+    } catch (err: any) {
+      fail('TC-9.2-AUD-01 thất bại', err);
+      failed++;
+    }
+
   } catch (globalErr: any) {
     fail('Lỗi thực thi tổng thể Suite 2', globalErr);
     failed++;

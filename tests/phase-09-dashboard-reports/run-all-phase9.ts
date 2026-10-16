@@ -46,7 +46,7 @@ const suites: SuiteConfig[] = [
     name: 'Dashboard Overview & Realtime KPI Dual-Key Engine (Port 3120)',
     cmd: 'npx',
     args: ['ts-node', 'tests/phase-09-dashboard-reports/dashboard-overview.test.ts'],
-    casesCount: 15,
+    casesCount: 16,
     cwd: backendDir,
   },
   {
@@ -54,7 +54,7 @@ const suites: SuiteConfig[] = [
     name: 'Revenue Reports Analytics, Multi-Method & Branch Breakdown (Port 3121)',
     cmd: 'npx',
     args: ['ts-node', 'tests/phase-09-dashboard-reports/reports-revenue-analytics.test.ts'],
-    casesCount: 12,
+    casesCount: 13,
     cwd: backendDir,
   },
   {
@@ -62,7 +62,7 @@ const suites: SuiteConfig[] = [
     name: 'Top Selling Items, Option Price Delta & Cancelled Guard (Port 3122)',
     cmd: 'npx',
     args: ['ts-node', 'tests/phase-09-dashboard-reports/reports-top-items.test.ts'],
-    casesCount: 6,
+    casesCount: 7,
     cwd: backendDir,
   },
   {
@@ -70,7 +70,7 @@ const suites: SuiteConfig[] = [
     name: 'Reports CSV Export Security, RBAC & Multi-Tenant Isolation (Port 3123)',
     cmd: 'npx',
     args: ['ts-node', 'tests/phase-09-dashboard-reports/reports-export-rbac.test.ts'],
-    casesCount: 9,
+    casesCount: 10,
     cwd: backendDir,
   },
   {

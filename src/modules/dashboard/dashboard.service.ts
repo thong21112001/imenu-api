@@ -249,6 +249,22 @@ export class DashboardService {
           percentage: pct,
         };
       });
+    } else if (effectiveBranchId) {
+      const branches = restaurant.branches || [];
+      const callerBranch = branches.find((b: any) => b._id.toString() === effectiveBranchId);
+      if (callerBranch) {
+        branchBreakdown = [
+          {
+            branchId: effectiveBranchId,
+            branchName: callerBranch.name,
+            isMainBranch: !!callerBranch.isMainBranch,
+            status: callerBranch.status,
+            todayRevenue,
+            orderCount: completedOrdersToday,
+            percentage: 100,
+          },
+        ];
+      }
     }
 
     // 12. Trả về hợp nhất Dual-Key (UI + Blueprint contract)

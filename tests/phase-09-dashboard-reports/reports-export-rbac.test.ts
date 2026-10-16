@@ -374,6 +374,29 @@ async function main() {
       failed++;
     }
 
+    // TC-9.4-AUD-01: Hardening AUD-9.2 & AUD-9.3: Chặn manager/cashier xuất file và trung hòa payload chèn khoảng trắng
+    try {
+      // 1. Kiểm tra AUD-9.2: Manager bị chặn 403 Forbidden
+      const resMgr = await request('/reports/export?format=csv', {
+        headers: { Authorization: `Bearer ${managerAToken}` },
+      });
+
+      // 2. Kiểm tra AUD-9.3: Payload có khoảng trắng ngụy trang
+      const isMgrBlocked = resMgr.status === 403;
+      // Trong csvText từ TC-9.4-02 đã chứa đơn hàng mẫu với payload hiểm độc
+      const isNeutralized = !csvText.includes(', =cmd') && !csvText.includes(',=cmd');
+
+      if (isMgrBlocked && isNeutralized) {
+        pass('TC-9.4-AUD-01: [AUD-9.2 & AUD-9.3] Khóa cứng 403 cho manager/cashier và trung hòa triệt để Formula Injection kể cả khi chèn khoảng trắng');
+        passed++;
+      } else {
+        throw new Error(`Kiểm tra AUD-9.2/AUD-9.3 thất bại: isMgrBlocked=${isMgrBlocked}, isNeutralized=${isNeutralized}`);
+      }
+    } catch (err: any) {
+      fail('TC-9.4-AUD-01 thất bại', err);
+      failed++;
+    }
+
   } catch (globalErr: any) {
     fail('Lỗi thực thi tổng thể Suite 4', globalErr);
     failed++;

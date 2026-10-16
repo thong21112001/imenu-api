@@ -600,6 +600,32 @@ async function main() {
       failed++;
     }
 
+    // TC-9.1-AUD-01: Hardening AUD-9.1: Nhân viên chi nhánh 2 không truyền branchId chỉ thấy đúng chi nhánh mình
+    try {
+      const res = await request('/dashboard/overview', {
+        headers: { Authorization: `Bearer ${branch2StaffToken}` },
+      });
+      if (res.status === 200 && res.data.success) {
+        const b2Data = res.data.data;
+        if (
+          b2Data.todayRevenue === 200000 &&
+          Array.isArray(b2Data.branchBreakdown) &&
+          b2Data.branchBreakdown.length === 1 &&
+          b2Data.branchBreakdown[0].branchId === branch2Id
+        ) {
+          pass('TC-9.1-AUD-01: [AUD-9.1] Nhân viên chi nhánh con chỉ nhận đúng doanh thu chi nhánh mình và branchBreakdown cô lập tuyệt đối');
+          passed++;
+        } else {
+          throw new Error(`Dữ liệu chi nhánh con bị rò rỉ: revenue=${b2Data.todayRevenue}, branches=${JSON.stringify(b2Data.branchBreakdown)}`);
+        }
+      } else {
+        throw new Error(`Kỳ vọng 200 OK nhưng nhận được ${res.status}`);
+      }
+    } catch (err: any) {
+      fail('TC-9.1-AUD-01 thất bại', err);
+      failed++;
+    }
+
   } catch (globalErr: any) {
     fail('Lỗi thực thi tổng thể Suite 1', globalErr);
     failed++;

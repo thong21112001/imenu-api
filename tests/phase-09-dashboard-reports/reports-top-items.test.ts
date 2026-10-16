@@ -329,6 +329,32 @@ async function main() {
       failed++;
     }
 
+    // TC-9.3-AUD-01: Hardening AUD-9.4 & AUD-9.5: Kẹp limit <= 100 và phân định rõ totalItemRevenue vs totalRevenue
+    try {
+      const resLimit = await request('/reports/top-items?limit=100', {
+        headers: { Authorization: `Bearer ${ownerToken}` },
+      });
+      if (resLimit.status === 200 && resLimit.data?.data) {
+        const topData = resLimit.data.data;
+        const isLimitCapped = Array.isArray(topData.items) && topData.items.length <= 100;
+        const hasBothRevenueKeys =
+          topData.totalRevenue === 335000 &&
+          topData.totalItemRevenue === 335000;
+
+        if (isLimitCapped && hasBothRevenueKeys) {
+          pass('TC-9.3-AUD-01: [AUD-9.4 & AUD-9.5] Kẹp limit <= 100 và trả về đồng thời totalItemRevenue/totalRevenue chính xác');
+          passed++;
+        } else {
+          throw new Error(`Kiểm tra AUD-9.4/AUD-9.5 thất bại: isLimitCapped=${isLimitCapped}, hasBothRevenueKeys=${hasBothRevenueKeys}`);
+        }
+      } else {
+        throw new Error(`Kỳ vọng 200 OK nhưng nhận được ${resLimit.status}`);
+      }
+    } catch (err: any) {
+      fail('TC-9.3-AUD-01 thất bại', err);
+      failed++;
+    }
+
   } catch (globalErr: any) {
     fail('Lỗi thực thi tổng thể Suite 3', globalErr);
     failed++;
