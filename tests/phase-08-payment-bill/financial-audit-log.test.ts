@@ -405,6 +405,69 @@ async function main() {
       failed++;
     }
 
+    // TC-8.3-08 (AUD-8.3): Waiter bị chặn 403 Forbidden khi truy cập /api/activity-logs
+    const waiterRole = await connection.collection('roles').findOne({ slug: 'waiter' });
+    await request('/users', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        fullName: 'Phục Vụ Audit Test',
+        username: `waiteraudit_${timestamp}`,
+        email: `waiter.audit.${timestamp}@imenu.vn`,
+        password: 'Password@123',
+        phone: '0908888888',
+        roleId: waiterRole!._id.toString(),
+      }),
+    });
+    const waiterLoginRes = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: `waiter.audit.${timestamp}@imenu.vn`,
+        password: 'Password@123',
+      }),
+    });
+    const waiterToken = waiterLoginRes.data?.data?.accessToken;
+    const waiterLogsRes = await request('/activity-logs', {
+      headers: { Authorization: `Bearer ${waiterToken}` },
+    });
+    if (waiterLogsRes.status === 403) {
+      pass('TC-8.3-08 (AUD-8.3): Chặn đứng nhân viên không có quyền truy cập nhật ký kiểm toán /api/activity-logs (HTTP 403 Forbidden)');
+      passed++;
+    } else {
+      fail('TC-8.3-08: Không chặn Waiter truy cập activity logs', waiterLogsRes.status);
+      failed++;
+    }
+
+    // TC-8.3-09 (AUD-8.5): AllExceptionsFilter chặn rò rỉ mã lỗi MongoDB E11000 và chuyển hóa thành HTTP 409 Conflict
+    const dupRegRes = await request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurant: {
+          name: `P8 Dup Rest ${timestamp}`,
+          phone: '0901234567',
+          address: '123 Nguyen Trai, Q1',
+        },
+        owner: {
+          fullName: 'Dup Owner',
+          phone: '0901234567',
+          email: `p8audit.owner.${timestamp}@imenu.vn`, // Trùng email đã đăng ký
+          password: 'Password@123',
+        },
+      }),
+    });
+    const isSanitized =
+      dupRegRes.status === 409 &&
+      typeof dupRegRes.data?.message === 'string' &&
+      !JSON.stringify(dupRegRes.data).includes('E11000') &&
+      !JSON.stringify(dupRegRes.data).includes('MongoServerError');
+    if (isSanitized) {
+      pass('TC-8.3-09 (AUD-8.5): AllExceptionsFilter che giấu 100% chi tiết kỹ thuật MongoDB E11000 thành HTTP 409 Conflict an toàn');
+      passed++;
+    } else {
+      fail('TC-8.3-09: Lộ thông tin nội bộ MongoDB hoặc không trả về 409', dupRegRes.data);
+      failed++;
+    }
+
   } catch (error: any) {
     fail('Toàn cục test suite financial-audit-log gặp lỗi ngoại lệ', error);
     failed++;

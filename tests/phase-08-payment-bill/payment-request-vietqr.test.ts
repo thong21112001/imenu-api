@@ -676,6 +676,107 @@ async function main() {
       failed++;
     }
 
+    // TC-8.1-19 (AUD-8.1): Bàn 01 dùng QR hợp lệ của mình nhưng cố tình request-payment cho Bàn 02 -> 404 Not Found
+    const crossTableReqRes = await request(`/orders/customer/${orderB2Id}/request-payment`, {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug,
+        tableCode, // Bàn 1
+        qrToken,   // QR token Bàn 1
+        paymentMethod: 'VietQR',
+      }),
+    });
+    if (crossTableReqRes.status === 404 || crossTableReqRes.status === 403) {
+      pass('TC-8.1-19 (AUD-8.1): Chặn đứng Cross-Table request-payment khi dùng QR Bàn 1 gọi đơn Bàn 2 (HTTP 404/403)');
+      passed++;
+    } else {
+      fail('TC-8.1-19: Không chặn Cross-Table request-payment', crossTableReqRes.status);
+      failed++;
+    }
+
+    // TC-8.1-20 (AUD-8.1): Bàn 01 dùng QR hợp lệ của mình nhưng xem VietQR của Bàn 02 -> 404 Not Found
+    const crossTableVqrRes = await request(
+      `/orders/customer/${orderB2Id}/vietqr?restaurantSlug=${restaurantSlug}&tableCode=${tableCode}&qrToken=${qrToken}`,
+    );
+    if (crossTableVqrRes.status === 404 || crossTableVqrRes.status === 403) {
+      pass('TC-8.1-20 (AUD-8.1): Chặn đứng Cross-Table VietQR khi dùng QR Bàn 1 soi đơn Bàn 2 (HTTP 404/403)');
+      passed++;
+    } else {
+      fail('TC-8.1-20: Không chặn Cross-Table VietQR', crossTableVqrRes.status);
+      failed++;
+    }
+
+    // TC-8.1-21 (AUD-8.1): Bàn 01 dùng QR hợp lệ của mình nhưng xem Receipt của Bàn 02 -> 404 Not Found
+    const crossTableReceiptRes = await request(
+      `/orders/customer/${orderB2Id}/receipt?restaurantSlug=${restaurantSlug}&tableCode=${tableCode}&qrToken=${qrToken}`,
+    );
+    if (crossTableReceiptRes.status === 404 || crossTableReceiptRes.status === 403) {
+      pass('TC-8.1-21 (AUD-8.1): Chặn đứng Cross-Table Receipt khi dùng QR Bàn 1 soi hóa đơn Bàn 2 (HTTP 404/403)');
+      passed++;
+    } else {
+      fail('TC-8.1-21: Không chặn Cross-Table Receipt', crossTableReceiptRes.status);
+      failed++;
+    }
+
+    // TC-8.1-22 (AUD-8.4): Client cố tình truyền query giả mạo ?amount=1000 vào VietQR -> Bị phớt lờ, tính đúng từ server
+    const tamperVqrRes = await request(
+      `/orders/customer/${orderB1Id}/vietqr?restaurantSlug=${restaurantSlug}&tableCode=${tableCode}&qrToken=${qrToken}&amount=1000`,
+    );
+    if (
+      tamperVqrRes.status === 200 &&
+      tamperVqrRes.data?.data?.amount === expectedAmountAfterCancel &&
+      !tamperVqrRes.data?.data?.vietQrUrl?.includes('amount=1000')
+    ) {
+      pass('TC-8.1-22 (AUD-8.4): Số tiền VietQR hoàn toàn phớt lờ tham số amount=1000 giả mạo từ client query');
+      passed++;
+    } else {
+      fail('TC-8.1-22: VietQR bị thao túng số tiền bởi client', tamperVqrRes.data);
+      failed++;
+    }
+
+    // TC-8.1-23 (AUD-8.2): Đơn đang PaymentRequested, thêm món mới -> Table.status chuyển về Occupied
+    // Chuyển Bàn 2 sang PaymentRequested
+    await request(`/orders/customer/${orderB2Id}/request-payment`, {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug,
+        tableCode: table2Code,
+        qrToken: table2QrToken,
+        paymentMethod: 'VietQR',
+      }),
+    });
+    // Khách gọi thêm Round 2 tại Bàn 2
+    await request('/orders/customer/items', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantSlug,
+        tableCode: table2Code,
+        qrToken: table2QrToken,
+        orderId: orderB2Id,
+        items: [{ menuItemId, quantity: 1 }],
+      }),
+    });
+    // Thu ngân duyệt Round 2 của Bàn 2
+    await request(`/orders/${orderB2Id}/rounds/2/confirm`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+    });
+    const table2DocAfterAdd = await connection.collection('tables').findOne({ _id: new Types.ObjectId(table2Id) });
+    const order2DocAfterAdd = await connection.collection('orders').findOne({ _id: new Types.ObjectId(orderB2Id) });
+    if (
+      table2DocAfterAdd?.status === 'Occupied' &&
+      order2DocAfterAdd?.status === 'Preparing'
+    ) {
+      pass('TC-8.1-23 (AUD-8.2): Gọi thêm món khi đang PaymentRequested tự động đưa Table về Occupied & Order về Preparing');
+      passed++;
+    } else {
+      fail('TC-8.1-23: Table hoặc Order không chuyển về Occupied/Preparing khi thêm món', {
+        tableStatus: table2DocAfterAdd?.status,
+        orderStatus: order2DocAfterAdd?.status,
+      });
+      failed++;
+    }
+
   } catch (error: any) {
     fail('Toàn cục test suite payment-request-vietqr gặp lỗi ngoại lệ', error);
     failed++;

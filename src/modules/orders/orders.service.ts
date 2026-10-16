@@ -804,6 +804,21 @@ export class OrdersService {
         );
 
         if (updatedOrder) {
+          if (table.status === 'PaymentRequested' && nextStatus !== 'PaymentRequested') {
+            const updatedTable = await this.tableModel.findOneAndUpdate(
+              { _id: table._id, status: 'PaymentRequested' },
+              { $set: { status: 'Occupied' } },
+              { new: true },
+            );
+            if (updatedTable) {
+              this.eventEmitter.emit('table.status_updated', {
+                table: updatedTable.toObject(),
+                restaurantId: restaurant._id.toString(),
+                branchId: updatedTable.branchId,
+              });
+            }
+          }
+
           // THÀNH CÔNG! Phát sự kiện WebSocket
           this.eventEmitter.emit('order.round_added', {
             order: updatedOrder.toObject(),
@@ -1411,6 +1426,27 @@ export class OrdersService {
     }
 
     await order.save();
+
+    // Nếu đơn hàng trước đó ở trạng thái PaymentRequested và nay có món mới được duyệt chuyển về Preparing/Waiting,
+    // giải phóng trạng thái bàn từ PaymentRequested về Occupied
+    if (order.tableId) {
+      const table = await this.tableModel.findOneAndUpdate(
+        {
+          _id: order.tableId,
+          restaurantId: order.restaurantId,
+          status: 'PaymentRequested',
+        },
+        { $set: { status: 'Occupied' } },
+        { new: true },
+      );
+      if (table) {
+        this.eventEmitter.emit('table.status_updated', {
+          table: table.toObject(),
+          restaurantId: order.restaurantId.toString(),
+          branchId: table.branchId,
+        });
+      }
+    }
 
     this.eventEmitter.emit('order.round_confirmed', {
       order: order.toObject(),
@@ -2595,7 +2631,23 @@ export class OrdersService {
     }
 
     const memo = generateVietQRMemo(order.orderCode);
-    const amount = order.totalAmount || 0;
+
+    // AUD-8.4: Luôn tính toán lại số tiền từ danh sách món hợp lệ (status !== 'Cancelled') trên server
+    const activeItems = (order.items || []).filter((it: any) => it.status !== 'Cancelled');
+    const calculatedSubTotal = activeItems.reduce(
+      (sum: number, it: any) => sum + (it.itemTotal || it.price * it.quantity),
+      0,
+    );
+    const serverFinancial = OrderFinancialCalculator.calculate({
+      subTotal: calculatedSubTotal,
+      discountAmount: order.discountAmount,
+      discountPercent: order.discountPercent,
+      serviceFee: order.serviceFee,
+      serviceFeePercent: order.serviceFeePercent,
+      vatAmount: order.vatAmount,
+      vatPercent: order.vatPercent,
+    });
+    const amount = serverFinancial.totalAmount;
     const vietQrUrl = generateVietQRUrl({
       bankId: effectiveBank.bankId,
       accountNo: effectiveBank.accountNo,

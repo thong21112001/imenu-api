@@ -598,6 +598,143 @@ async function main() {
       failed++;
     }
 
+    // TC-8.2-16 (AUD-8.3): Kitchen bị chặn 403 Forbidden trên complete-payment và /api/bills
+    const kitchenRole = await connection.collection('roles').findOne({ slug: 'kitchen' });
+    await request('/users', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerAToken}` },
+      body: JSON.stringify({
+        fullName: 'Đầu Bếp A1',
+        username: `kitchena1_${timestamp}`,
+        email: `kitchen.a1.${timestamp}@imenu.vn`,
+        password: 'Password@123',
+        phone: '0906666666',
+        roleId: kitchenRole!._id.toString(),
+        branchId: branchA1Id,
+      }),
+    });
+    const kitchenLoginRes = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: `kitchen.a1.${timestamp}@imenu.vn`,
+        password: 'Password@123',
+      }),
+    });
+    const kitchenToken = kitchenLoginRes.data?.data?.accessToken;
+
+    const kitchenPayRes = await request(`/orders/${order1Id}/complete-payment`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${kitchenToken}` },
+      body: JSON.stringify({ paymentMethod: 'Cash' }),
+    });
+    const kitchenBillsRes = await request('/bills', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${kitchenToken}` },
+    });
+    if (kitchenPayRes.status === 403 && kitchenBillsRes.status === 403) {
+      pass('TC-8.2-16 (AUD-8.3): Chặn đứng vai trò kitchen trên cả complete-payment và /api/bills (HTTP 403 Forbidden)');
+      passed++;
+    } else {
+      fail('TC-8.2-16: Không chặn kitchen truy cập tài chính', {
+        payStatus: kitchenPayRes.status,
+        billsStatus: kitchenBillsRes.status,
+      });
+      failed++;
+    }
+
+    // TC-8.2-17 (AUD-8.3): Custom Role chỉ có perm-pos-pay truy cập thành công /api/bills và in bill
+    const customRoleRes = await request('/roles', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerAToken}` },
+      body: JSON.stringify({
+        name: `Custom Cashier Role ${timestamp}`,
+        slug: `custom_pay_${timestamp}`,
+        permissions: [{ resource: 'POS', actions: ['CONFIRM'] }],
+        permissionIds: ['perm-pos-pay'],
+      }),
+    });
+    const customRoleId = customRoleRes.data?.data?._id;
+
+    await request('/users', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerAToken}` },
+      body: JSON.stringify({
+        fullName: 'Custom Cashier A1',
+        username: `custompay_${timestamp}`,
+        email: `custom.pay.${timestamp}@imenu.vn`,
+        password: 'Password@123',
+        phone: '0907777777',
+        roleId: customRoleId,
+        branchId: branchA1Id,
+      }),
+    });
+    const customLoginRes = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: `custom.pay.${timestamp}@imenu.vn`,
+        password: 'Password@123',
+      }),
+    });
+    const customPayToken = customLoginRes.data?.data?.accessToken;
+
+    const customBillsRes = await request('/bills', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${customPayToken}` },
+    });
+    const customPrintRes = await request(`/bills/${bill1._id}/print`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${customPayToken}` },
+    });
+    if (customBillsRes.status === 200 && customPrintRes.status === 200) {
+      pass('TC-8.2-17 (AUD-8.3): Custom Role chỉ có perm-pos-pay truy cập trọn vẹn /api/bills và in bill thành công (200 OK)');
+      passed++;
+    } else {
+      fail('TC-8.2-17: Custom Role có perm-pos-pay bị từ chối', {
+        billsStatus: customBillsRes.status,
+        printStatus: customPrintRes.status,
+      });
+      failed++;
+    }
+
+    // TC-8.2-18 (AUD-8.2): Tương tranh đa luồng tạo Bill với upsert $setOnInsert đảm bảo chỉ đúng 1 Bill duy nhất
+    const newOrderRes = await request('/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerAToken}` },
+      body: JSON.stringify({
+        tableId: tableA1Id,
+        items: [{ menuItemId: item1Id, quantity: 1 }],
+      }),
+    });
+    const concurOrderId = newOrderRes.data?.data?._id;
+
+    const concurPromises = Array.from({ length: 5 }).map((_, idx) =>
+      request(`/orders/${concurOrderId}/complete-payment`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${ownerAToken}`,
+          'idempotency-key': `concur-key-${idx}-${timestamp}`,
+        },
+        body: JSON.stringify({ paymentMethod: 'Cash' }),
+      }),
+    );
+    const concurResults = await Promise.all(concurPromises);
+    const successCount = concurResults.filter((r) => r.status === 200).length;
+    const billsInDb = await connection
+      .collection('bills')
+      .find({ orderId: new Types.ObjectId(concurOrderId) })
+      .toArray();
+
+    if (successCount === 5 && billsInDb.length === 1) {
+      pass('TC-8.2-18 (AUD-8.2): Đua luồng 5 requests complete-payment đồng thời sinh DUY NHẤT 1 Bill trong MongoDB');
+      passed++;
+    } else {
+      fail('TC-8.2-18: Trùng lặp Bill khi tương tranh đa luồng', {
+        successCount,
+        billsFound: billsInDb.length,
+      });
+      failed++;
+    }
+
   } catch (error: any) {
     fail('Toàn cục test suite bills-complete-payment gặp lỗi ngoại lệ', error);
     failed++;
