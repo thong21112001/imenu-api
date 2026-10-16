@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsIn } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class RevenueQueryDto {
   @ApiPropertyOptional({ example: '2026-09-01', description: 'Ngày bắt đầu (YYYY-MM-DD)' })
@@ -17,12 +18,23 @@ export class RevenueQueryDto {
   @IsString()
   branchId?: string;
 
-  @ApiPropertyOptional({ example: 'day', enum: ['day', 'week', 'month'], default: 'day' })
+  @ApiPropertyOptional({ example: 'daily', enum: ['daily', 'weekly', 'monthly'], description: 'Chu kỳ phân tích doanh thu' })
+  @IsOptional()
+  @IsIn(['daily', 'weekly', 'monthly'])
+  period?: 'daily' | 'weekly' | 'monthly';
+
+  @ApiPropertyOptional({ example: 'day', enum: ['day', 'week', 'month'], default: 'day', description: 'Gom nhóm dòng thời gian (ngày, tuần, tháng)' })
   @IsOptional()
   @IsIn(['day', 'week', 'month'])
   groupBy?: 'day' | 'week' | 'month';
 
   @ApiPropertyOptional({ example: 10, default: 10, description: 'Số lượng món top bán chạy' })
   @IsOptional()
+  @Type(() => Number)
   limit?: number;
+
+  @ApiPropertyOptional({ example: 'csv', enum: ['csv', 'json'], default: 'csv', description: 'Định dạng xuất dữ liệu' })
+  @IsOptional()
+  @IsIn(['csv', 'json'])
+  format?: 'csv' | 'json';
 }

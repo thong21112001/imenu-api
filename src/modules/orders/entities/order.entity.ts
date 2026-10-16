@@ -85,6 +85,9 @@ export class Order {
   @Prop({ enum: ['VietQR', 'Cash', 'Card', 'Transfer'] })
   paymentMethod?: PaymentMethod;
 
+  @Prop({ default: 2, min: 1 })
+  guestCount?: number;
+
   @Prop({ default: '', trim: true })
   customerNote?: string;
 

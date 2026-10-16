@@ -24,6 +24,7 @@ import { PermissionsGuard } from '../../shared/common/guards/permissions.guard';
 import { ActionType, ResourceType } from '../../shared/common/constants/permission.const';
 import { OkResponse } from '../../shared/common/dto/okResponse';
 import { JwtUser } from '../auth/interface/jwtUser';
+import { Public } from '../../shared/common/decorators/public.decorator';
 
 @ApiTags('Tables (Sơ Đồ Bàn)')
 @ApiBearerAuth('JWT-auth')
@@ -31,6 +32,17 @@ import { JwtUser } from '../auth/interface/jwtUser';
 @Controller('tables')
 export class TablesController {
   constructor(private readonly tablesService: TablesService) {}
+
+  @ApiOperation({ summary: 'Lấy thông tin và danh sách bàn công khai theo restaurant slug (cho trang chọn bàn/quét QR)' })
+  @Public()
+  @Get('public/by-restaurant/:restaurantSlug')
+  async getPublicByRestaurant(@Param('restaurantSlug') restaurantSlug: string) {
+    const data = await this.tablesService.findPublicByRestaurant(restaurantSlug);
+    return new OkResponse({
+      message: 'Lấy danh sách bàn công khai thành công',
+      data,
+    });
+  }
 
   @ApiOperation({ summary: 'Lấy danh sách bàn ăn (lọc theo khu vực, chi nhánh, trạng thái)' })
   @ApiQuery({ name: 'branchId', required: false })

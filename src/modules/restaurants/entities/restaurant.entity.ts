@@ -40,6 +40,12 @@ export class Restaurant {
   @Prop({ type: [BranchSchema], default: [] })
   branches: Branch[];
 
+  @Prop({ default: null, trim: true })
+  wifiSsid?: string;
+
+  @Prop({ default: null, trim: true })
+  wifiPassword?: string;
+
   @Prop({ default: 'Basic', enum: ['Basic', 'Standard', 'Advanced', 'Pro', 'Enterprise'] })
   plan: string;
 }

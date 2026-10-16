@@ -23,6 +23,10 @@ Object.values(IMENU_PERMISSIONS).forEach((p) => {
 
 // Cac alias pho bien tu UI Frontend (de tuong thich 100%)
 const ALIASES: Record<string, PermissionPair> = {
+  'perm-dash-view': { resource: ResourceType.DASHBOARD, action: ActionType.VIEW },
+  'perm-pos-view': { resource: ResourceType.POS, action: ActionType.VIEW },
+  'perm-rep-view': { resource: ResourceType.REPORT, action: ActionType.VIEW },
+  'perm-rep-export': { resource: ResourceType.REPORT, action: ActionType.EXPORT },
   'perm-menu-create': { resource: ResourceType.MENU, action: ActionType.CREATE },
   'perm-menu-status': { resource: ResourceType.MENU, action: ActionType.UPDATE },
   'perm-menu-category': { resource: ResourceType.MENU, action: ActionType.UPDATE },

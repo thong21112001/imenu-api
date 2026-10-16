@@ -11,6 +11,7 @@ import { Model, Types } from 'mongoose';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Table, TableDocument, TableStatus } from './entities/table.entity';
 import { TableZone, TableZoneDocument } from './entities/table-zone.entity';
+import { Restaurant, RestaurantDocument } from '../restaurants/entities/restaurant.entity';
 import { Order, OrderDocument, OrderStatus } from '../orders/entities/order.entity';
 import { OrderRound } from '../orders/entities/order-round.schema';
 import { OrderItem } from '../orders/entities/order-item.schema';
@@ -28,6 +29,7 @@ export class TablesService {
   constructor(
     @InjectModel(Table.name) private readonly tableModel: Model<TableDocument>,
     @InjectModel(TableZone.name) private readonly zoneModel: Model<TableZoneDocument>,
+    @InjectModel(Restaurant.name) private readonly restaurantModel: Model<RestaurantDocument>,
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     private readonly eventEmitter: EventEmitter2,
   ) {}
@@ -1211,4 +1213,83 @@ export class TablesService {
 
     return { zones: createdZones.length, tables: createdTablesCount };
   }
+
+  async findPublicByRestaurant(restaurantSlug: string) {
+    if (!restaurantSlug || !restaurantSlug.trim()) {
+      throw new BadRequestException('restaurantSlug không được để trống');
+    }
+
+    const normalizedSlug = restaurantSlug.toLowerCase().trim();
+    const restaurant = await this.restaurantModel.findOne({ slug: normalizedSlug }).exec();
+    if (!restaurant) {
+      throw new NotFoundException(`Không tìm thấy nhà hàng với slug: ${restaurantSlug}`);
+    }
+
+    // Lấy tất cả khu vực bàn của nhà hàng
+    const branchIds = (restaurant.branches || []).map((b: any) => b._id.toString());
+    const zones = await this.zoneModel
+      .find({
+        $or: [
+          { restaurantId: restaurant._id },
+          { branchId: { $in: branchIds } },
+        ],
+      })
+      .sort({ displayOrder: 1, name: 1 })
+      .exec();
+
+    const zoneMap = new Map<string, string>();
+    zones.forEach((z) => {
+      zoneMap.set(z._id.toString(), z.name);
+    });
+
+    // Lấy tất cả bàn chưa xóa mềm và qrStatus == 'active'
+    const tables = await this.tableModel
+      .find({
+        restaurantId: restaurant._id,
+        isDeleted: { $ne: true },
+        qrStatus: 'active',
+      })
+      .sort({ name: 1, code: 1 })
+      .exec();
+
+    return {
+      restaurant: {
+        id: restaurant._id.toString(),
+        name: restaurant.name,
+        slug: restaurant.slug,
+        phone: restaurant.phone,
+        address: restaurant.address,
+        logoUrl: (restaurant as any).logoUrl,
+        isOpen: (restaurant as any).isOpen ?? true,
+        wifiSsid: (restaurant as any).wifiSsid || null,
+        wifiPassword: (restaurant as any).wifiPassword || null,
+        branches: restaurant.branches || [],
+      },
+      zones: zones.map((z) => ({
+        id: z._id.toString(),
+        name: z.name,
+        branchId: z.branchId,
+      })),
+      tables: tables.map((t) => {
+        const zoneRef = t.zone as any;
+        const zoneId = zoneRef?._id ? zoneRef._id.toString() : zoneRef ? zoneRef.toString() : undefined;
+        const zoneName = zoneRef?.name || (zoneId ? zoneMap.get(zoneId) : undefined) || 'Khu vực chung';
+        return {
+          id: t._id.toString(),
+          code: t.code,
+          name: t.name,
+          capacity: t.capacity || 4,
+          status: t.status || 'Available',
+          zoneId,
+          zoneName,
+          branchId: t.branchId,
+          qrToken: t.qrToken || 'active',
+          wifiSsid: t.wifiSsid || (restaurant as any).wifiSsid || null,
+          wifiPassword: t.wifiPassword || (restaurant as any).wifiPassword || null,
+          currentOrderId: t.currentOrderId ? t.currentOrderId.toString() : null,
+        };
+      }),
+    };
+  }
 }
+
