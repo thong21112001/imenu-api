@@ -67,6 +67,9 @@ export class DashboardService {
 
     if (!isMainOrAdmin) {
       // Nhân viên chi nhánh con chỉ được xem dữ liệu chi nhánh mình
+      if (!caller?.branchId) {
+        throw new ForbiddenException('Tài khoản nhân viên chi nhánh chưa được gán chi nhánh hợp lệ');
+      }
       if (queryBranchId && queryBranchId !== caller.branchId) {
         throw new ForbiddenException('Bạn không có quyền truy cập dữ liệu bảng điều khiển của chi nhánh khác');
       }

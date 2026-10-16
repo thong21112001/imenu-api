@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsIn, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class RevenueQueryDto {
@@ -28,9 +28,12 @@ export class RevenueQueryDto {
   @IsIn(['day', 'week', 'month'])
   groupBy?: 'day' | 'week' | 'month';
 
-  @ApiPropertyOptional({ example: 10, default: 10, description: 'Số lượng món top bán chạy' })
+  @ApiPropertyOptional({ example: 10, default: 10, description: 'Số lượng món top bán chạy (1 - 100)' })
   @IsOptional()
   @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
   limit?: number;
 
   @ApiPropertyOptional({ example: 'csv', enum: ['csv', 'json'], default: 'csv', description: 'Định dạng xuất dữ liệu' })

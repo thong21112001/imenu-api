@@ -69,8 +69,9 @@ function parseDateRangeVietnam(startDateStr?: string, endDateStr?: string) {
 function sanitizeCsvCell(val: any): string {
   if (val === null || val === undefined) return '""';
   const str = String(val).replace(/\r\n/g, ' ').replace(/\n/g, ' ');
+  const trimmed = str.trimStart();
   // Nếu ký tự đầu là =, +, -, @, \t, \r -> prefix nháy đơn '
-  if (/^[=+\-@\t\r]/.test(str)) {
+  if (/^[=+\-@\t\r]/.test(trimmed)) {
     return `"'${str.replace(/"/g, '""')}"`;
   }
   return `"${str.replace(/"/g, '""')}"`;
@@ -97,6 +98,9 @@ export class ReportsService {
       caller.role?.slug === 'super_admin';
 
     if (!isMainOrAdmin) {
+      if (!caller?.branchId) {
+        throw new ForbiddenException('Tài khoản nhân viên chi nhánh chưa được gán chi nhánh hợp lệ');
+      }
       if (queryBranchId && queryBranchId !== caller.branchId) {
         throw new ForbiddenException('Bạn không có quyền xem báo cáo của chi nhánh khác');
       }
@@ -369,7 +373,8 @@ export class ReportsService {
 
     const rawTop = await this.orderModel.aggregate(pipeline);
     const totalTopRevenue = rawTop.reduce((sum, it) => sum + (it.revenue || 0), 0);
-    const limitCount = Number(query.limit) || 10;
+    const requestedLimit = Number(query.limit) || 10;
+    const limitCount = Math.max(1, Math.min(requestedLimit, 100));
 
     const topItems = rawTop.slice(0, limitCount).map((it, idx) => ({
       rank: idx + 1,
@@ -402,6 +407,7 @@ export class ReportsService {
       startDate: startVnStr,
       endDate: endVnStr,
       effectiveBranchId: effectiveBranchId || 'all',
+      totalItemRevenue: totalTopRevenue,
       totalRevenue: totalTopRevenue,
       items: topItems,
       categoryBreakdown,
