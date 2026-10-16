@@ -50,32 +50,42 @@ tests/
 │   ├── e2e-browser-runner.test.ts     # Sub-phase 6.9: Wrapper gọi kịch bản Browser E2E Puppeteer (9 checkpoints)
 │   └── run-all-phase6.ts              # Sub-phase 6.9: Master Test Orchestrator (288 ca test)
 │
-└── phase-07-kitchen-kds/              # [✅ ĐÃ NGHIỆM THU] Phase 7: Màn Hình Bếp KDS & Điều Phối Món Ăn
-    ├── README.md                      # Hướng dẫn kiểm thử Phase 7 toàn diện (Tiếng Việt)
-    ├── README_en.md                   # Comprehensive Phase 7 test guide (English)
-    ├── kds-queue-query.test.ts        # P7-01: Hàng đợi KDS, FIFO, Filters, Search & Hardening AUD-7.5 (9 ca)
-    ├── kds-state-transitions.test.ts  # P7-02: Vòng đời món ăn, Nâng cấp đơn, Guards, Hardening AUD-7.1/7.2 (10 ca)
-    ├── kds-concurrency-idempotency.test.ts # P7-03: Double-click Idempotency, OCC Locks & Hardening AUD-7.3 (5 ca)
-    ├── kds-out-of-stock.test.ts       # P7-04: Báo hết món (86), Phân lập chi nhánh, Realtime & Hardening AUD-7.4 (6 ca)
-    ├── e2e-kds-runner.test.ts         # P7-E2E: Wrapper gọi kịch bản Browser E2E KDS Lifecycle (6 checkpoints)
-    └── run-all-phase7.ts              # P7-MASTER: Master Test Orchestrator Phase 7 (50 ca test)
+├── phase-07-kitchen-kds/              # [HOÀN THÀNH] Phase 7: Màn Hình Bếp KDS & Điều Phối Món Ăn
+│   ├── README.md                      # Hướng dẫn kiểm thử Phase 7 toàn diện (Tiếng Việt)
+│   ├── README_en.md                   # Comprehensive Phase 7 test guide (English)
+│   ├── kds-queue-query.test.ts        # P7-01: Hàng đợi KDS, FIFO, Filters, Search & Hardening AUD-7.5 (9 ca)
+│   ├── kds-state-transitions.test.ts  # P7-02: Vòng đời món ăn, Nâng cấp đơn, Guards, Hardening AUD-7.1/7.2 (10 ca)
+│   ├── kds-concurrency-idempotency.test.ts # P7-03: Double-click Idempotency, OCC Locks & Hardening AUD-7.3 (5 ca)
+│   ├── kds-out-of-stock.test.ts       # P7-04: Báo hết món (86), Phân lập chi nhánh, Realtime & Hardening AUD-7.4 (6 ca)
+│   ├── e2e-kds-runner.test.ts         # P7-E2E: Wrapper gọi kịch bản Browser E2E KDS Lifecycle (6 checkpoints)
+│   └── run-all-phase7.ts              # P7-MASTER: Master Test Orchestrator Phase 7 (50 ca test)
+│
+└── phase-08-payment-bill/             # [✅ ĐÃ NGHIỆM THU] Phase 8: Thanh Toán, Hóa Đơn & Đối Soát Tài Chính
+    ├── README.md                      # Hướng dẫn kiểm thử Phase 8 toàn diện (Tiếng Việt)
+    ├── README_en.md                   # Comprehensive Phase 8 test guide (English)
+    ├── payment-request-vietqr.test.ts # P8-01: Yêu cầu thanh toán & Server-side VietQR (23 ca)
+    ├── bills-complete-payment.test.ts # P8-02: Chốt thanh toán cố đẳng, Hóa đơn & Bàn ăn (18 ca)
+    ├── financial-audit-log.test.ts    # P8-03: Nhật ký kiểm toán tài chính & Bảo mật dữ liệu (9 ca)
+    ├── escpos-receipt-encoder.test.ts # P8-04: Bộ mã hóa hóa đơn nhiệt ESC/POS 80mm/58mm (16 ca)
+    ├── e2e-payment-bill-runner.test.ts# P8-E2E: Kịch bản Browser E2E Payment & Bill (5 ca)
+    └── run-all-phase8.ts              # P8-MASTER: Master Test Orchestrator Phase 8 (98 ca test)
 ```
 
 ---
 
-## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 7 (Phase 7 Sub-phase Mapping)
+## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 8 (Phase 8 Sub-phase Mapping)
 
-Toàn bộ các phân hệ của Phase 7 được tích hợp tập trung vào thư mục `tests/phase-07-kitchen-kds/`:
+Toàn bộ các phân hệ của Phase 8 được tích hợp tập trung vào thư mục `tests/phase-08-payment-bill/`:
 
 | Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
-| **7.1 KDS Queue Engine** | `kds-queue-query.test.ts` | Hàng đợi FIFO (`createdAt ASC`), bộ lọc `zoneId`, `tableId`, `status`, loại trừ `Paid`/`Cancelled`, tổng món (`items-summary`), hardening AUD-7.5 | 9 | **PASS** |
-| **7.2 State Machine & Upgrade**| `kds-state-transitions.test.ts`| `start-cooking`, `mark-ready`, `mark-served`, nâng cấp đơn tự động (`Preparing`, `Ready`, `Served`), cập nhật hàng loạt, hardening AUD-7.1/7.2 | 10 | **PASS** |
-| **7.3 Concurrency & Idempotency**| `kds-concurrency-idempotency.test.ts`| Chống click đúp (200 OK idempotent), xử lý tranh chấp OCC đa luồng, Zero Lost Update, hardening AUD-7.3 (Race Cashier Pay vs Cook Update) | 5 | **PASS** |
-| **7.4 Out-of-Stock (86) & Realtime**| `kds-out-of-stock.test.ts` | Báo hết món (86) phân lập chi nhánh, Blueprint Edge Case #2, đồng bộ WebSocket 3 chiều, hardening AUD-7.4 (bảo mật room khách) | 6 | **PASS** |
-| **7.5 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Hợp đồng API Frontend SDK cho toàn bộ các endpoint KDS (`apiClient.kitchen.*`) | 14 | **PASS** |
-| **7.6 Cross-App Browser E2E** | `e2e-kds-runner.test.ts`<br>*(kèm `scripts/e2e-kds-lifecycle.mjs`)* | Kịch bản kiểm thử tự động hóa E2E trình duyệt thật kiểm chứng toàn bộ vòng đời điều phối món ăn KDS | 6 | **PASS** |
-| **7.6 Master Orchestrator** | `run-all-phase7.ts` | Điều phối Master Test Runner Phase 7: Dev mode (50 ca) & Acceptance mode (Closure Gate) | N/A | **READY** |
+| **8.1 Payment Request & VietQR** | `payment-request-vietqr.test.ts` | Yêu cầu thanh toán QR, VietQR server-side độc lập, hoàn tác yêu cầu, đồng bộ trạng thái bàn/đơn, hardening AUD-8.1 (chặn chéo bàn 404), hardening AUD-8.4 (phớt lờ query amount), hardening AUD-8.2 (đưa bàn về `Occupied` khi thêm món) | 23 | **PASS** |
+| **8.2 Bills Engine & Idempotency**| `bills-complete-payment.test.ts`| Chốt thanh toán cố đẳng (Natural Idempotency), tính tiền thừa tiền mặt, giải phóng bàn ăn nguyên tử, sinh `Bill` duy nhất (`upsert` + `E11000`), hardening AUD-8.3 (chặn bếp 403, custom role `perm-pos-pay` thành công), concurrency 5 request song song chỉ sinh 1 Bill | 18 | **PASS** |
+| **8.3 Financial Audit Logs** | `financial-audit-log.test.ts` | Lưu vết kiểm toán bất biến `activity_logs`, bộ lọc tìm kiếm lịch sử thanh toán/in bill, bảo vệ quyền riêng tư tài chính, hardening AUD-8.3 (chặn phục vụ 403), hardening AUD-8.5 (đóng gói E11000 thành 409 Conflict an toàn) | 9 | **PASS** |
+| **8.4 ESC/POS Thermal Encoder** | `escpos-receipt-encoder.test.ts` | Biên dịch hóa đơn ESC/POS 80mm & 58mm, khử dấu tiếng Việt chuẩn ASCII, ngắt dòng 48/32 ký tự, mã QR native `GS ( k`, mở két tiền `ESC p`, cắt giấy partial `GS V B 0`, xuất buffer / base64 | 16 | **PASS** |
+| **8.5 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Hợp đồng API Frontend SDK đầy đủ cho toàn bộ các endpoint Phase 8: `orders.completePayment`, `orders.getReceipt`, `orders.getVietQr`, `customerOrders.requestPayment`, `bills.*`, `activityLogs.*`, `buildReceiptData`, `EscPosEncoder`, `thermalPrinterService` | 27 | **PASS** |
+| **8.6 Cross-App Browser E2E** | `e2e-payment-bill-runner.test.ts`<br>*(kèm `scripts/e2e-payment-bill-lifecycle.mjs`)* | Kịch bản kiểm thử tự động hóa E2E trình duyệt thật kiểm chứng toàn bộ vòng đời thanh toán: Khách QR yêu cầu thanh toán $\rightarrow$ VietQR hiển thị $\rightarrow$ POS thu tiền mặt & tính tiền thối $\rightarrow$ Bill được tạo & bàn giải phóng $\rightarrow$ In hóa đơn nhiệt 80mm | 5 | **PASS** |
+| **8.6 Master Orchestrator** | `run-all-phase8.ts` | Điều phối Master Test Runner Phase 8: Chế độ Dev (98 ca) & Chế độ Acceptance (Closure Gate) | N/A | **READY** |
 
 ---
 
@@ -83,12 +93,27 @@ Toàn bộ các phân hệ của Phase 7 được tích hợp tập trung vào t
 
 Tất cả các lệnh kiểm thử được đăng ký tại `package.json`:
 
+### 🔹 Kiểm Thử Phase 8 (Payment & Bill):
+```powershell
+# Chạy toàn bộ 6 suite Phase 8 (98 ca test):
+npm run test:phase8:all
+
+# Chạy ở chế độ Acceptance khắt khe (Closure Gate):
+npm run test:phase8:acceptance
+
+# Chạy riêng lẻ từng suite Phase 8:
+npm run test:phase8:request    # Suite 1: Yêu cầu thanh toán & VietQR (23 ca)
+npm run test:phase8:bills      # Suite 2: Chốt thanh toán, Hóa đơn & Bàn (18 ca)
+npm run test:phase8:audit      # Suite 3: Nhật ký kiểm toán tài chính (9 ca)
+npm run test:phase8:escpos     # Suite 4: Bộ mã hóa hóa đơn ESC/POS (16 ca)
+npm run test:phase8:e2e        # Suite E2E: Kịch bản Browser E2E Payment & Bill (5 ca)
+npm run test:phase8            # Chạy cả 4 suite Backend liên tiếp (66 ca)
+```
+
 ### 🔹 Kiểm Thử Phase 7 (Kitchen / KDS):
 ```powershell
 # Chạy toàn bộ 6 suite Phase 7 (50 ca test):
 npm run test:phase7:all
-
-# Chạy ở chế độ Acceptance khắt khe:
 npm run test:phase7:acceptance
 
 # Chạy riêng lẻ từng suite Phase 7:
@@ -137,18 +162,21 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Đối Chiếu 415 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
+## 4. 📊 Đối Chiếu 513 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  TỔNG HỢP 415 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 7)                       │
+│  TỔNG HỢP 513 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 8)                       │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Phân Hệ Kiểm Thử               │ Số Tệp / Kịch Bản            │ Số Ca Test Thực Tế     │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
+│ Phase 8 Payment & Bill Suites  │ 6 tệp kiểm thử (BE + SDK+E2E)│ 98                     │
 │ Phase 7 Kitchen / KDS Suites   │ 6 tệp kiểm thử (BE + SDK+E2E)│ 50                     │
 │ Phase 6 Orders & POS Suites    │ 9 tệp kiểm thử (BE + SDK+E2E)│ 288                    │
 │ Phases 2–5 Regression Suites   │ 5 tệp kiểm thử               │ 77                     │
-├────────────────────────────────┴──────────────────────────────┼────────────────────────┤
-│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)        │ 415 CA TEST            │
-└───────────────────────────────────────────────────────────────┴────────────────────────┘
+├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
+│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)        │ 513 CA TEST            │
+│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 491 / 491 PASS (100%)  │
+│  - Số ca test E2E trình duyệt chờ bật full dev server:         │ 22 Checkpoints         │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
