@@ -19,4 +19,6 @@ export enum ActivityAction {
   CONFIRM = 'confirm',
   PRINT = 'print',
   EXPORT = 'export',
+  PAY = 'pay',
+  CANCEL = 'cancel',
 }

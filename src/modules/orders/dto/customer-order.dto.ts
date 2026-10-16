@@ -6,9 +6,11 @@ import {
   ArrayNotEmpty,
   ValidateNested,
   IsOptional,
+  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateOrderItemDto } from './create-order.dto';
+import { PaymentMethod } from '../entities/order.entity';
 
 export class CustomerCreateOrderDto {
   @ApiProperty({ description: 'Slug định danh nhà hàng (vd: bep-nha)', example: 'bep-nha' })
@@ -89,3 +91,34 @@ export class CustomerGetActiveOrderDto {
   @IsString()
   qrToken: string;
 }
+
+export class RequestPaymentDto {
+  @ApiPropertyOptional({
+    description: 'Phương thức thanh toán mong muốn',
+    enum: ['VietQR', 'Cash', 'Card', 'Transfer'],
+    default: 'VietQR',
+  })
+  @IsOptional()
+  @IsEnum(['VietQR', 'Cash', 'Card', 'Transfer'], {
+    message: 'paymentMethod phải là VietQR, Cash, Card hoặc Transfer',
+  })
+  paymentMethod?: PaymentMethod;
+
+  @ApiPropertyOptional({ description: 'Slug định danh nhà hàng (nếu khách quét QR)' })
+  @IsOptional()
+  @IsString()
+  restaurantSlug?: string;
+
+  @ApiPropertyOptional({ description: 'Mã bàn ăn (nếu khách quét QR)' })
+  @IsOptional()
+  @IsString()
+  tableCode?: string;
+
+  @ApiPropertyOptional({ description: 'Mã xác thực token của bàn từ mã QR' })
+  @IsOptional()
+  @IsString()
+  qrToken?: string;
+}
+
+export class CustomerRequestPaymentDto extends RequestPaymentDto {}
+

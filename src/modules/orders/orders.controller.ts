@@ -11,6 +11,7 @@ import {
   HttpStatus,
   Headers,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
@@ -37,6 +38,7 @@ import {
   CustomerCreateOrderDto,
   CustomerAddItemsDto,
   CustomerGetActiveOrderDto,
+  RequestPaymentDto,
 } from './dto/customer-order.dto';
 
 @ApiTags('Orders (Quản Lý Đơn Hàng & POS)')
@@ -129,6 +131,55 @@ export class OrdersController {
       message: 'Lấy thông tin đơn hàng thành công',
       data: order,
     });
+  }
+
+  @ApiOperation({ summary: 'Khách hàng yêu cầu thanh toán qua mã QR (Public)' })
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post(['customer/:id/request-payment', 'public/customer/:id/request-payment'])
+  async customerRequestPayment(
+    @Param('id') id: string,
+    @Body() dto: RequestPaymentDto,
+  ) {
+    if (!dto?.restaurantSlug || !dto?.tableCode || !dto?.qrToken) {
+      throw new BadRequestException('Thiếu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken)');
+    }
+    const order = await this.ordersService.requestPayment(id, dto);
+    return new OkResponse({ message: 'Yêu cầu thanh toán thành công', data: order });
+  }
+
+  @ApiOperation({ summary: 'Lấy thông tin VietQR động cho đơn hàng (Khách QR Public)' })
+  @Public()
+  @Get(['customer/:id/vietqr', 'public/customer/:id/vietqr'])
+  async getCustomerVietQR(
+    @Param('id') id: string,
+    @Query('restaurantSlug') restaurantSlug?: string,
+    @Query('tableCode') tableCode?: string,
+    @Query('qrToken') qrToken?: string,
+  ) {
+    if (!restaurantSlug || !tableCode || !qrToken) {
+      throw new BadRequestException('Thiếu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken)');
+    }
+    const qrAuth = { restaurantSlug, tableCode, qrToken };
+    const vietQr = await this.ordersService.getVietQRForOrder(id, undefined, undefined, qrAuth);
+    return new OkResponse({ message: 'Lấy thông tin VietQR thành công', data: vietQr });
+  }
+
+  @ApiOperation({ summary: 'Lấy dữ liệu in hóa đơn 80mm ESC/POS (Khách QR Public)' })
+  @Public()
+  @Get(['customer/:id/receipt', 'public/customer/:id/receipt'])
+  async getCustomerReceipt(
+    @Param('id') id: string,
+    @Query('restaurantSlug') restaurantSlug?: string,
+    @Query('tableCode') tableCode?: string,
+    @Query('qrToken') qrToken?: string,
+  ) {
+    if (!restaurantSlug || !tableCode || !qrToken) {
+      throw new BadRequestException('Thiếu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken)');
+    }
+    const qrAuth = { restaurantSlug, tableCode, qrToken };
+    const receipt = await this.ordersService.getReceiptForOrder(id, undefined, undefined, qrAuth);
+    return new OkResponse({ message: 'Lấy dữ liệu hóa đơn thành công', data: receipt });
   }
 
   // =========================================================================
@@ -328,16 +379,41 @@ export class OrdersController {
     return new OkResponse({ message: 'Hủy món thành công', data: order });
   }
 
-  @ApiOperation({ summary: 'Yêu cầu thanh toán (Served -> PaymentRequested)' })
-  @RequirePermissions(ResourceType.POS, ActionType.CREATE)
-  @HttpCode(HttpStatus.OK)
-  @Post(':id/request-payment')
-  async requestPayment(
+  @ApiOperation({ summary: 'Lấy thông tin VietQR động cho đơn hàng (Staff POS)' })
+  @RequirePermissions(ResourceType.POS, ActionType.VIEW, 'perm-pos-view', ['perm-bill-view', 'perm-pos-pay'])
+  @Get(':id/vietqr')
+  async getStaffVietQR(
     @Param('id') id: string,
     @CurrentRestaurant() restaurantId: string,
     @CurrentUser() user: JwtUser,
   ) {
-    const order = await this.ordersService.requestPayment(id, restaurantId, user);
+    const vietQr = await this.ordersService.getVietQRForOrder(id, restaurantId, user);
+    return new OkResponse({ message: 'Lấy thông tin VietQR thành công', data: vietQr });
+  }
+
+  @ApiOperation({ summary: 'Lấy dữ liệu in hóa đơn 80mm ESC/POS (Staff POS)' })
+  @RequirePermissions(ResourceType.POS, ActionType.VIEW, 'perm-pos-view', ['perm-bill-view', 'perm-pos-pay'])
+  @Get(':id/receipt')
+  async getStaffReceipt(
+    @Param('id') id: string,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const receipt = await this.ordersService.getReceiptForOrder(id, restaurantId, user);
+    return new OkResponse({ message: 'Lấy dữ liệu hóa đơn thành công', data: receipt });
+  }
+
+  @ApiOperation({ summary: 'Yêu cầu thanh toán đơn hàng (Staff POS)' })
+  @RequirePermissions(ResourceType.POS, ActionType.CREATE, 'perm-pos-order', ['perm-pos-pay'])
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/request-payment')
+  async requestPayment(
+    @Param('id') id: string,
+    @Body() dto: RequestPaymentDto | undefined,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const order = await this.ordersService.requestPayment(id, dto, restaurantId, user);
     return new OkResponse({ message: 'Yêu cầu thanh toán thành công', data: order });
   }
 
@@ -367,8 +443,8 @@ export class OrdersController {
     return new OkResponse({ message: 'Cập nhật trạng thái đơn thành công', data: order });
   }
 
-  @ApiOperation({ summary: 'Thanh toán đơn hàng & giải phóng bàn ăn' })
-  @RequirePermissions(ResourceType.POS, ActionType.CONFIRM)
+  @ApiOperation({ summary: 'Thanh toán đơn hàng & giải phóng bàn ăn (POS Cashier)' })
+  @RequirePermissions(ResourceType.POS, ActionType.CONFIRM, 'perm-pos-pay')
   @HttpCode(HttpStatus.OK)
   @Post(':id/pay')
   async pay(
@@ -384,5 +460,30 @@ export class OrdersController {
       res.setHeader('X-Idempotent-Replay', 'true');
     }
     return new OkResponse({ message: 'Thanh toán đơn hàng thành công', data: result });
+  }
+
+  @ApiOperation({ summary: 'Hoàn tất thanh toán với Idempotency tự nhiên (POS Cashier)' })
+  @RequirePermissions(ResourceType.POS, ActionType.CONFIRM, 'perm-pos-pay')
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/complete-payment')
+  async completePayment(
+    @Param('id') id: string,
+    @Body() dto: PayOrderDto,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() user: JwtUser,
+    @Headers('idempotency-key') idempotencyKey?: string,
+    @Res({ passthrough: true }) res?: any,
+  ) {
+    const result: any = await this.ordersService.completePayment(
+      id,
+      dto,
+      restaurantId,
+      user,
+      idempotencyKey,
+    );
+    if ((result?.isReplay || result?.isIdempotentReplay) && res && typeof res.setHeader === 'function') {
+      res.setHeader('X-Idempotent-Replay', 'true');
+    }
+    return new OkResponse({ message: 'Hoàn tất thanh toán thành công', data: result });
   }
 }

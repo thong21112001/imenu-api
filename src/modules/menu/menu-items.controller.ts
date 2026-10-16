@@ -96,7 +96,7 @@ export class MenuItemsController {
     @Query('restaurantId') queryRestId?: string,
   ) {
     const targetRestId = isSuperAdminUser(user) && queryRestId ? queryRestId : currentRestId;
-    const updated = await this.menuItemsService.update(id, dto, targetRestId);
+    const updated = await this.menuItemsService.update(id, dto, targetRestId, user);
     return new OkResponse({ message: 'Cập nhật món ăn thành công', data: updated });
   }
 

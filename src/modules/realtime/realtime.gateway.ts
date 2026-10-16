@@ -216,6 +216,15 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (!payload?.restaurantId) return;
     const restRoom = `restaurant_${payload.restaurantId}`;
     this.server.to(restRoom).emit('table:status_updated', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('table:status_updated', payload);
+    }
+    const tableId = payload.table?._id || payload.table?.id;
+    if (tableId) {
+      this.server.to(`table_${tableId}`).emit('table:status_updated', payload);
+    }
     this.logger.log(`Broadcast [table:status_updated] to ${restRoom} (Table: ${payload.table?.name} -> ${payload.table?.status})`);
   }
 
@@ -232,6 +241,11 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (!payload?.restaurantId) return;
     const restRoom = `restaurant_${payload.restaurantId}`;
     this.server.to(restRoom).emit('order:payment_completed', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('order:payment_completed', payload);
+    }
 
     if (payload.tableId) {
       this.server.to(`table_${payload.tableId}`).emit('order:payment_completed', payload);

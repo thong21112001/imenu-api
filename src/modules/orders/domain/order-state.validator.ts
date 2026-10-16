@@ -9,10 +9,10 @@ import { OrderItemStatus } from '../entities/order-item.schema';
 const ALLOWED_ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WaitingConfirmation: ['Preparing', 'Cancelled'],
   Confirmed: ['Preparing', 'Cancelled'],
-  Preparing: ['Ready', 'Served', 'Cancelled'],
-  Ready: ['Served', 'Preparing', 'Cancelled'],
+  Preparing: ['Ready', 'Served', 'PaymentRequested', 'Cancelled'],
+  Ready: ['Served', 'Preparing', 'PaymentRequested', 'Cancelled'],
   Served: ['Preparing', 'PaymentRequested', 'Cancelled'],
-  PaymentRequested: ['Paid', 'Served', 'Cancelled'],
+  PaymentRequested: ['Paid', 'Served', 'Ready', 'Preparing', 'Cancelled'],
   Paid: [], // Terminal State
   Cancelled: [], // Terminal State
 };
