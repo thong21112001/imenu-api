@@ -314,7 +314,14 @@ export class ReportsService {
           itemId: { $first: '$items.menuItemId' },
           name: { $first: '$items.name' },
           quantity: { $sum: '$items.quantity' },
-          revenue: { $sum: '$items.itemTotal' }, // Đã bao gồm phụ thu topping
+          revenue: {
+            $sum: {
+              $ifNull: [
+                '$items.itemTotal',
+                { $multiply: [{ $ifNull: ['$items.price', 0] }, { $ifNull: ['$items.quantity', 1] }] },
+              ],
+            },
+          },
         },
       },
       {
@@ -352,7 +359,9 @@ export class ReportsService {
           name: 1,
           quantity: 1,
           revenue: 1,
-          categoryName: { $ifNull: ['$catDoc.name', 'Món chính'] },
+          categoryName: {
+            $ifNull: ['$catDoc.name', { $ifNull: ['$itemDoc.categoryName', 'Món chính'] }],
+          },
         },
       },
       { $sort: { revenue: -1, quantity: -1 } },

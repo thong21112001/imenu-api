@@ -148,7 +148,8 @@ export class DashboardService {
     const displayHours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
     const hourlyMap = new Map<number, { revenue: number; ordersCount: number }>();
     paidOrders.forEach((o) => {
-      const vnTime = new Date(new Date(o.createdAt).getTime() + 7 * 60 * 60 * 1000);
+      const orderTime = (o as any).createdAt ? new Date((o as any).createdAt) : new Date();
+      const vnTime = new Date(orderTime.getTime() + 7 * 60 * 60 * 1000);
       const h = vnTime.getUTCHours();
       const cur = hourlyMap.get(h) || { revenue: 0, ordersCount: 0 };
       cur.revenue += o.totalAmount || 0;
