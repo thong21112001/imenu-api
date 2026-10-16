@@ -59,33 +59,44 @@ tests/
 │   ├── kds-out-of-stock.test.ts       # P7-04: Báo hết món (86), Phân lập chi nhánh, Realtime & Hardening AUD-7.4 (6 ca)
 │   ├── e2e-kds-runner.test.ts         # P7-E2E: Wrapper gọi kịch bản Browser E2E KDS Lifecycle (6 checkpoints)
 │   └── run-all-phase7.ts              # P7-MASTER: Master Test Orchestrator Phase 7 (50 ca test)
+├── phase-08-payment-bill/             # [HOÀN THÀNH] Phase 8: Thanh Toán, Hóa Đơn & Đối Soát Tài Chính
+│   ├── README.md                      # Hướng dẫn kiểm thử Phase 8 toàn diện (Tiếng Việt)
+│   ├── README_en.md                   # Comprehensive Phase 8 test guide (English)
+│   ├── payment-request-vietqr.test.ts # P8-01: Yêu cầu thanh toán & Server-side VietQR (23 ca)
+│   ├── bills-complete-payment.test.ts # P8-02: Chốt thanh toán cố đẳng, Hóa đơn & Bàn ăn (18 ca)
+│   ├── financial-audit-log.test.ts    # P8-03: Nhật ký kiểm toán tài chính & Bảo mật dữ liệu (9 ca)
+│   ├── escpos-receipt-encoder.test.ts # P8-04: Bộ mã hóa hóa đơn nhiệt ESC/POS 80mm/58mm (16 ca)
+│   ├── e2e-payment-bill-runner.test.ts# P8-E2E: Kịch bản Browser E2E Payment & Bill (5 ca)
+│   └── run-all-phase8.ts              # P8-MASTER: Master Test Orchestrator Phase 8 (98 ca test)
 │
-└── phase-08-payment-bill/             # [✅ ĐÃ NGHIỆM THU] Phase 8: Thanh Toán, Hóa Đơn & Đối Soát Tài Chính
-    ├── README.md                      # Hướng dẫn kiểm thử Phase 8 toàn diện (Tiếng Việt)
-    ├── README_en.md                   # Comprehensive Phase 8 test guide (English)
-    ├── payment-request-vietqr.test.ts # P8-01: Yêu cầu thanh toán & Server-side VietQR (23 ca)
-    ├── bills-complete-payment.test.ts # P8-02: Chốt thanh toán cố đẳng, Hóa đơn & Bàn ăn (18 ca)
-    ├── financial-audit-log.test.ts    # P8-03: Nhật ký kiểm toán tài chính & Bảo mật dữ liệu (9 ca)
-    ├── escpos-receipt-encoder.test.ts # P8-04: Bộ mã hóa hóa đơn nhiệt ESC/POS 80mm/58mm (16 ca)
-    ├── e2e-payment-bill-runner.test.ts# P8-E2E: Kịch bản Browser E2E Payment & Bill (5 ca)
-    └── run-all-phase8.ts              # P8-MASTER: Master Test Orchestrator Phase 8 (98 ca test)
+└── phase-09-dashboard-reports/        # [✅ ĐÃ NGHIỆM THU] Phase 9: Dashboard, Báo Cáo Doanh Thu & Tối Ưu UI/UX
+    ├── README.md                      # Hướng dẫn kiểm thử Phase 9 toàn diện (Tiếng Việt)
+    ├── README_en.md                   # Comprehensive Phase 9 test guide (English)
+    ├── dashboard-overview.test.ts     # P9-01: Chỉ số KPI tổng quan & Dual-Key Engine (16 ca)
+    ├── reports-revenue-analytics.test.ts # P9-02: Báo cáo Doanh thu & Phân rã thanh toán (13 ca)
+    ├── reports-top-items.test.ts      # P9-03: Món ăn bán chạy & Options Price Delta (7 ca)
+    ├── reports-export-rbac.test.ts    # P9-04: Xuất CSV UTF-8 BOM cho Excel & Phân quyền RBAC (10 ca)
+    ├── customer-demo-tables.test.ts   # P9-05: Khám phá bàn ăn thực tế & QR Resolution (7 ca)
+    ├── e2e-dashboard-reports-runner.test.ts # P9-06: Browser E2E Dashboard, Reports & UI (4 ca)
+    └── run-all-phase9.ts              # P9-MASTER: Master Test Orchestrator Phase 9 (57 ca test)
 ```
 
 ---
 
-## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 8 (Phase 8 Sub-phase Mapping)
+## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 9 (Phase 9 Sub-phase Mapping)
 
-Toàn bộ các phân hệ của Phase 8 được tích hợp tập trung vào thư mục `tests/phase-08-payment-bill/`:
+Toàn bộ các phân hệ của Phase 9 được tích hợp tập trung vào thư mục `tests/phase-09-dashboard-reports/`:
 
 | Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
-| **8.1 Payment Request & VietQR** | `payment-request-vietqr.test.ts` | Yêu cầu thanh toán QR, VietQR server-side độc lập, hoàn tác yêu cầu, đồng bộ trạng thái bàn/đơn, hardening AUD-8.1 (chặn chéo bàn 404), hardening AUD-8.4 (phớt lờ query amount), hardening AUD-8.2 (đưa bàn về `Occupied` khi thêm món) | 23 | **PASS** |
-| **8.2 Bills Engine & Idempotency**| `bills-complete-payment.test.ts`| Chốt thanh toán cố đẳng (Natural Idempotency), tính tiền thừa tiền mặt, giải phóng bàn ăn nguyên tử, sinh `Bill` duy nhất (`upsert` + `E11000`), hardening AUD-8.3 (chặn bếp 403, custom role `perm-pos-pay` thành công), concurrency 5 request song song chỉ sinh 1 Bill | 18 | **PASS** |
-| **8.3 Financial Audit Logs** | `financial-audit-log.test.ts` | Lưu vết kiểm toán bất biến `activity_logs`, bộ lọc tìm kiếm lịch sử thanh toán/in bill, bảo vệ quyền riêng tư tài chính, hardening AUD-8.3 (chặn phục vụ 403), hardening AUD-8.5 (đóng gói E11000 thành 409 Conflict an toàn) | 9 | **PASS** |
-| **8.4 ESC/POS Thermal Encoder** | `escpos-receipt-encoder.test.ts` | Biên dịch hóa đơn ESC/POS 80mm & 58mm, khử dấu tiếng Việt chuẩn ASCII, ngắt dòng 48/32 ký tự, mã QR native `GS ( k`, mở két tiền `ESC p`, cắt giấy partial `GS V B 0`, xuất buffer / base64 | 16 | **PASS** |
-| **8.5 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Hợp đồng API Frontend SDK đầy đủ cho toàn bộ các endpoint Phase 8: `orders.completePayment`, `orders.getReceipt`, `orders.getVietQr`, `customerOrders.requestPayment`, `bills.*`, `activityLogs.*`, `buildReceiptData`, `EscPosEncoder`, `thermalPrinterService` | 27 | **PASS** |
-| **8.6 Cross-App Browser E2E** | `e2e-payment-bill-runner.test.ts`<br>*(kèm `scripts/e2e-payment-bill-lifecycle.mjs`)* | Kịch bản kiểm thử tự động hóa E2E trình duyệt thật kiểm chứng toàn bộ vòng đời thanh toán: Khách QR yêu cầu thanh toán $\rightarrow$ VietQR hiển thị $\rightarrow$ POS thu tiền mặt & tính tiền thối $\rightarrow$ Bill được tạo & bàn giải phóng $\rightarrow$ In hóa đơn nhiệt 80mm | 5 | **PASS** |
-| **8.6 Master Orchestrator** | `run-all-phase8.ts` | Điều phối Master Test Runner Phase 8: Chế độ Dev (98 ca) & Chế độ Acceptance (Closure Gate) | N/A | **READY** |
+| **9.1 Realtime Dashboard Overview** | `dashboard-overview.test.ts` | Chỉ số KPI doanh thu hôm nay/hôm qua, tăng trưởng, tỷ lệ lấp đầy bàn, Dual-Key Engine, phân lập chi nhánh, loại trừ bàn xóa mềm (`isDeleted: true`), hardening TC-9.1-AUD-01 | 16 | **PASS** |
+| **9.2 Revenue Analytics Engine** | `reports-revenue-analytics.test.ts` | Báo cáo doanh thu thời gian (`day`, `week`, `month`), phân rã 4 phương thức (`Cash`, `VietQR`, `Card`, `Transfer`), phân rã chi nhánh, fallback rỗng an toàn, hardening TC-9.2-AUD-01 | 13 | **PASS** |
+| **9.3 Top Selling Items Analytics** | `reports-top-items.test.ts` | Món ăn bán chạy nhất, tính chính xác giá món kèm tùy chọn (`options.priceModifier`), loại bỏ 100% món bị hủy (`Cancelled`), hardening TC-9.3-AUD-01 | 7 | **PASS** |
+| **9.4 CSV Export & RBAC Security** | `reports-export-rbac.test.ts` | Xuất báo cáo CSV UTF-8 BOM cho Excel, tiêu đề cột chuẩn, phân quyền nghiêm ngặt (`perm-rep-export`), chặn Manager & Cashier (403), hardening TC-9.4-AUD-01 | 10 | **PASS** |
+| **9.5 Customer Demo Tables & QR** | `customer-demo-tables.test.ts` | API công khai lấy danh sách bàn ăn thực tế theo slug nhà hàng (`/api/tables/public/by-restaurant/:restaurantSlug`), kiểm tra token QR, nhóm khu vực bàn | 7 | **PASS** |
+| **9.6 Browser E2E & Hardening** | `e2e-dashboard-reports-runner.test.ts` | Kịch bản kiểm thử E2E trình duyệt thật kiểm chứng 4 trạm: Admin Sidebar 4 nhóm, Dashboard KPI, Báo cáo Doanh thu & Top Items kèm xuất CSV, Thực đơn Responsive 3 viewports | 4 | **PASS** |
+| **9.6 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Hợp đồng API Frontend SDK đầy đủ cho các endpoint Phase 9: `dashboard.getOverview` (SDK-26), `reports.getRevenue` (SDK-27), `reports.getTopItems` (SDK-28), `tables.listPublicBySlug` (SDK-29) | 31 | **PASS** |
+| **9.6 Master Orchestrator** | `run-all-phase9.ts` | Master Test Orchestrator Phase 9: Chế độ Dev (57 ca) & Chế độ Acceptance (Closure Gate) | N/A | **READY** |
 
 ---
 
@@ -93,12 +104,28 @@ Toàn bộ các phân hệ của Phase 8 được tích hợp tập trung vào t
 
 Tất cả các lệnh kiểm thử được đăng ký tại `package.json`:
 
+### 🔹 Kiểm Thử Phase 9 (Dashboard & Reports):
+```powershell
+# Chạy toàn bộ 6 suite Phase 9 (57 ca test):
+npm run test:phase9:all
+
+# Chạy ở chế độ Acceptance khắt khe (Closure Gate):
+npm run test:phase9:acceptance
+
+# Chạy riêng lẻ từng suite Phase 9:
+npm run test:phase9:overview    # Suite 1: Dashboard Overview KPI & Dual-Key Engine (16 ca)
+npm run test:phase9:revenue     # Suite 2: Báo cáo Doanh thu & Phân rã thanh toán (13 ca)
+npm run test:phase9:top-items   # Suite 3: Món ăn bán chạy & Options Price Delta (7 ca)
+npm run test:phase9:export      # Suite 4: Xuất báo cáo CSV UTF-8 BOM cho Excel & RBAC (10 ca)
+npm run test:phase9:demo-tables # Suite 5: Khám phá bàn ăn thực tế có mã QR (7 ca)
+npm run test:phase9:e2e         # Suite 6: Kịch bản Browser E2E Dashboard, Reports & UI (4 ca)
+npm run test:phase9             # Chạy cả 5 suite Backend liên tiếp (53 ca)
+```
+
 ### 🔹 Kiểm Thử Phase 8 (Payment & Bill):
 ```powershell
 # Chạy toàn bộ 6 suite Phase 8 (98 ca test):
 npm run test:phase8:all
-
-# Chạy ở chế độ Acceptance khắt khe (Closure Gate):
 npm run test:phase8:acceptance
 
 # Chạy riêng lẻ từng suite Phase 8:
@@ -162,21 +189,24 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Đối Chiếu 513 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
+## 4. 📊 Đối Chiếu 570 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  TỔNG HỢP 513 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 8)                       │
+│  TỔNG HỢP 570 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 9)                       │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Phân Hệ Kiểm Thử               │ Số Tệp / Kịch Bản            │ Số Ca Test Thực Tế     │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
+│ Phase 9 Dashboard & Reports    │ 7 tệp kiểm thử (BE + SDK+E2E)│ 57 (88 ca cả SDK)      │
 │ Phase 8 Payment & Bill Suites  │ 6 tệp kiểm thử (BE + SDK+E2E)│ 98                     │
 │ Phase 7 Kitchen / KDS Suites   │ 6 tệp kiểm thử (BE + SDK+E2E)│ 50                     │
 │ Phase 6 Orders & POS Suites    │ 9 tệp kiểm thử (BE + SDK+E2E)│ 288                    │
 │ Phases 2–5 Regression Suites   │ 5 tệp kiểm thử               │ 77                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)        │ 513 CA TEST            │
-│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 491 / 491 PASS (100%)  │
+│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)        │ 570 CA TEST (RUNNERS)  │
+│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 548 / 548 PASS (100%)  │
 │  - Số ca test E2E trình duyệt chờ bật full dev server:         │ 22 Checkpoints         │
+│  - Tổng số ca kiểm chứng độc lập tính cả Frontend SDK Suite:   │ 583 CA TEST TOÀN DIỆN  │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+

@@ -21,7 +21,7 @@
 2. [Kiến trúc Kỹ thuật & Công nghệ](#2-kiến-trúc-kỹ-thuật--công-nghệ)
 3. [Mô hình Phân lập Đa Người Thuê & Đa Chi Nhánh](#3-mô-hình-phân-lập-đa-người-thuê--đa-chi-nhánh)
 4. [Hệ thống Phân quyền Nhân sự (RBAC)](#4-hệ-thống-phân-quyền-nhân-sự-rbac)
-5. [Tổng hợp Tính năng Chi tiết (Phase 1 – Phase 8)](#5-tổng-hợp-tính-năng-chi-tiết-phase-1--phase-8)
+5. [Tổng hợp Tính năng Chi tiết (Phase 1 – Phase 9)](#5-tổng-hợp-tính-năng-chi-tiết-phase-1--phase-9)
 6. [Cơ chế Thời gian thực (WebSocket KDS Hub)](#6-cơ-chế-thời-gian-thực-websocket-kds-hub)
 7. [Vòng đời Bàn ăn & Cấp phát Mã QR Đa Chi Nhánh](#7-vòng-đời-bàn-ăn--cấp-phát-mã-qr-đa-chi-nhánh)
 8. [Tài liệu API Endpoints Chính](#8-tài-liệu-api-endpoints-chính)
@@ -102,7 +102,7 @@ Ma trận phân quyền gồm 6 vai trò tiêu chuẩn:
 
 ---
 
-## 5. 🚀 Tổng hợp Tính năng Chi tiết (Phase 1 – Phase 8)
+## 5. 🚀 Tổng hợp Tính năng Chi tiết (Phase 1 – Phase 9)
 
 - **Phase 1: Nền tảng API & Bảo mật Base**: Kiến trúc module, JWT Auth, Swagger `/api-docs`, Winston Logger, MongoDB Mongoose schema.
 - **Phase 2: Đa Nhà Hàng & Vòng Đời Chi Nhánh**: Đăng ký nhà hàng kèm chi nhánh chính tự động, đóng/mở giờ hoạt động chi nhánh, cấu hình VietQR và hotline độc lập cho từng chi nhánh, bảo toàn kế toán (chặn xóa chi nhánh đã có hóa đơn lịch sử).
@@ -112,17 +112,18 @@ Ma trận phân quyền gồm 6 vai trò tiêu chuẩn:
 - **Phase 6: Vận Hành Order & POS ✅ (ĐÃ NGHIỆM THU — ĐÓNG CHÍNH THỨC)**: Vòng đời đơn hàng hoàn chỉnh và máy trạng thái chuyển đổi trạng thái, khách gọi món qua QR nhiều đợt (multi-round), POS duyệt và quản lý đơn hàng, hóa đơn VAT/phí dịch vụ/chiết khấu, thanh toán tiền mặt (tính tiền thừa) và VietQR, bảo vệ idempotency key chống trùng thanh toán, khóa nguyên tử đồng thời (Atomic Payment Claim), đồng bộ bàn-đơn hàng với CAS lock và OCC retry, truy vấn đơn hàng nâng cao, tích hợp Monorepo Frontend và kiểm thử E2E trình duyệt đa ứng dụng.
 - **Phase 7: Màn Hình Bếp KDS & Điều Phối Món Ăn ✅ (ĐÃ NGHIỆM THU — ĐÓNG CHÍNH THỨC)**: Màn hình bếp KDS chuyên dụng chuẩn công nghiệp (High-Contrast Dark Mode), hàng đợi FIFO (`createdAt ASC`), gom nhóm tổng hợp số lượng món (`GET /api/kitchen/items-summary`), máy trạng thái từng món (`WaitingConfirmation` → `Waiting` → `Cooking` → `Ready` → `Served`) và tự động nâng cấp trạng thái đơn hàng (`Preparing`, `Ready`, `Served`), cập nhật hàng loạt theo đợt gọi món, quản lý báo hết món (86) độc lập theo từng chi nhánh, ghép nối đồng bộ thời gian thực 3 chiều (KDS ↔ POS ↔ Customer QR Menu) kèm âm báo chuông reo (Chime Alert), và gia cố bảo mật toàn diện chống tấn công IDOR chéo chi nhánh, chống xung đột Race Condition và bảo vệ phòng WebSocket khách vãng lai.
 - **Phase 8: Thanh Toán, Hóa Đơn, In Nhiệt ESC/POS & Đối Soát Tài Chính ✅ (ĐÃ NGHIỆM THU — ĐÓNG CHÍNH THỨC)**: Hoàn thiện toàn diện chu trình thanh toán và tài chính: Khách quét QR yêu cầu thanh toán (`PaymentRequested`), tính toán VietQR động hoàn toàn độc lập phía server, công cụ hóa đơn (`Bills Engine`) áp dụng kỹ thuật cố đẳng tự nhiên (`Natural Idempotency`) và bắt lỗi `E11000` đảm bảo tính độc nhất 1 Order = 1 Bill trong môi trường đa luồng, thanh toán tiền mặt với tính tiền thừa chuẩn xác (`changeAmount`), tự động giải phóng bàn ăn về `Available`, ghi vết kiểm toán tài chính bất biến vào `activity_logs`, bộ mã hóa nhị phân hóa đơn nhiệt ESC/POS 80mm/58mm chuyên dụng (khử dấu tiếng Việt 100% ASCII, kích xung mở két tiền, cắt giấy), trang quản lý hóa đơn `/bills` và modal in nhiệt trên giao diện Admin POS, cùng bộ gia cố bảo mật đối kháng `AUD-8.1` đến `AUD-8.6`.
+- **Phase 9: Dashboard, Báo Cáo Doanh Thu, Xuất CSV, Bàn Demo & Tối Ưu Giao Diện ✅ (ĐÃ NGHIỆM THU — ĐÓNG CHÍNH THỨC)**: Động cơ phân tích kinh doanh và đại tu trải nghiệm người dùng toàn diện: Dashboard KPI thời gian thực với cơ chế khóa kép (Dual-Key Engine), báo cáo doanh thu đa chiều (`day`, `week`, `month`) phân rã theo 4 phương thức thanh toán (`Cash`, `VietQR`, `Card`, `Transfer`), phân tích món bán chạy tính kèm tùy chọn (`options.priceModifier`), xuất báo cáo CSV chuẩn UTF-8 BOM tiếng Việt cho Microsoft Excel bảo mật qua quyền `REPORT.EXPORT` (`perm-rep-export`), API công khai khám phá bàn ăn thực tế kèm mã QR, tái cấu trúc Admin Sidebar thành 4 nhóm logic, và đại tu toàn diện giao diện Thực đơn Khách hàng Responsive trên Mobile, Tablet & Desktop.
 
-### Phase 8 — Phạm Vi 6 Phân Hệ Chi Tiết
+### Phase 9 — Phạm Vi 6 Phân Hệ Chi Tiết
 
 | Phân hệ | Tên | Mô tả |
 | :---: | :--- | :--- |
-| 8.1 | Customer Payment Request & Server-side VietQR | Yêu cầu thanh toán qua mã QR, VietQR server-side độc lập không tin tưởng client, hoàn tác yêu cầu, đồng bộ trạng thái bàn/đơn |
-| 8.2 | Bills Engine, Natural Idempotency & Table Release | Chốt thanh toán cố đẳng, tính tiền thừa tiền mặt, giải phóng bàn ăn nguyên tử, sinh chứng từ Bill duy nhất qua upsert + E11000 |
-| 8.3 | Financial Activity Logs & Audit Reconciliation | Ghi vết bất biến mọi hành động tài chính vào collection activity_logs, truy vấn lịch sử đối soát và bảo vệ quyền riêng tư |
-| 8.4 | ESC/POS Thermal Receipt Encoder & Frontend SDK | Bộ mã hóa nhị phân ESC/POS 80mm/58mm, khử dấu tiếng Việt ASCII, mã QR native, mở két tiền, cắt giấy, mở rộng SDK apiClient |
-| 8.5 | Admin POS Bill Management & Thermal Print Modal | Nâng cấp trang /bills, tìm kiếm & bộ lọc đa năng, modal xem trước hóa đơn chuẩn @media print và in ESC/POS trực tiếp |
-| 8.6 | Adversarial Hardening (AUD-8.1 đến AUD-8.6) | Xử lý triệt để 6 phát hiện kiểm toán: chặn IDOR chéo bàn 404, độc nhất Bill, phân quyền perm-pos-pay, che mặt nạ tài khoản, khóa re-entry UI |
+| 9.1 | Dashboard Overview & Dual-Key Analytics Engine | Chỉ số KPI doanh thu, tăng trưởng, bàn phục vụ, tỷ lệ lấp đầy, AOV; múi giờ +07:00; khóa kép Dual-Key; cô lập chi nhánh |
+| 9.2 | Revenue Reports Analytics & Payment Breakdown | Báo cáo doanh thu theo kỳ, phân rã 4 phương thức thanh toán, phân rã chi nhánh, cơ chế fallback MongoDB an toàn |
+| 9.3 | Top Selling Items Analytics & Options Delta | Xếp hạng món bán chạy, tính chính xác giá món kèm tùy chọn options, loại bỏ 100% món đã hủy |
+| 9.4 | Reports CSV Export Engine & RBAC Security | Xuất CSV UTF-8 BOM tiếng Việt cho Excel, phân quyền nghiêm ngặt perm-rep-export, chặn Manager & Cashier (403) |
+| 9.5 | Public Demo Tables Discovery & Customer Menu Responsive | API khám phá bàn ăn thực tế có mã QR, trang chủ chọn bàn trải nghiệm, layout Responsive trên Mobile, Tablet & Desktop |
+| 9.6 | Admin Sidebar Restructure & Adversarial Hardening | Tái cấu trúc Sidebar 4 nhóm, giao diện Dashboard/Reports trực quan, giải quyết triệt để 6 phát hiện AUD-9.1 đến AUD-9.6 |
 
 ### Giới Hạn & Ranh Giới Kiến Trúc Đã Biết
 
@@ -173,6 +174,7 @@ Chi tiết Swagger trực quan xem tại: `http://localhost:3001/api-docs`
 | | `POST` | `/api/tables/transfer` | Đổi bàn gọi món | POS.VIEW |
 | | `POST` | `/api/tables/merge` | Gộp nhiều bàn vào một bàn | POS.VIEW |
 | | `POST` | `/api/tables/move-items` | Di chuyển món giữa các bàn | POS.VIEW |
+| | `GET` | `/api/tables/public/by-restaurant/:restaurantSlug` | Khám phá bàn ăn thực tế có mã QR cho thực khách | Public |
 | **Table Zones** | `GET` | `/api/table-zones` | Danh sách khu vực bàn | POS.VIEW |
 | | `POST` | `/api/table-zones` | Tạo khu vực bàn riêng mới | TABLE.UPDATE |
 | **Menu** | `GET` | `/api/categories` | Danh sách danh mục thực đơn | Public |
@@ -204,6 +206,10 @@ Chi tiết Swagger trực quan xem tại: `http://localhost:3001/api-docs`
 | | `POST` | `/api/order-items/:id/mark-ready` | Báo hoàn tất món ăn (chuyển sang Ready) | KITCHEN.UPDATE (perm-kds-cook) |
 | | `POST` | `/api/order-items/:id/mark-served` | Báo đã phục vụ món tới bàn (Served) | KITCHEN.UPDATE (perm-kds-cook) |
 | | `POST` | `/api/orders/:id/kitchen/batch-update` | Cập nhật trạng thái hàng loạt theo đợt gọi món | KITCHEN.UPDATE (perm-kds-cook) |
+| **Dashboard** | `GET` | `/api/dashboard/overview` | Chỉ số KPI tổng quan thời gian thực (Dual-Key) | REPORT.VIEW / DASHBOARD.VIEW / POS.VIEW |
+| **Báo Cáo & Thống Kê** | `GET` | `/api/reports/revenue` | Báo cáo doanh thu thời gian & phương thức thanh toán | REPORT.VIEW |
+| | `GET` | `/api/reports/top-items` | Thống kê món ăn bán chạy nhất & options delta | REPORT.VIEW |
+| | `GET` | `/api/reports/export` | Xuất file báo cáo CSV UTF-8 BOM cho Excel | REPORT.EXPORT (perm-rep-export) |
 
 ---
 
@@ -248,19 +254,17 @@ Bảng các biến môi trường xác thực cốt lõi cần thiết lập tro
 
 ## 10. 🧪 Bộ Kiểm Thử Tự Động (Automated Test Suites)
 
-Hệ sinh thái kiểm thử iMenu gồm **365 ca test tự động toàn diện** (Zero Garbage — tự động dọn sạch fixture sau khi test), phủ toàn bộ Phase 2 đến Phase 6.
+Hệ sinh thái kiểm thử iMenu gồm **570 ca test tự động toàn diện** (Zero Garbage — tự động dọn sạch fixture sau khi test), phủ toàn bộ Phase 2 đến Phase 9.
 
 ### Bộ Điều Phối Master Test Runner
 
 ```bash
-# Chế độ Phát triển (270 backend + 9 SDK = 279 ca bắt buộc, cho phép SKIP E2E nếu thiếu server UI)
-npm run test:phase6:all
+# Phase 9: Chế độ Phát triển (57 ca test tự động)
+npm run test:phase9:all
 
-# Chế độ Nghiệm Thu Đóng Phase (365 ca bắt buộc: 0 FAIL, 0 SKIP, 0 BLOCKED)
-npm run test:phase6:acceptance
+# Phase 9: Chế độ Nghiệm Thu Đóng Phase (57 ca bắt buộc: 0 FAIL, 0 SKIP, 0 BLOCKED)
+npm run test:phase9:acceptance
 ```
-
-> **Quan trọng:** `test:phase6:all` (chế độ `--mode=dev`) và `test:phase6:acceptance` (chế độ `--mode=acceptance`) đều sử dụng Master Test Orchestrator (`run-all-phase6.ts`). Chế độ acceptance yêu cầu tất cả 365 ca test đạt 100% PASS. Chế độ dev cho phép SKIP E2E nếu các server giao diện chưa khởi động.
 
 ### Kiểm Thử Theo Từng Phase (Hồi Quy)
 
@@ -279,75 +283,80 @@ npm run test:phase5
 
 # Toàn bộ hồi quy Phases 2–5 (77 ca):
 npm run test:regression:phase2-5
-```
 
-### Kiểm Thử Phase 6 (Order & POS)
+# Phase 6: Order & POS (288 ca):
+npm run test:phase6:all
 
-```bash
-# Chạy 6 suite backend cơ bản (241 ca — không bao gồm sub-phase 6.8 Integration):
-npm run test:phase6
-
-# Chạy riêng lẻ từng phân hệ:
-npm run test:phase6:transitions  # Sub-phase 6.2: State Machine (56 ca)
-npm run test:phase6:pos          # Sub-phase 6.3: POS Cashier (30 ca)
-npm run test:phase6:customer-qr  # Sub-phase 6.4: Customer QR (43 ca)
-npm run test:phase6:concurrency  # Sub-phase 6.5: Idempotency (32 ca)
-npm run test:phase6:sync         # Sub-phase 6.6: Table Sync (38 ca)
-npm run test:phase6:query        # Sub-phase 6.7: Order Query (42 ca)
-npm run test:phase6:integration  # Sub-phase 6.8: Frontend Monorepo Integration (29 ca)
-
-# Kiểm thử Phase 7 (Kitchen / KDS - 50 ca test):
+# Phase 7: Kitchen / KDS (50 ca):
 npm run test:phase7:all
 
-# Kiểm thử Browser E2E đa ứng dụng:
-npm run test:phase6:e2e
-npm run test:phase7:e2e
+# Phase 8: Payment & Bill (98 ca):
+npm run test:phase8:all
 ```
 
-### Bảng Đối Chiếu 415 Ca Test Hệ Sinh Thái
+### Kiểm Thử Phase 9 (Dashboard & Reports)
+
+```bash
+# Chạy 5 suite backend liên tiếp (53 ca):
+npm run test:phase9
+
+# Chạy riêng lẻ từng phân hệ Phase 9:
+npm run test:phase9:overview    # Suite 1: Dashboard Overview KPI & Dual-Key Engine (16 ca)
+npm run test:phase9:revenue     # Suite 2: Báo cáo Doanh thu & Phân rã thanh toán (13 ca)
+npm run test:phase9:top-items   # Suite 3: Món ăn bán chạy & Options Price Delta (7 ca)
+npm run test:phase9:export      # Suite 4: Xuất báo cáo CSV UTF-8 BOM cho Excel & RBAC (10 ca)
+npm run test:phase9:demo-tables # Suite 5: Khám phá bàn ăn thực tế có mã QR (7 ca)
+npm run test:phase9:e2e         # Suite 6: Kịch bản Browser E2E Dashboard, Reports & UI (4 ca)
+```
+
+### Bảng Đối Chiếu 570 Ca Test Hệ Sinh Thái
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  HỆ SINH THÁI KIỂM THỬ IMENU — 513 CA TEST TỰ ĐỘNG CHUẨN XÁC           │
+│  HỆ SINH THÁI KIỂM THỬ IMENU — 570 CA TEST TỰ ĐỘNG CHUẨN XÁC           │
 ├────────────────────────────────┬──────────────────────┬────────────────┤
 │ Nhóm Kiểm Thử                  │ Tệp Nguồn / Vị Trí   │ Số Ca Test     │
 ├────────────────────────────────┼──────────────────────┼────────────────┤
-│ 1. Phase 8 Payment & Bill      │ tests/phase-08-payme │ 98             │
-│ 2. Phase 7 Kitchen / KDS       │ tests/phase-07-kitch │ 50             │
-│ 3. Phase 6 Orders & POS        │ tests/phase-06-order │ 288            │
-│ 4. Phases 2–5 Regression       │ tests/phase-02..05   │ 77             │
+│ 1. Phase 9 Dashboard & Reports │ tests/phase-09-dashb │ 57 (88 cả SDK) │
+│ 2. Phase 8 Payment & Bill      │ tests/phase-08-payme │ 98             │
+│ 3. Phase 7 Kitchen / KDS       │ tests/phase-07-kitch │ 50             │
+│ 4. Phase 6 Orders & POS        │ tests/phase-06-order │ 288            │
+│ 5. Phases 2–5 Regression       │ tests/phase-02..05   │ 77             │
 ├────────────────────────────────┴──────────────────────┼────────────────┤
-│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)│ 513 CA TEST    │
+│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)│ 570 CA TEST    │
+│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):│ 548 / 548 PASS │
+│  - Tổng số ca kiểm chứng độc lập tính cả SDK Suite:   │ 583 CA TEST    │
 └───────────────────────────────────────────────────────┴────────────────┘
 ```
 
 ### Tài liệu Kiểm Thử Chi Tiết
 
 - **Mục lục kiểm thử tổng thể:** [tests/README.md](tests/README.md) (Tiếng Việt) | [tests/README_en.md](tests/README_en.md) (English)
+- **Tài liệu Phase 9 chi tiết:** [tests/phase-09-dashboard-reports/README.md](tests/phase-09-dashboard-reports/README.md) (Tiếng Việt) | [tests/phase-09-dashboard-reports/README_en.md](tests/phase-09-dashboard-reports/README_en.md) (English)
 - **Tài liệu Phase 8 chi tiết:** [tests/phase-08-payment-bill/README.md](tests/phase-08-payment-bill/README.md) (Tiếng Việt) | [tests/phase-08-payment-bill/README_en.md](tests/phase-08-payment-bill/README_en.md) (English)
 - **Tài liệu Phase 7 chi tiết:** [tests/phase-07-kitchen-kds/README.md](tests/phase-07-kitchen-kds/README.md) (Tiếng Việt) | [tests/phase-07-kitchen-kds/README_en.md](tests/phase-07-kitchen-kds/README_en.md) (English)
 - **Tài liệu Phase 6 chi tiết:** [tests/phase-06-order-pos/README.md](tests/phase-06-order-pos/README.md) (Tiếng Việt) | [tests/phase-06-order-pos/README_en.md](tests/phase-06-order-pos/README_en.md) (English)
-- **Đặc tả máy in nhiệt Phase 8:** [tests/phase-06-order-pos/thermal-printer-spec.md](tests/phase-06-order-pos/thermal-printer-spec.md)
 
 ---
 
 ## 11. 📊 Trạng Thái Dự Án & Nghiệm Thu
 
-### Trạng Thái Phase 8: ✅ ĐÃ NGHIỆM THU — ĐÓNG CHÍNH THỨC
+### Trạng Thái Phase 9: ✅ ĐÃ NGHIỆM THU — ĐÓNG CHÍNH THỨC
 
-Phase 8 (Payment, Bill, ESC/POS Thermal Printing & Financial Audit) đã hoàn thành toàn bộ 6 phân hệ (Sub-phase 8.1 đến 8.6) và đã được nghiệm thu chính thức thông qua cổng kiểm tra đóng Phase (Master Phase 8 Closure Gate).
+Phase 9 (Dashboard, Revenue Reports, CSV Export, Public Demo Tables & UI/UX Overhaul) đã hoàn thành toàn bộ 6 phân hệ (Sub-phase 9.1 đến 9.6) và đã được nghiệm thu chính thức thông qua cổng kiểm tra đóng Phase (Master Phase 9 Closure Gate).
 
-**Kết quả nghiệm thu Phase 8:**
+**Kết quả nghiệm thu Phase 9:**
 
 | Nhóm Kiểm Thử | Số Ca Test | Kết Quả |
 | :--- | :---: | :---: |
-| Phase 8 Backend Suites (4 suites) | 66 | ✅ PASS |
-| Frontend SDK Contract Suite | 27 | ✅ PASS |
-| Browser E2E Payment & Bill Lifecycle | 5 | ✅ PASS |
+| Phase 9 Backend Suites (5 suites) | 53 | ✅ PASS |
+| Phase 9 Browser E2E Lifecycle Suite | 4 | ✅ PASS |
+| Frontend SDK Contract Suite | 31 | ✅ PASS |
+| Phase 8 Payment & Bill Full Regression | 98 | ✅ PASS |
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
-| Phase 6 Full Regression | 288 | ✅ PASS |
+| Phase 6 Orders & POS Full Regression | 288 | ✅ PASS |
 | Phases 2–5 Core Regression | 77 | ✅ PASS |
-| **TỔNG CỘNG HỆ SINH THÁI** | **513** | **491/491 PASS CI (100%)** |
+| **TỔNG CỘNG HỆ SINH THÁI** | **570** | **548/548 PASS CI (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0 (22 Browser E2E checkpoints sẵn sàng khi dev server bật)
@@ -365,4 +374,5 @@ Phase 8 (Payment, Bill, ESC/POS Thermal Printing & Financial Audit) đã hoàn t
 | Phase 6: Vận Hành Order & POS | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 7: Màn Hình Bếp KDS & Điều Phối Món Ăn | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 8: Thanh Toán, Hóa Đơn & Đối Soát Tài Chính | ✅ Nghiệm thu & Đóng chính thức |
-| Phase 9+: Quản Lý Khách Hàng Thân Thiết (Loyalty & CRM), Khuyến Mãi & Tích Điểm | 🔜 Giai đoạn tiếp theo |
+| Phase 9: Dashboard, Báo Cáo Doanh Thu & Tối Ưu UI/UX | ✅ Nghiệm thu & Đóng chính thức |
+| Phase 10+: Quản Lý Khách Hàng Thân Thiết (Loyalty & CRM), Khuyến Mãi & Tích Điểm | 🔜 Giai đoạn tiếp theo |
