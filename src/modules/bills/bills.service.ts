@@ -215,6 +215,48 @@ export class BillsService implements OnModuleInit {
           orderId: new Types.ObjectId(orderId),
         });
         if (found) return found;
+
+        // Nếu trùng billCode với đơn khác do concurrent race, thử tạo lại với mã hậu tố thời gian ngẫu nhiên
+        const fallbackCode = `BILL-${dateStr}-${seq}-${Date.now().toString().slice(-4)}`;
+        return await this.billModel.create({
+          billCode: fallbackCode,
+          orderId: new Types.ObjectId(orderId),
+          orderCode: order.orderCode,
+          tableId: new Types.ObjectId(order.tableId?._id || order.tableId),
+          tableName: order.tableName,
+          restaurantId: new Types.ObjectId(restaurantId),
+          branchId: order.branchId ? order.branchId.toString() : undefined,
+          branchName: branchName || undefined,
+          headerSnapshot: {
+            restaurantName: restaurant?.name || 'Nhà hàng iMenu',
+            branchName: branchName || undefined,
+            address,
+            hotline,
+            wifiSsid: wifiSsid || undefined,
+            wifiPassword: wifiPassword || undefined,
+          },
+          items: itemsSnapshot,
+          subTotal: financial.subTotal,
+          discountAmount: financial.discountAmount || 0,
+          discountPercent: financial.discountPercent || 0,
+          taxableBase: financial.taxableAmount || Math.max(0, financial.subTotal - (financial.discountAmount || 0)),
+          serviceFee: financial.serviceFee || 0,
+          serviceFeePercent: financial.serviceFeePercent || 0,
+          vatAmount: financial.vatAmount || 0,
+          vatPercent: financial.vatPercent || 0,
+          finalAmount: financial.totalAmount,
+          paymentMethod,
+          amountReceived: options?.amountReceived ?? financial.totalAmount,
+          changeAmount: options?.changeAmount ?? 0,
+          paymentStatus: 'PAID',
+          paidAt: order.closedAt || now,
+          cashierId,
+          cashierName,
+          bankAccountSnapshot: effectiveBank || undefined,
+          vietQrUrl: vietQrUrl || undefined,
+          note: options?.note || '',
+          printCount: 0,
+        });
       }
       throw err;
     }

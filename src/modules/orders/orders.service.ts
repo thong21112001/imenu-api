@@ -2458,13 +2458,25 @@ export class OrdersService {
         await order.save();
       }
 
-      await this.tableModel.findByIdAndUpdate(order.tableId, { status: 'PaymentRequested' });
+      const updatedTable = await this.tableModel.findByIdAndUpdate(
+        order.tableId,
+        { status: 'PaymentRequested' },
+        { new: true },
+      );
 
       this.eventEmitter.emit('order.payment_requested', {
         order: order.toObject(),
         restaurantId: order.restaurantId.toString(),
         branchId: order.branchId,
       });
+
+      if (updatedTable) {
+        this.eventEmitter.emit('table.status_updated', {
+          table: updatedTable.toObject(),
+          restaurantId: order.restaurantId.toString(),
+          branchId: updatedTable.branchId,
+        });
+      }
 
       return order;
     }
@@ -2924,13 +2936,11 @@ export class OrdersService {
       const claimFilter: any = {
         _id: order._id,
         restaurantId: order.restaurantId,
-        branchId: order.branchId,
         isPaid: { $ne: true },
         status: { $in: ['Preparing', 'Ready', 'Served', 'PaymentRequested'] },
-        subTotal: financial.subTotal,
       };
-      if (order.updatedAt) {
-        claimFilter.updatedAt = order.updatedAt;
+      if (order.branchId) {
+        claimFilter.branchId = order.branchId;
       }
 
       const claimedOrder = await this.orderModel.findOneAndUpdate(

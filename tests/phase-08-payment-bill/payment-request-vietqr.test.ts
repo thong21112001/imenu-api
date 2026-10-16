@@ -32,7 +32,7 @@ function pass(name: string, detail?: string) {
 
 function fail(name: string, error: any) {
   console.error(`  ${colors.red}✖ FAIL:${colors.reset} ${name}`);
-  console.error(`    ${colors.red}${typeof error === 'object' ? JSON.stringify(error) : error}${colors.reset}`);
+  console.error(`    ${colors.red}${error?.stack || error?.message || (typeof error === 'object' ? JSON.stringify(error) : error)}${colors.reset}`);
 }
 
 async function request(path: string, options: RequestInit = {}) {

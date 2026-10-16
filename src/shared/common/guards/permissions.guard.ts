@@ -54,7 +54,21 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Quyen han cua ban dang bi tam khoa. Vui long lien he quan tri vien.');
     }
 
-    // 4. Kiem tra quyen cu the trong danh sach permissions cua Role
+    // 4. Kiem tra truc tiep theo permissionId hoac alternatePermissionIds neu duoc cau hinh
+    const requiredIds = [
+      ...(required.permissionId ? [required.permissionId] : []),
+      ...(required.alternatePermissionIds || []),
+    ];
+
+    if (
+      requiredIds.length > 0 &&
+      Array.isArray(role.permissionIds) &&
+      role.permissionIds.some((id: string) => requiredIds.includes(id))
+    ) {
+      return true;
+    }
+
+    // 5. Kiem tra quyen cu the trong danh sach permissions cua Role
     let hasPermission = role.permissions?.some((p: any) => {
       if (p.resource !== required.resource) return false;
       return p.actions?.includes(required.action);
