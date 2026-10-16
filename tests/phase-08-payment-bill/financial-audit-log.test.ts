@@ -6,7 +6,7 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 
-const TEST_PORT = 3097;
+const TEST_PORT = 3117;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
 
 let app: INestApplication;
@@ -43,13 +43,13 @@ async function request(path: string, options: RequestInit = {}) {
 
 async function main() {
   console.log(`\n${colors.bold}${colors.cyan}========================================================================${colors.reset}`);
-  console.log(`${colors.bold}${colors.cyan}  Phase 8: Financial Audit Log System & Masked Bank Compliance           ${colors.reset}`);
+  console.log(`${colors.bold}${colors.cyan}  Phase 8 Suite 3: Financial Audit Log System (Port ${TEST_PORT})            ${colors.reset}`);
   console.log(`${colors.bold}${colors.cyan}========================================================================${colors.reset}\n`);
 
   let passed = 0;
   let failed = 0;
 
-  // 1. BOOTSTRAP NESTJS APP
+  // 1. BOOTSTRAP NESTJS APP ON PORT 3117
   app = await NestFactory.create(AppModule, { logger: false });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
@@ -64,19 +64,21 @@ async function main() {
   const connection: Connection = app.get(getConnectionToken());
   const timestamp = Date.now();
   let restaurantId = '';
+  let restBId = '';
   let branchId = '';
   let restaurantSlug = '';
   let ownerToken = '';
+  let ownerBToken = '';
   let menuItemId = '';
   let tableQrToken = '';
 
   try {
-    // 2. REGISTER RESTAURANT & OWNER
+    // 2. REGISTER RESTAURANT A & OWNER A
     const regRes = await request('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
         restaurant: {
-          name: `P8 Audit Rest ${timestamp}`,
+          name: `P8 Audit Rest A ${timestamp}`,
           phone: '0901234567',
           address: '555 Le Duan, Q1',
         },
@@ -94,6 +96,26 @@ async function main() {
     const restDoc = await connection.collection('restaurants').findOne({ _id: new Types.ObjectId(restaurantId) });
     branchId = restDoc!.branches[0]._id.toString();
     restaurantSlug = restDoc!.slug;
+
+    // Register Restaurant B (Competitor for Multi-Tenant Audit Isolation)
+    const regBRes = await request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurant: {
+          name: `P8 Audit Rest B ${timestamp}`,
+          phone: '0907777777',
+          address: '777 Vo Thi Sau, Q3',
+        },
+        owner: {
+          fullName: 'P8 Audit Owner B',
+          phone: '0907777777',
+          email: `p8audit.ownerb.${timestamp}@imenu.vn`,
+          password: 'Password@123',
+        },
+      }),
+    });
+    restBId = regBRes.data?.data?.restaurant?.id || regBRes.data?.data?.restaurant?._id;
+    ownerBToken = regBRes.data?.data?.accessToken;
 
     // Set initial bank on restaurant
     await connection.collection('restaurants').updateOne(
@@ -181,7 +203,7 @@ async function main() {
     // Chờ 300ms để event emitter ghi DB
     await new Promise((r) => setTimeout(r, 300));
 
-    // TC-8.6-01: Kiểm tra Activity Log PAYMENT_COMPLETED
+    // TC-8.3-01: Kiểm tra Activity Log PAYMENT_COMPLETED
     const payLog = await connection.collection('activity_logs').findOne({
       restaurantId: new Types.ObjectId(restaurantId),
       action: 'pay',
@@ -195,10 +217,10 @@ async function main() {
       payLog.newData?.totalAmount === 250000 &&
       payLog.newData?.paymentMethod === 'VietQR'
     ) {
-      pass('TC-8.6-01: Ghi nhận Audit Log PAYMENT_COMPLETED với đầy đủ orderCode, billCode, tổng tiền và phương thức');
+      pass('TC-8.3-01: Ghi nhận Audit Log PAYMENT_COMPLETED với đầy đủ orderCode, billCode, tổng tiền và phương thức');
       passed++;
     } else {
-      fail('TC-8.6-01: Audit Log PAYMENT_COMPLETED thất bại', payLog);
+      fail('TC-8.3-01: Audit Log PAYMENT_COMPLETED thất bại', payLog);
       failed++;
     }
 
@@ -235,7 +257,7 @@ async function main() {
 
     await new Promise((r) => setTimeout(r, 300));
 
-    // TC-8.6-02: Kiểm tra Activity Log cancel item
+    // TC-8.3-02: Kiểm tra Activity Log cancel item
     const cancelItemLog = await connection.collection('activity_logs').findOne({
       restaurantId: new Types.ObjectId(restaurantId),
       action: 'cancel',
@@ -249,10 +271,10 @@ async function main() {
       cancelItemLog.metadata?.lostRevenue === 250000 &&
       cancelItemLog.metadata?.reason === 'Khách đổi món khác'
     ) {
-      pass('TC-8.6-02: Ghi nhận Audit Log ORDER_CANCELLED khi hủy từng món kèm lostRevenue và lý do');
+      pass('TC-8.3-02: Ghi nhận Audit Log ORDER_CANCELLED khi hủy từng món kèm lostRevenue và lý do');
       passed++;
     } else {
-      fail('TC-8.6-02: Audit Log cancel item thất bại', cancelItemLog);
+      fail('TC-8.3-02: Audit Log cancel item thất bại', cancelItemLog);
       failed++;
     }
 
@@ -265,7 +287,7 @@ async function main() {
 
     await new Promise((r) => setTimeout(r, 300));
 
-    // TC-8.6-03: Kiểm tra Activity Log cancel order
+    // TC-8.3-03: Kiểm tra Activity Log cancel order
     const cancelOrderLog = await connection.collection('activity_logs').findOne({
       restaurantId: new Types.ObjectId(restaurantId),
       action: 'cancel',
@@ -278,10 +300,10 @@ async function main() {
       cancelOrderLog.metadata?.orderCode === order2Code &&
       cancelOrderLog.metadata?.reason === 'Khách có việc gấp về sớm'
     ) {
-      pass('TC-8.6-03: Ghi nhận Audit Log ORDER_CANCELLED khi hủy toàn bộ đơn hàng');
+      pass('TC-8.3-03: Ghi nhận Audit Log ORDER_CANCELLED khi hủy toàn bộ đơn hàng');
       passed++;
     } else {
-      fail('TC-8.6-03: Audit Log cancel order thất bại', cancelOrderLog);
+      fail('TC-8.3-03: Audit Log cancel order thất bại', cancelOrderLog);
       failed++;
     }
 
@@ -296,7 +318,7 @@ async function main() {
 
     await new Promise((r) => setTimeout(r, 300));
 
-    // TC-8.6-04: Kiểm tra Activity Log MENU_PRICE_CHANGED
+    // TC-8.3-04: Kiểm tra Activity Log MENU_PRICE_CHANGED
     const priceLog = await connection.collection('activity_logs').findOne({
       restaurantId: new Types.ObjectId(restaurantId),
       module: 'menu',
@@ -310,10 +332,10 @@ async function main() {
       priceLog.metadata?.oldPrice === 250000 &&
       priceLog.metadata?.newPrice === 280000
     ) {
-      pass('TC-8.6-04: Ghi nhận Audit Log MENU_PRICE_CHANGED khi giá món ăn thay đổi (250.000 đ -> 280.000 đ)');
+      pass('TC-8.3-04: Ghi nhận Audit Log MENU_PRICE_CHANGED khi giá món ăn thay đổi (250.000 đ -> 280.000 đ)');
       passed++;
     } else {
-      fail('TC-8.6-04: Audit Log MENU_PRICE_CHANGED thất bại', priceLog);
+      fail('TC-8.3-04: Audit Log MENU_PRICE_CHANGED thất bại', priceLog);
       failed++;
     }
 
@@ -335,7 +357,7 @@ async function main() {
 
     await new Promise((r) => setTimeout(r, 300));
 
-    // TC-8.6-05: Kiểm tra Activity Log BANK_ACCOUNT_CHANGED với mặt nạ ***8888
+    // TC-8.3-05: Kiểm tra Activity Log BANK_ACCOUNT_CHANGED với mặt nạ ***8888
     const bankLog = await connection.collection('activity_logs').findOne({
       restaurantId: new Types.ObjectId(restaurantId),
       module: 'setting',
@@ -350,52 +372,69 @@ async function main() {
       bankLog.metadata?.oldAccountNoMasked === '***4567' &&
       bankLog.metadata?.newAccountNoMasked === '***8888'
     ) {
-      pass('TC-8.6-05: Ghi nhận Audit Log BANK_ACCOUNT_CHANGED với số tài khoản được che mặt nạ an toàn (***4567 -> ***8888)');
+      pass('TC-8.3-05: Ghi nhận Audit Log BANK_ACCOUNT_CHANGED với số tài khoản được che mặt nạ an toàn (***4567 -> ***8888)');
       passed++;
     } else {
-      fail('TC-8.6-05: Audit Log BANK_ACCOUNT_CHANGED thất bại', bankLog);
+      fail('TC-8.3-05: Audit Log BANK_ACCOUNT_CHANGED thất bại', bankLog);
       failed++;
     }
 
     console.log(`\n${colors.bold}--- PHẦN 5: TRUY VẤN VÀ LỌC NHẬT KÝ KIỂM TOÁN (GET /api/activity-logs) ---${colors.reset}`);
 
-    // TC-8.6-06: Lọc theo module=order & action=pay
+    // TC-8.3-06: Lọc theo module=order & action=pay
     const queryLogsRes = await request('/activity-logs?module=order&action=pay', {
       headers: { Authorization: `Bearer ${ownerToken}` },
     });
     if (queryLogsRes.status === 200 && queryLogsRes.data?.data?.data?.length >= 1) {
-      pass('TC-8.6-06: GET /api/activity-logs hỗ trợ lọc chính xác theo module và action');
+      pass('TC-8.3-06: GET /api/activity-logs hỗ trợ lọc chính xác theo module và action');
       passed++;
     } else {
-      fail('TC-8.6-06: GET /api/activity-logs lọc thất bại', queryLogsRes.data);
+      fail('TC-8.3-06: GET /api/activity-logs lọc thất bại', queryLogsRes.data);
+      failed++;
+    }
+
+    // TC-8.3-07: Phân lập Multi-Tenant trên Activity Logs - Nhà hàng B không xem được log của Nhà hàng A
+    const restBLogsRes = await request('/activity-logs', {
+      headers: { Authorization: `Bearer ${ownerBToken}` },
+    });
+    if (restBLogsRes.status === 200 && restBLogsRes.data?.data?.total === 0) {
+      pass('TC-8.3-07: Phân lập Multi-Tenant: Nhà hàng B không thể xem nhật ký kiểm toán của Nhà hàng A (Total = 0)');
+      passed++;
+    } else {
+      fail('TC-8.3-07: Thủng phân lập Multi-Tenant trên Activity Log', restBLogsRes.data);
       failed++;
     }
 
   } catch (error: any) {
-    fail('Toàn cục test suite 06-financial-audit-log gặp lỗi ngoại lệ', error);
+    fail('Toàn cục test suite financial-audit-log gặp lỗi ngoại lệ', error);
     failed++;
   } finally {
-    // TEARDOWN
     console.log(`\n[Teardown] Dọn dẹp tài nguyên kiểm thử...`);
     try {
       const db = connection.db;
-      if (db && restaurantId) {
-        await db.collection('restaurants').deleteOne({ _id: new Types.ObjectId(restaurantId) });
-        await db.collection('users').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
-        await db.collection('tablezones').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
-        await db.collection('tables').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
-        await db.collection('categories').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
-        await db.collection('menuitems').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
-        await db.collection('orders').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
-        await db.collection('bills').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
-        await db.collection('activity_logs').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
+      if (db) {
+        if (restaurantId) {
+          await db.collection('restaurants').deleteOne({ _id: new Types.ObjectId(restaurantId) });
+          await db.collection('users').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
+          await db.collection('tablezones').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
+          await db.collection('tables').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
+          await db.collection('categories').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
+          await db.collection('menuitems').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
+          await db.collection('orders').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
+          await db.collection('bills').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
+          await db.collection('activity_logs').deleteMany({ restaurantId: new Types.ObjectId(restaurantId) });
+        }
+        if (restBId) {
+          await db.collection('restaurants').deleteOne({ _id: new Types.ObjectId(restBId) });
+          await db.collection('users').deleteMany({ restaurantId: new Types.ObjectId(restBId) });
+        }
       }
     } catch {}
     await app.close();
   }
 
   console.log(`\n----------------------------------------------------------------`);
-  console.log(`Kết quả kiểm thử 06-financial-audit-log: ${passed} passed, ${failed} failed`);
+  console.log(`Kết quả kiểm thử financial-audit-log: ${passed} passed, ${failed} failed`);
   console.log(`----------------------------------------------------------------\n`);
 
   if (failed > 0) {
@@ -404,6 +443,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Lỗi thực thi test suite 06-financial-audit-log:', err);
+  console.error('Lỗi thực thi test suite financial-audit-log:', err);
   process.exit(1);
 });

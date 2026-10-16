@@ -9,9 +9,14 @@ export interface EffectiveBankAccount {
 
 export function resolveEffectiveBankAccount(
   restaurant: any,
-  branchId?: string,
+  branchIdOrBranch?: any,
 ): EffectiveBankAccount | null {
   if (!restaurant) return null;
+
+  const branchId =
+    typeof branchIdOrBranch === 'object' && branchIdOrBranch !== null
+      ? (branchIdOrBranch._id ? branchIdOrBranch._id.toString() : branchIdOrBranch.id ? branchIdOrBranch.id.toString() : undefined)
+      : branchIdOrBranch;
 
   // 1. Uu tien tai khoan cau hinh rieng tai Chi nhanh
   if (branchId && Array.isArray(restaurant.branches)) {
