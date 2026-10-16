@@ -7,6 +7,7 @@ export enum ActivityModule {
   STAFF = 'staff',
   ROLE = 'role',
   SETTING = 'setting',
+  REPORT = 'report',
   SYSTEM = 'system',
 }
 

@@ -88,7 +88,7 @@ export class RolesService {
           { resource: ResourceType.MENU, actions: [ActionType.VIEW, ActionType.UPDATE] },
           { resource: ResourceType.QR_CODE, actions: [ActionType.VIEW, ActionType.CREATE, ActionType.PRINT] },
           { resource: ResourceType.BILL, actions: [ActionType.VIEW, ActionType.PRINT] },
-          { resource: ResourceType.REPORT, actions: [ActionType.VIEW, ActionType.EXPORT] },
+          { resource: ResourceType.REPORT, actions: [ActionType.VIEW] },
           { resource: ResourceType.STAFF, actions: [ActionType.VIEW, ActionType.CREATE, ActionType.UPDATE] },
           { resource: ResourceType.BRANCH, actions: [ActionType.VIEW] },
         ],

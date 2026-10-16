@@ -11,6 +11,7 @@ import { Model, Types } from 'mongoose';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Table, TableDocument, TableStatus } from './entities/table.entity';
 import { TableZone, TableZoneDocument } from './entities/table-zone.entity';
+import { Restaurant, RestaurantDocument } from '../restaurants/entities/restaurant.entity';
 import { Order, OrderDocument, OrderStatus } from '../orders/entities/order.entity';
 import { OrderRound } from '../orders/entities/order-round.schema';
 import { OrderItem } from '../orders/entities/order-item.schema';
@@ -19,15 +20,18 @@ import { OrderFinancialCalculator } from '../orders/domain/order-financial.calcu
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
 import { TransferTableDto, MergeTablesDto, MoveTableItemsDto } from './dto/transfer-table.dto';
+import { CallStaffDto } from './dto/call-staff.dto';
 import { JwtUser } from '../auth/interface/jwtUser';
 
 @Injectable()
 export class TablesService {
   private readonly logger = new Logger(TablesService.name);
+  private readonly callStaffCooldowns = new Map<string, { timestamp: number; reason: string }>();
 
   constructor(
     @InjectModel(Table.name) private readonly tableModel: Model<TableDocument>,
     @InjectModel(TableZone.name) private readonly zoneModel: Model<TableZoneDocument>,
+    @InjectModel(Restaurant.name) private readonly restaurantModel: Model<RestaurantDocument>,
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     private readonly eventEmitter: EventEmitter2,
   ) {}
@@ -196,6 +200,8 @@ export class TablesService {
     if (dto.capacity !== undefined) table.capacity = dto.capacity;
     if (dto.wifiSsid !== undefined) table.wifiSsid = dto.wifiSsid;
     if (dto.wifiPassword !== undefined) table.wifiPassword = dto.wifiPassword;
+    const previousQrStatus = table.qrStatus;
+    const previousQrToken = table.qrToken;
     if (dto.qrStatus !== undefined) table.qrStatus = dto.qrStatus;
     if (dto.qrToken !== undefined) table.qrToken = dto.qrToken;
     if (dto.qrCodeUrl !== undefined) table.qrCodeUrl = dto.qrCodeUrl;
@@ -217,12 +223,26 @@ export class TablesService {
 
     await (table as any).save();
 
-    // Phát sự kiện realtime
+    // Phát sự kiện realtime nếu trạng thái bàn thay đổi
     this.eventEmitter.emit('table.status_updated', {
       table,
       restaurantId,
       branchId: table.branchId,
     });
+
+    // Phát sự kiện realtime nếu mã QR bị thu hồi hoặc đổi token
+    if (
+      (dto.qrStatus !== undefined && dto.qrStatus !== previousQrStatus) ||
+      (dto.qrToken !== undefined && dto.qrToken !== previousQrToken)
+    ) {
+      this.eventEmitter.emit('table.qr_updated', {
+        tableId: id,
+        qrStatus: table.qrStatus,
+        qrToken: table.qrToken,
+        restaurantId,
+        branchId: table.branchId,
+      });
+    }
 
     return this.findById(id, restaurantId);
   }
@@ -1211,4 +1231,255 @@ export class TablesService {
 
     return { zones: createdZones.length, tables: createdTablesCount };
   }
+
+  async findPublicByRestaurant(restaurantSlug: string) {
+    if (!restaurantSlug || !restaurantSlug.trim()) {
+      throw new BadRequestException('restaurantSlug không được để trống');
+    }
+
+    const normalizedSlug = restaurantSlug.toLowerCase().trim();
+    const restaurant = await this.restaurantModel.findOne({ slug: normalizedSlug }).exec();
+    if (!restaurant) {
+      throw new NotFoundException(`Không tìm thấy nhà hàng với slug: ${restaurantSlug}`);
+    }
+
+    // Lấy tất cả khu vực bàn của nhà hàng
+    const branchIds = (restaurant.branches || []).map((b: any) => b._id.toString());
+    const zones = await this.zoneModel
+      .find({
+        $or: [
+          { restaurantId: restaurant._id },
+          { branchId: { $in: branchIds } },
+        ],
+      })
+      .sort({ displayOrder: 1, name: 1 })
+      .exec();
+
+    const zoneMap = new Map<string, string>();
+    zones.forEach((z) => {
+      zoneMap.set(z._id.toString(), z.name);
+    });
+
+    // Lấy tất cả bàn chưa xóa mềm và qrStatus == 'active'
+    const tables = await this.tableModel
+      .find({
+        restaurantId: restaurant._id,
+        isDeleted: { $ne: true },
+        qrStatus: 'active',
+      })
+      .sort({ name: 1, code: 1 })
+      .exec();
+
+    return {
+      restaurant: {
+        id: restaurant._id.toString(),
+        name: restaurant.name,
+        slug: restaurant.slug,
+        phone: restaurant.phone,
+        address: restaurant.address,
+        logoUrl: (restaurant as any).logoUrl,
+        isOpen: (restaurant as any).isOpen ?? true,
+        wifiSsid: (restaurant as any).wifiSsid || null,
+        wifiPassword: (restaurant as any).wifiPassword || null,
+        branches: restaurant.branches || [],
+      },
+      zones: zones.map((z) => ({
+        id: z._id.toString(),
+        name: z.name,
+        branchId: z.branchId,
+      })),
+      tables: tables.map((t) => {
+        const zoneRef = t.zone as any;
+        const zoneId = zoneRef?._id ? zoneRef._id.toString() : zoneRef ? zoneRef.toString() : undefined;
+        const zoneName = zoneRef?.name || (zoneId ? zoneMap.get(zoneId) : undefined) || 'Khu vực chung';
+        return {
+          id: t._id.toString(),
+          code: t.code,
+          name: t.name,
+          capacity: t.capacity || 4,
+          status: t.status || 'Available',
+          zoneId,
+          zoneName,
+          branchId: t.branchId,
+          qrToken: t.qrToken || 'active',
+          wifiSsid: t.wifiSsid || (restaurant as any).wifiSsid || null,
+          wifiPassword: t.wifiPassword || (restaurant as any).wifiPassword || null,
+          currentOrderId: t.currentOrderId ? t.currentOrderId.toString() : null,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Khách gọi nhân viên phục vụ tại bàn (Sub-phase 10.1)
+   */
+  async callStaff(tableId: string, dto: CallStaffDto, bypassCooldown = false) {
+    if (!tableId || !Types.ObjectId.isValid(tableId)) {
+      throw new BadRequestException('tableId không hợp lệ');
+    }
+
+    const table = await this.tableModel
+      .findOne({
+        _id: new Types.ObjectId(tableId),
+        isDeleted: { $ne: true },
+      })
+      .exec();
+
+    if (!table) {
+      throw new NotFoundException('Không tìm thấy bàn ăn');
+    }
+
+    // 0. Kiểm tra reason & note không được rỗng hoặc vượt quá giới hạn
+    if (!dto.reason || !dto.reason.trim()) {
+      throw new BadRequestException('Lý do gọi nhân viên không được để trống');
+    }
+    if (dto.reason.trim().length > 200) {
+      throw new BadRequestException('Lý do gọi nhân viên tối đa 200 ký tự');
+    }
+    if (dto.note && dto.note.trim().length > 500) {
+      throw new BadRequestException('Ghi chú tối đa 500 ký tự');
+    }
+
+    // 1. Kiểm tra trạng thái QR của bàn (nếu revoked hoặc inactive thì ném 403 Forbidden)
+    if (table.qrStatus !== 'active') {
+      throw new ForbiddenException('Mã QR của bàn đã bị thu hồi hoặc tạm ngưng');
+    }
+
+    // 2. Nếu client truyền qrToken thì kiểm tra khớp table.qrToken
+    if (dto.qrToken && (!table.qrToken || dto.qrToken !== table.qrToken)) {
+      throw new ForbiddenException('Mã QR Token của bàn không hợp lệ');
+    }
+
+    // 3. Nếu client truyền restaurantSlug thì kiểm tra tính khớp
+    if (dto.restaurantSlug) {
+      const restaurant = await this.restaurantModel.findById(table.restaurantId).exec();
+      if (!restaurant || restaurant.slug !== dto.restaurantSlug.toLowerCase().trim()) {
+        throw new BadRequestException('Bàn không thuộc nhà hàng được yêu cầu');
+      }
+    }
+
+    // 4. Cơ chế chống spam (Cooldown 10 giây per table + TTL Eviction để chống rò rỉ RAM)
+    const now = Date.now();
+
+    // Dọn dẹp cache sau mỗi đợt gọi nếu kích thước Map > 200 (hoặc phần tử cũ hơn 60s)
+    if (this.callStaffCooldowns.size > 200) {
+      for (const [tId, val] of this.callStaffCooldowns.entries()) {
+        if (now - val.timestamp > 60000) {
+          this.callStaffCooldowns.delete(tId);
+        }
+      }
+    }
+
+    const lastCall = this.callStaffCooldowns.get(tableId);
+    if (!bypassCooldown && lastCall && now - lastCall.timestamp < 10000) {
+      const remainingSeconds = Math.ceil((10000 - (now - lastCall.timestamp)) / 1000);
+      return {
+        notificationId: `cooldown_${tableId}`,
+        tableId: table._id.toString(),
+        tableName: table.name,
+        tableCode: table.code,
+        branchId: table.branchId,
+        restaurantId: table.restaurantId.toString(),
+        reason: dto.reason.trim(),
+        note: dto.note?.trim() || '',
+        cooldownActive: true,
+        isCooldownReplay: true,
+        remainingSeconds,
+        createdAt: new Date(lastCall.timestamp).toISOString(),
+        message: `Yêu cầu đang được xử lý. Vui lòng đợi ${remainingSeconds} giây trước khi gửi lại.`,
+      };
+    }
+
+    this.callStaffCooldowns.set(tableId, { timestamp: now, reason: dto.reason.trim() });
+
+    const notificationId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const createdAt = new Date().toISOString();
+
+    const payload = {
+      notificationId,
+      tableId: table._id.toString(),
+      tableName: table.name,
+      tableCode: table.code,
+      branchId: table.branchId,
+      restaurantId: table.restaurantId.toString(),
+      reason: dto.reason.trim(),
+      note: dto.note?.trim() || '',
+      createdAt,
+    };
+
+    // Phát sự kiện table.call_staff qua EventEmitter2
+    this.eventEmitter.emit('table.call_staff', payload);
+
+    return {
+      ...payload,
+      cooldownActive: false,
+      isCooldownReplay: false,
+      remainingSeconds: 10,
+      message: 'Yêu cầu gọi nhân viên đã được gửi thành công',
+    };
+  }
+
+  /**
+   * Nhân viên xác nhận đã tiếp nhận hỗ trợ bàn (Sub-phase 10.1)
+   */
+  async acknowledgeCallStaff(tableId: string, restaurantId: string, caller?: JwtUser) {
+    if (!tableId || !Types.ObjectId.isValid(tableId)) {
+      throw new BadRequestException('tableId không hợp lệ');
+    }
+
+    const table = await this.tableModel
+      .findOne({
+        _id: new Types.ObjectId(tableId),
+        restaurantId: new Types.ObjectId(restaurantId),
+        isDeleted: { $ne: true },
+      })
+      .exec();
+
+    if (!table) {
+      throw new NotFoundException('Không tìm thấy bàn ăn');
+    }
+
+    // Multi-Branch Isolation check
+    if (caller && !caller.isMainBranch && caller.branchId) {
+      if (table.branchId && table.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền xác nhận hỗ trợ bàn của chi nhánh khác');
+      }
+    }
+
+    const acknowledgedAt = new Date().toISOString();
+    const acknowledgedBy = caller?.fullName || caller?.email || 'Nhân viên';
+
+    const payload = {
+      tableId: table._id.toString(),
+      tableName: table.name,
+      tableCode: table.code,
+      branchId: table.branchId,
+      restaurantId,
+      acknowledgedBy,
+      acknowledgedAt,
+    };
+
+    // Phát sự kiện table.call_acknowledged qua EventEmitter2
+    this.eventEmitter.emit('table.call_acknowledged', payload);
+
+    return payload;
+  }
+
+  /**
+   * Helper dọn dẹp bộ nhớ Cooldown (AUD-10.1 TTL eviction test support)
+   */
+  pruneCallStaffCooldowns(olderThanMs: number = 60000): number {
+    const now = Date.now();
+    for (const [tId, val] of this.callStaffCooldowns.entries()) {
+      if (now - val.timestamp >= olderThanMs) {
+        this.callStaffCooldowns.delete(tId);
+      }
+    }
+    return this.callStaffCooldowns.size;
+  }
+
+  getCallStaffCooldownsSize(): number {
+    return this.callStaffCooldowns.size;
+  }
 }
+
