@@ -152,6 +152,120 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   /**
+   * Chuyển đổi chi nhánh làm việc (Sub-phase 10.2: Hỗ trợ HQ switch branch & cô lập chi nhánh con)
+   */
+  @SubscribeMessage('switch:branch')
+  handleSwitchBranch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    data: {
+      restaurantId?: string;
+      fromBranchId?: string;
+      toBranchId?: string;
+      branchId?: string;
+    },
+  ) {
+    if (!client.data?.user) {
+      this.logger.warn(`[Security] Unauthorized switch:branch attempt: Unauthenticated socket [${client.id}]`);
+      return { success: false, message: 'Unauthorized: Missing user authentication' };
+    }
+
+    const user = client.data.user.user || client.data.user;
+    const isSuperAdmin = user.role === 'SUPER_ADMIN' || client.data.user.role === 'SUPER_ADMIN';
+    const isMainBranch = Boolean(user.isMainBranch || client.data.user.isMainBranch);
+    const userBranchId = user.branchId || client.data.user.branchId;
+    const targetBranchId = data.toBranchId || data.branchId;
+
+    // Phân lập chi nhánh: Nhân viên chi nhánh con không được phép chuyển sang chi nhánh khác
+    if (!isSuperAdmin && !isMainBranch && userBranchId) {
+      if (targetBranchId && targetBranchId !== userBranchId) {
+        this.logger.warn(
+          `[Security] Forbidden switch:branch attempt: Staff from branch [${userBranchId}] tried to switch to [${targetBranchId}]`,
+        );
+        return { success: false, message: 'Forbidden: Branch isolation' };
+      }
+    }
+
+    const restId = data.restaurantId || user.restaurantId || client.data.user.restaurantId;
+    if (!restId) {
+      return { success: false, message: 'Missing restaurantId' };
+    }
+
+    // 1. Rời các phòng branch cũ của nhà hàng đó
+    const prefix = `restaurant_${restId}_branch_`;
+    for (const room of client.rooms) {
+      if (room.startsWith(prefix)) {
+        client.leave(room);
+        this.logger.log(`Client [${client.id}] left old branch room: ${room}`);
+      }
+    }
+    if (data.fromBranchId) {
+      client.leave(`restaurant_${restId}_branch_${data.fromBranchId}`);
+    }
+
+    // 2. Gia nhập phòng chi nhánh mới nếu có
+    if (targetBranchId) {
+      const newRoom = `restaurant_${restId}_branch_${targetBranchId}`;
+      client.join(newRoom);
+      this.logger.log(`Client [${client.id}] switched to branch room: ${newRoom}`);
+      return { success: true, message: `Switched to ${newRoom}`, branchId: targetBranchId };
+    }
+
+    return { success: true, message: `Cleared branch rooms for restaurant ${restId}` };
+  }
+
+  /**
+   * Client chủ động rời phòng nhà hàng
+   */
+  @SubscribeMessage('leave:restaurant')
+  handleLeaveRestaurant(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { restaurantId: string },
+  ) {
+    if (!data?.restaurantId) return { success: false, message: 'Missing restaurantId' };
+    const restRoom = `restaurant_${data.restaurantId}`;
+    client.leave(restRoom);
+    const prefix = `restaurant_${data.restaurantId}_branch_`;
+    for (const room of client.rooms) {
+      if (room.startsWith(prefix)) {
+        client.leave(room);
+      }
+    }
+    this.logger.log(`Client [${client.id}] left restaurant [${data.restaurantId}]`);
+    return { success: true, message: `Left restaurant ${data.restaurantId}` };
+  }
+
+  /**
+   * Client chủ động rời phòng bàn
+   */
+  @SubscribeMessage('leave:table')
+  handleLeaveTable(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { tableId: string },
+  ) {
+    if (data?.tableId) {
+      const room = `table_${data.tableId}`;
+      client.leave(room);
+      this.logger.log(`Client [${client.id}] left table room [${room}]`);
+      return { success: true, message: `Left table room ${room}` };
+    }
+    return { success: false, message: 'Missing tableId' };
+  }
+
+  /**
+   * Ping kiểm tra tình trạng kết nối realtime và danh sách phòng client đang tham gia
+   */
+  @SubscribeMessage('ping:health')
+  handlePingHealth(@ConnectedSocket() client: Socket) {
+    return {
+      status: 'ok',
+      timestamp: Date.now(),
+      socketId: client.id,
+      rooms: Array.from(client.rooms),
+    };
+  }
+
+  /**
    * Lắng nghe sự kiện Order Created từ hệ thống -> Phát sóng cho KDS & POS
    */
   @OnEvent('order.created')
@@ -479,6 +593,101 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
     this.logger.log(
       `Broadcast [menu:availability_changed] to ${restRoom} & ${publicMenuRoom} (Item: ${payload.menuItemId} -> ${payload.effectiveIsAvailable ? 'AVAILABLE' : 'OUT_OF_STOCK'})`,
+    );
+  }
+
+  /**
+   * Lắng nghe sự kiện Khách gọi nhân viên phục vụ bàn (Sub-phase 10.1 & 10.2)
+   */
+  @OnEvent('table.call_staff')
+  handleTableCallStaffEvent(payload: {
+    notificationId?: string;
+    tableId: string;
+    tableName: string;
+    tableCode?: string;
+    branchId?: string;
+    restaurantId: string;
+    reason: string;
+    note?: string;
+    createdAt?: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('table:call_staff', payload);
+    this.server.to(restRoom).emit('CALL_STAFF', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('table:call_staff', payload);
+      this.server.to(branchRoom).emit('CALL_STAFF', payload);
+    }
+
+    if (payload.tableId) {
+      this.server.to(`table_${payload.tableId}`).emit('table:call_staff', payload);
+    }
+
+    this.logger.log(
+      `Broadcast [table:call_staff] to ${restRoom} (Table: ${payload.tableName}, Reason: "${payload.reason}")`,
+    );
+  }
+
+  /**
+   * Lắng nghe sự kiện Nhân viên xác nhận tiếp nhận hỗ trợ bàn (Sub-phase 10.1 & 10.2)
+   */
+  @OnEvent('table.call_acknowledged')
+  handleTableCallAcknowledgedEvent(payload: {
+    tableId: string;
+    tableName?: string;
+    tableCode?: string;
+    branchId?: string;
+    restaurantId: string;
+    acknowledgedBy: string;
+    acknowledgedAt: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('table:call_acknowledged', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('table:call_acknowledged', payload);
+    }
+
+    if (payload.tableId) {
+      this.server.to(`table_${payload.tableId}`).emit('table:call_acknowledged', payload);
+    }
+
+    this.logger.log(
+      `Broadcast [table:call_acknowledged] to ${restRoom} and table_${payload.tableId} (Staff: ${payload.acknowledgedBy})`,
+    );
+  }
+
+  /**
+   * Lắng nghe sự kiện Cập nhật mã QR bàn (Thu hồi / Cấp lại QR) (Sub-phase 10.1 & 10.2)
+   */
+  @OnEvent('table.qr_updated')
+  handleTableQrUpdatedEvent(payload: {
+    tableId: string;
+    qrStatus: string;
+    qrToken?: string;
+    restaurantId: string;
+    branchId?: string;
+  }) {
+    if (!payload?.restaurantId) return;
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('table:qr_updated', payload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('table:qr_updated', payload);
+    }
+
+    if (payload.tableId) {
+      this.server.to(`table_${payload.tableId}`).emit('table:qr_updated', payload);
+    }
+
+    this.logger.log(
+      `Broadcast [table:qr_updated] to ${restRoom} and table_${payload.tableId} (Status: ${payload.qrStatus})`,
     );
   }
 }

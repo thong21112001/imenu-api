@@ -20,11 +20,13 @@ import { OrderFinancialCalculator } from '../orders/domain/order-financial.calcu
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
 import { TransferTableDto, MergeTablesDto, MoveTableItemsDto } from './dto/transfer-table.dto';
+import { CallStaffDto } from './dto/call-staff.dto';
 import { JwtUser } from '../auth/interface/jwtUser';
 
 @Injectable()
 export class TablesService {
   private readonly logger = new Logger(TablesService.name);
+  private readonly callStaffCooldowns = new Map<string, { timestamp: number; reason: string }>();
 
   constructor(
     @InjectModel(Table.name) private readonly tableModel: Model<TableDocument>,
@@ -198,6 +200,8 @@ export class TablesService {
     if (dto.capacity !== undefined) table.capacity = dto.capacity;
     if (dto.wifiSsid !== undefined) table.wifiSsid = dto.wifiSsid;
     if (dto.wifiPassword !== undefined) table.wifiPassword = dto.wifiPassword;
+    const previousQrStatus = table.qrStatus;
+    const previousQrToken = table.qrToken;
     if (dto.qrStatus !== undefined) table.qrStatus = dto.qrStatus;
     if (dto.qrToken !== undefined) table.qrToken = dto.qrToken;
     if (dto.qrCodeUrl !== undefined) table.qrCodeUrl = dto.qrCodeUrl;
@@ -219,12 +223,26 @@ export class TablesService {
 
     await (table as any).save();
 
-    // Phát sự kiện realtime
+    // Phát sự kiện realtime nếu trạng thái bàn thay đổi
     this.eventEmitter.emit('table.status_updated', {
       table,
       restaurantId,
       branchId: table.branchId,
     });
+
+    // Phát sự kiện realtime nếu mã QR bị thu hồi hoặc đổi token
+    if (
+      (dto.qrStatus !== undefined && dto.qrStatus !== previousQrStatus) ||
+      (dto.qrToken !== undefined && dto.qrToken !== previousQrToken)
+    ) {
+      this.eventEmitter.emit('table.qr_updated', {
+        tableId: id,
+        qrStatus: table.qrStatus,
+        qrToken: table.qrToken,
+        restaurantId,
+        branchId: table.branchId,
+      });
+    }
 
     return this.findById(id, restaurantId);
   }
@@ -1290,6 +1308,138 @@ export class TablesService {
         };
       }),
     };
+  }
+
+  /**
+   * Khách gọi nhân viên phục vụ tại bàn (Sub-phase 10.1)
+   */
+  async callStaff(tableId: string, dto: CallStaffDto, bypassCooldown = false) {
+    if (!tableId || !Types.ObjectId.isValid(tableId)) {
+      throw new BadRequestException('tableId không hợp lệ');
+    }
+
+    const table = await this.tableModel
+      .findOne({
+        _id: new Types.ObjectId(tableId),
+        isDeleted: { $ne: true },
+      })
+      .exec();
+
+    if (!table) {
+      throw new NotFoundException('Không tìm thấy bàn ăn');
+    }
+
+    // 1. Kiểm tra trạng thái QR của bàn (nếu revoked hoặc inactive thì ném 403 Forbidden)
+    if (table.qrStatus !== 'active') {
+      throw new ForbiddenException('Mã QR của bàn đã bị thu hồi hoặc tạm ngưng');
+    }
+
+    // 2. Nếu client truyền qrToken thì kiểm tra khớp table.qrToken
+    if (dto.qrToken && table.qrToken && dto.qrToken !== table.qrToken) {
+      throw new ForbiddenException('Mã QR Token của bàn không hợp lệ');
+    }
+
+    // 3. Nếu client truyền restaurantSlug thì kiểm tra tính khớp
+    if (dto.restaurantSlug) {
+      const restaurant = await this.restaurantModel.findById(table.restaurantId).exec();
+      if (!restaurant || restaurant.slug !== dto.restaurantSlug.toLowerCase().trim()) {
+        throw new BadRequestException('Bàn không thuộc nhà hàng được yêu cầu');
+      }
+    }
+
+    // 4. Cơ chế chống spam (Cooldown 10 giây per table)
+    const now = Date.now();
+    const lastCall = this.callStaffCooldowns.get(tableId);
+    if (!bypassCooldown && lastCall && now - lastCall.timestamp < 10000) {
+      const remainingSeconds = Math.ceil((10000 - (now - lastCall.timestamp)) / 1000);
+      return {
+        notificationId: `cooldown_${tableId}`,
+        tableId: table._id.toString(),
+        tableName: table.name,
+        tableCode: table.code,
+        branchId: table.branchId,
+        restaurantId: table.restaurantId.toString(),
+        reason: dto.reason.trim(),
+        note: dto.note?.trim() || '',
+        cooldownActive: true,
+        remainingSeconds,
+        createdAt: new Date(lastCall.timestamp).toISOString(),
+        message: `Yêu cầu đang được xử lý. Vui lòng đợi ${remainingSeconds} giây trước khi gửi lại.`,
+      };
+    }
+
+    this.callStaffCooldowns.set(tableId, { timestamp: now, reason: dto.reason.trim() });
+
+    const notificationId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const createdAt = new Date().toISOString();
+
+    const payload = {
+      notificationId,
+      tableId: table._id.toString(),
+      tableName: table.name,
+      tableCode: table.code,
+      branchId: table.branchId,
+      restaurantId: table.restaurantId.toString(),
+      reason: dto.reason.trim(),
+      note: dto.note?.trim() || '',
+      createdAt,
+    };
+
+    // Phát sự kiện table.call_staff qua EventEmitter2
+    this.eventEmitter.emit('table.call_staff', payload);
+
+    return {
+      ...payload,
+      cooldownActive: false,
+      remainingSeconds: 10,
+      message: 'Yêu cầu gọi nhân viên đã được gửi thành công',
+    };
+  }
+
+  /**
+   * Nhân viên xác nhận đã tiếp nhận hỗ trợ bàn (Sub-phase 10.1)
+   */
+  async acknowledgeCallStaff(tableId: string, restaurantId: string, caller?: JwtUser) {
+    if (!tableId || !Types.ObjectId.isValid(tableId)) {
+      throw new BadRequestException('tableId không hợp lệ');
+    }
+
+    const table = await this.tableModel
+      .findOne({
+        _id: new Types.ObjectId(tableId),
+        restaurantId: new Types.ObjectId(restaurantId),
+        isDeleted: { $ne: true },
+      })
+      .exec();
+
+    if (!table) {
+      throw new NotFoundException('Không tìm thấy bàn ăn');
+    }
+
+    // Multi-Branch Isolation check
+    if (caller && !caller.isMainBranch && caller.branchId) {
+      if (table.branchId && table.branchId !== caller.branchId) {
+        throw new ForbiddenException('Bạn không có quyền xác nhận hỗ trợ bàn của chi nhánh khác');
+      }
+    }
+
+    const acknowledgedAt = new Date().toISOString();
+    const acknowledgedBy = caller?.fullName || caller?.email || 'Nhân viên';
+
+    const payload = {
+      tableId: table._id.toString(),
+      tableName: table.name,
+      tableCode: table.code,
+      branchId: table.branchId,
+      restaurantId,
+      acknowledgedBy,
+      acknowledgedAt,
+    };
+
+    // Phát sự kiện table.call_acknowledged qua EventEmitter2
+    this.eventEmitter.emit('table.call_acknowledged', payload);
+
+    return payload;
   }
 }
 

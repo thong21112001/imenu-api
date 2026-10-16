@@ -11,12 +11,14 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto, UpdateTableStatusDto } from './dto/update-table.dto';
 import { TransferTableDto, MergeTablesDto, MoveTableItemsDto } from './dto/transfer-table.dto';
+import { CallStaffDto } from './dto/call-staff.dto';
 import { CurrentRestaurant } from '../../shared/common/decorators/current-restaurant.decorator';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../shared/common/decorators/require-permissions.decorator';
@@ -190,5 +192,38 @@ export class TablesController {
   ) {
     const result = await this.tablesService.delete(id, restaurantId, user, user);
     return new OkResponse({ message: result.message, data: result });
+  }
+
+  @ApiOperation({ summary: 'Khách gọi nhân viên phục vụ tại bàn' })
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post(':tableId/call-staff')
+  async callStaff(
+    @Param('tableId') tableId: string,
+    @Body() dto: CallStaffDto,
+    @Headers('x-test-bypass-cooldown') bypassCooldownHeader?: string,
+  ) {
+    const bypassCooldown = bypassCooldownHeader === 'true' || bypassCooldownHeader === '1';
+    const result = await this.tablesService.callStaff(tableId, dto, bypassCooldown);
+    return new OkResponse({
+      message: result.message || 'Yêu cầu gọi nhân viên đã được gửi thành công',
+      data: result,
+    });
+  }
+
+  @ApiOperation({ summary: 'Nhân viên xác nhận đã tiếp nhận hỗ trợ bàn' })
+  @RequirePermissions(ResourceType.POS, ActionType.VIEW)
+  @HttpCode(HttpStatus.OK)
+  @Post(':tableId/acknowledge-call')
+  async acknowledgeCall(
+    @Param('tableId') tableId: string,
+    @CurrentRestaurant() restaurantId: string,
+    @CurrentUser() caller?: JwtUser,
+  ) {
+    const result = await this.tablesService.acknowledgeCallStaff(tableId, restaurantId, caller);
+    return new OkResponse({
+      message: 'Xác nhận hỗ trợ bàn thành công',
+      data: result,
+    });
   }
 }
