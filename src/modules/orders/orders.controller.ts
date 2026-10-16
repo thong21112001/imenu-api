@@ -404,7 +404,7 @@ export class OrdersController {
   }
 
   @ApiOperation({ summary: 'Yêu cầu thanh toán đơn hàng (Staff POS)' })
-  @RequirePermissions(ResourceType.POS, ActionType.UPDATE)
+  @RequirePermissions(ResourceType.POS, ActionType.CREATE, 'perm-pos-order', ['perm-pos-pay'])
   @HttpCode(HttpStatus.OK)
   @Post(':id/request-payment')
   async requestPayment(
