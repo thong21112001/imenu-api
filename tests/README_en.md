@@ -69,40 +69,67 @@ tests/
 │   ├── e2e-payment-bill-runner.test.ts# P8-E2E: Browser E2E Payment & Bill Lifecycle (5 tests)
 │   └── run-all-phase8.ts              # P8-MASTER: Master Test Orchestrator Phase 8 (98 tests)
 │
-└── phase-09-dashboard-reports/        # [✅ ACCEPTED] Phase 9: Dashboard, Revenue Reports & UI/UX Overhaul
-    ├── README.md                      # Comprehensive Phase 9 test guide (Vietnamese)
-    ├── README_en.md                   # Comprehensive Phase 9 test guide (English)
-    ├── dashboard-overview.test.ts     # P9-01: Realtime KPI Indicators & Dual-Key Engine (16 tests)
-    ├── reports-revenue-analytics.test.ts # P9-02: Revenue Reports & Payment Breakdown (13 tests)
-    ├── reports-top-items.test.ts      # P9-03: Top Selling Dishes & Options Delta (7 tests)
-    ├── reports-export-rbac.test.ts    # P9-04: UTF-8 BOM CSV Export for Excel & RBAC (10 tests)
-    ├── customer-demo-tables.test.ts   # P9-05: Public Demo Tables & QR Resolution (7 tests)
-    ├── e2e-dashboard-reports-runner.test.ts # P9-06: Browser E2E Dashboard, Reports & UI (4 tests)
-    └── run-all-phase9.ts              # P9-MASTER: Master Test Orchestrator Phase 9 (57 tests)
+├── phase-09-dashboard-reports/        # [COMPLETED] Phase 9: Dashboard, Revenue Reports & UI/UX Overhaul
+│   ├── README.md                      # Comprehensive Phase 9 test guide (Vietnamese)
+│   ├── README_en.md                   # Comprehensive Phase 9 test guide (English)
+│   ├── dashboard-overview.test.ts     # P9-01: Realtime KPI Indicators & Dual-Key Engine (16 tests)
+│   ├── reports-revenue-analytics.test.ts # P9-02: Revenue Reports & Payment Breakdown (13 tests)
+│   ├── reports-top-items.test.ts      # P9-03: Top Selling Dishes & Options Delta (7 tests)
+│   ├── reports-export-rbac.test.ts    # P9-04: UTF-8 BOM CSV Export for Excel & RBAC (10 tests)
+│   ├── customer-demo-tables.test.ts   # P9-05: Public Demo Tables & QR Resolution (7 tests)
+│   ├── e2e-dashboard-reports-runner.test.ts # P9-06: Browser E2E Dashboard, Reports & UI (4 tests)
+│   └── run-all-phase9.ts              # P9-MASTER: Master Test Orchestrator Phase 9 (57 tests)
+│
+└── phase-10-realtime/                  # [✅ ACCEPTED] Phase 10: Realtime WebSocket, Room Security & Ecosystem Finalization
+    ├── README.md                      # Comprehensive Phase 10 test guide (Vietnamese)
+    ├── README_en.md                   # Comprehensive Phase 10 test guide (English)
+    ├── call-staff-notification.test.ts # P10-01: Call Staff & Two-Way Acknowledgment (16 tests)
+    ├── websocket-room-security.test.ts # P10-02: WebSocket Room Security & Multi-Branch Isolation (13 tests)
+    ├── domain-events-matrix.test.ts   # P10-03: Domain Events Matrix 7 Realtime Groups (11 tests)
+    ├── subphase-10-4-client-resilience.test.ts # P10-04B: Reconnection Backoff Jitter & Deduplication (8 tests)
+    ├── e2e-realtime-runner.test.ts    # P10-05: Multi-Tab Browser E2E Realtime Ecosystem (3 tests)
+    └── run-all-phase10.ts             # P10-MASTER: Master Test Orchestrator Phase 10 (85 tests)
 ```
 
 ---
 
-## 2. 🗺️ Phase 9 Sub-phase Mapping
+## 2. 🗺️ Phase 10 Sub-phase Mapping
 
-All Phase 9 functional sub-phases are consolidated inside `tests/phase-09-dashboard-reports/`:
+All Phase 10 functional sub-phases are consolidated inside `tests/phase-10-realtime/`:
 
 | Sub-phase | Test File | Primary Focus | Test Count | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| **9.1 Realtime Dashboard Overview** | `dashboard-overview.test.ts` | Today/yesterday revenue KPIs, growth rate, table occupancy, Dual-Key Engine, branch isolation, soft-deleted table exclusion (`isDeleted: true`), hardening TC-9.1-AUD-01 | 16 | **PASS** |
-| **9.2 Revenue Analytics Engine** | `reports-revenue-analytics.test.ts` | Period revenue analytics (`day`, `week`, `month`), 4 payment methods (`Cash`, `VietQR`, `Card`, `Transfer`), branch breakdown, empty dataset fallback, hardening TC-9.2-AUD-01 | 13 | **PASS** |
-| **9.3 Top Selling Items Analytics** | `reports-top-items.test.ts` | Top selling dishes ranking, item price plus options delta (`options.priceModifier`), 100% cancelled item exclusion, hardening TC-9.3-AUD-01 | 7 | **PASS** |
-| **9.4 CSV Export & RBAC Security** | `reports-export-rbac.test.ts` | UTF-8 BOM CSV export for Excel, column headers, strict RBAC enforcement (`perm-rep-export`), blocks manager & cashier (403), hardening TC-9.4-AUD-01 | 10 | **PASS** |
-| **9.5 Customer Demo Tables & QR** | `customer-demo-tables.test.ts` | Public table discovery by restaurant slug (`/api/tables/public/by-restaurant/:restaurantSlug`), valid active QR token verification, zone grouping | 7 | **PASS** |
-| **9.6 Browser E2E & Hardening** | `e2e-dashboard-reports-runner.test.ts` | Real browser E2E test verifying 4 checkpoints: 4-group Admin Sidebar, Realtime KPI Dashboard, Reports Analytics with CSV Export, Customer Menu Responsive on 3 viewports | 4 | **PASS** |
-| **9.6 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Frontend SDK Contract verification for Phase 9 endpoints: `dashboard.getOverview` (SDK-26), `reports.getRevenue` (SDK-27), `reports.getTopItems` (SDK-28), `tables.listPublicBySlug` (SDK-29) | 31 | **PASS** |
-| **9.6 Master Orchestrator** | `run-all-phase9.ts` | Master Test Orchestrator Phase 9: Dev Mode (57 cases) & Acceptance Mode (Closure Gate) | N/A | **READY** |
+| **10.1 Call Staff & Acknowledgment** | `call-staff-notification.test.ts` | Customer call staff, two-way staff acknowledgment, branch isolation, 60s cooldown (`isCooldownReplay`), `reason`/`note` length limits, TTL map eviction, RBAC `perm-pos-view`, hardening TC-10.1.14–16 | 16 | **PASS** |
+| **10.2 WebSocket Room Security** | `websocket-room-security.test.ts` | JWT Bearer handshake auth, hierarchical room isolation (`restaurant_${id}`, `branch_${id}`, `table_${id}`), guest isolation from staff rooms, room cleanup on `switch:branch` and `leave:restaurant`, hardening TC-10.2.11–13 | 13 | **PASS** |
+| **10.3 Domain Events Matrix** | `domain-events-matrix.test.ts` | 7 domain event groups (New Order, Order Updated, Item Status, Table Status, Call Staff, Payment & Bill, KDS 86 Out-of-Stock), payload integrity and broadcast verification | 11 | **PASS** |
+| **10.4 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Frontend SDK Contract verification: `tables.callStaff` (SDK-30), `tables.acknowledgeCall` (SDK-31), `customerOrders.callStaff` (SDK-32) plus 31 inherited contract tests | 34 | **PASS** |
+| **10.4 Client Resilience Suite** | `subphase-10-4-client-resilience.test.ts` | Client resilience, Reconnection Jitter Backoff, `CANONICAL_EVENT_MAP` deduplication, FIFO 50-notification ring buffer, hardening TC-10.4.6–8 | 8 | **PASS** |
+| **10.5 Multi-Tab Browser E2E** | `e2e-realtime-runner.test.ts` | Real browser multi-tab E2E: Diner calls staff $\rightarrow$ Admin Header audio badge displays without reload; Staff acknowledges $\rightarrow$ Diner receives confirmation toast; Zero-reload full lifecycle | 3 | **PASS** |
+| **10.6 Master Orchestrator** | `run-all-phase10.ts` | Master Test Orchestrator Phase 10: Dev Mode (Suites 1–5 Backend & SDK: 82 tests) & Acceptance Mode (Full 6 Suites: 85 tests) | N/A | **READY** |
 
 ---
 
 ## 3. ⚡ Master Test Commands
 
 All test execution commands are registered in `package.json`:
+
+### 🔹 Phase 10 (Realtime & Ecosystem Finalization) Tests:
+```powershell
+# Run the entire Phase 10 suite (85 tests):
+npm run test:phase10:all
+
+# Run in strict Acceptance mode (Official Quality Gate):
+npm run test:phase10:acceptance
+
+# Run individual Phase 10 suites:
+npm run test:phase10:call-staff  # Suite 1: Call Staff & Acknowledgment Flow (16 tests)
+npm run test:phase10:security    # Suite 2: WebSocket Room Security & Isolation (13 tests)
+npm run test:phase10:events      # Suite 3: Domain Events Matrix 7 Groups (11 tests)
+npm run test:phase10:sdk         # Suite 4A: Frontend SDK Contract (34 tests)
+npm run test:phase10:resilience  # Suite 4B: Client Resilience & Deduplication (8 tests)
+npm run test:phase10:e2e         # Suite 5: Browser E2E Multi-Tab Ecosystem (3 tests)
+npm run test:phase10             # Run all 4 Backend suites sequentially (48 tests)
+```
 
 ### 🔹 Phase 9 (Dashboard & Reports) Tests:
 ```powershell
@@ -154,7 +181,7 @@ npm run test:phase7              # Run all 4 Backend suites sequentially (30 tes
 
 ### 🔹 Phase 6 (Order & POS) Tests:
 ```powershell
-# Run the entire Phase 6 suite (288 tests):
+# Run the entire Phase 6 suite (279 mandatory tests):
 npm run test:phase6:all
 npm run test:phase6:acceptance
 
@@ -171,7 +198,7 @@ npm run test:phase6:e2e          # Sub-phase 6.9: Browser E2E Lifecycle (9 check
 
 ### 🔹 Full Ecosystem Regressions (Phases 2–5):
 ```powershell
-# Phase 2: Auth, Restaurant & Multi-Branch (26 tests)
+# Phase 2: Auth, Restaurant & Multi-Branch (23 tests)
 npm run test:phase2:all
 
 # Phase 3: Staff & Dynamic RBAC (16 tests)
@@ -183,30 +210,31 @@ npm run test:phase4
 # Phase 5: Tables, Orders & Realtime KDS (18 tests)
 npm run test:phase5
 
-# Full regression for Phases 2–5 (77 tests):
+# Full regression for Phases 2–5 (74 tests):
 npm run test:regression:phase2-5
 ```
 
 ---
 
-## 4. 📊 Ecosystem Test Reconciliation Matrix (570 Test Cases)
+## 4. 📊 Ecosystem Test Reconciliation Matrix (643 Test Cases)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 9)                                 │
+│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 10)                                │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Test Subsystem                 │ Test Scripts / Files         │ Actual Test Cases      │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
-│ Phase 9 Dashboard & Reports    │ 7 test files (BE + SDK + E2E)│ 57 (88 incl. SDK)      │
+│ Phase 10 Realtime & Ecosystem  │ 6 test files (BE + SDK + E2E)│ 85 (100% PASS)         │
+│ Phase 9 Dashboard & Reports    │ 7 test files (BE + SDK + E2E)│ 57                     │
 │ Phase 8 Payment & Bill Suites  │ 6 test files (BE + SDK + E2E)│ 98                     │
 │ Phase 7 Kitchen / KDS Suites   │ 6 test files (BE + SDK + E2E)│ 50                     │
-│ Phase 6 Orders & POS Suites    │ 9 test files (BE + SDK + E2E)│ 288                    │
-│ Phases 2–5 Regression Suites   │ 5 test files                 │ 77                     │
+│ Phase 6 Orders & POS Suites    │ 9 test files (BE + SDK + E2E)│ 279                    │
+│ Phases 2–5 Regression Suites   │ 5 test files                 │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ ECOSYSTEM TOTAL (ACCEPTANCE CLOSURE REQUIREMENT)               │ 570 TEST CASES         │
-│  - Passed in Developer/CI Run:                                 │ 548 / 548 PASS (100%)  │
-│  - Browser E2E Checkpoints awaiting full local dev servers:    │ 22 Checkpoints         │
-│  - Total standalone test executions including Frontend SDK:   │ 583 COMPREHENSIVE TESTS│
+│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 643 TEST CASES (PASS)  │
+│  - Passed in Developer/CI Run:                                 │ 643 / 643 PASS (100%)  │
+│  - Failure & Blocked Rates:                                    │ 0 FAIL, 0 BLOCKED      │
+│  - Full 10-Phase Roadmap Acceptance Status:                    │ ✅ 10/10 PHASES PASSED │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

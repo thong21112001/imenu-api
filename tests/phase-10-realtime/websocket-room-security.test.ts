@@ -70,6 +70,10 @@ async function main() {
 
   let passed = 0;
   let failed = 0;
+  let staffSocketA: Socket | null = null;
+  let guestSocket: Socket | null = null;
+  let tableGuestSocket: Socket | null = null;
+  let branchA2StaffSocket: Socket | null = null;
 
   try {
     app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
@@ -105,7 +109,6 @@ async function main() {
     });
 
     // TEST 1: TC-10.2.1 - Staff with valid JWT auto joins restaurant and branch room on connect
-    let staffSocketA: Socket | null = null;
     try {
       staffSocketA = await createClient({ token: hqOwnerTokenA });
       const health = await emitAsync(staffSocketA, 'ping:health');
@@ -162,7 +165,6 @@ async function main() {
     }
 
     // TEST 4: TC-10.2.4 - Guest client without JWT cannot join staff restaurant room directly
-    let guestSocket: Socket | null = null;
     try {
       guestSocket = await createClient(); // Unauthenticated guest
       const joinRes = await emitAsync(guestSocket, 'join:restaurant', { restaurantId: restaurantAId });
@@ -179,7 +181,6 @@ async function main() {
     }
 
     // TEST 5: TC-10.2.5 - Guest connects with tableId & restaurantId query params -> Isolated to table & public_menu only
-    let tableGuestSocket: Socket | null = null;
     try {
       tableGuestSocket = await createClient({
         query: { tableId: tableAId, restaurantId: restaurantAId },
@@ -236,7 +237,6 @@ async function main() {
     }
 
     // TEST 7: TC-10.2.7 - Branch staff tries to switch:branch to another branch -> Rejected
-    let branchA2StaffSocket: Socket | null = null;
     try {
       branchA2StaffSocket = await createClient({ token: branchA2StaffToken });
 
@@ -310,14 +310,117 @@ async function main() {
       failed++;
     }
 
-    if (staffSocketA) staffSocketA.disconnect();
-    if (guestSocket) guestSocket.disconnect();
-    if (tableGuestSocket) tableGuestSocket.disconnect();
-    if (branchA2StaffSocket) branchA2StaffSocket.disconnect();
+    // TEST 11: TC-10.2.11 - Hardening AUD-10.2: switch:branch dọn sạch toàn bộ phòng branch cũ trước khi join phòng mới
+    try {
+      if (!staffSocketA) throw new Error('Staff socket not connected');
+
+      // 1. Chuyển sang branch A1
+      await emitAsync(staffSocketA, 'switch:branch', {
+        restaurantId: restaurantAId,
+        toBranchId: branchA1Id,
+      });
+
+      // 2. Chuyển sang branch A2
+      await emitAsync(staffSocketA, 'switch:branch', {
+        restaurantId: restaurantAId,
+        toBranchId: branchA2Id,
+      });
+
+      const health1 = await emitAsync(staffSocketA, 'ping:health');
+      const rooms1: string[] = health1.rooms || [];
+      const hasOldBranchA1 = rooms1.includes(`restaurant_${restaurantAId}_branch_${branchA1Id}`);
+      const hasNewBranchA2 = rooms1.includes(`restaurant_${restaurantAId}_branch_${branchA2Id}`);
+
+      // 3. Xóa branch (toBranchId = undefined) -> Không còn phòng branch nào
+      await emitAsync(staffSocketA, 'switch:branch', {
+        restaurantId: restaurantAId,
+      });
+
+      const health2 = await emitAsync(staffSocketA, 'ping:health');
+      const rooms2: string[] = health2.rooms || [];
+      const hasAnyBranch = rooms2.some((r) => r.startsWith(`restaurant_${restaurantAId}_branch_`));
+
+      if (!hasOldBranchA1 && hasNewBranchA2 && !hasAnyBranch) {
+        pass('TC-10.2.11: Hardening AUD-10.2: switch:branch dọn sạch toàn bộ phòng branch cũ và cô lập phạm vi mới');
+        passed++;
+      } else {
+        fail('TC-10.2.11: switch:branch để sót phòng branch cũ', { rooms1, rooms2 });
+        failed++;
+      }
+    } catch (err) {
+      fail('TC-10.2.11: Exception', err);
+      failed++;
+    }
+
+    // TEST 12: TC-10.2.12 - Hardening AUD-10.2: leave:restaurant dọn sạch tất cả phòng restaurant, branch và public_menu của nhà hàng
+    try {
+      // Cho staff socket join lại restaurant & branch
+      await emitAsync(staffSocketA, 'join:restaurant', {
+        restaurantId: restaurantAId,
+        branchId: branchA1Id,
+      });
+
+      const healthBefore = await emitAsync(staffSocketA, 'ping:health');
+      const roomsBefore: string[] = healthBefore.rooms || [];
+      const hadRest = roomsBefore.includes(`restaurant_${restaurantAId}`);
+
+      // Gọi leave:restaurant
+      const leaveRes = await emitAsync(staffSocketA, 'leave:restaurant', {
+        restaurantId: restaurantAId,
+      });
+
+      const healthAfter = await emitAsync(staffSocketA, 'ping:health');
+      const roomsAfter: string[] = healthAfter.rooms || [];
+      const lingeringRooms = roomsAfter.filter((r) => r.startsWith(`restaurant_${restaurantAId}`) || r.startsWith(`public_menu_${restaurantAId}`));
+
+      if (leaveRes?.success === true && hadRest && lingeringRooms.length === 0) {
+        pass('TC-10.2.12: Hardening AUD-10.2: leave:restaurant dọn sạch 100% phòng nhà hàng, chi nhánh và public menu');
+        passed++;
+      } else {
+        fail('TC-10.2.12: leave:restaurant không dọn sạch phòng', { roomsBefore, roomsAfter, lingeringRooms });
+        failed++;
+      }
+    } catch (err) {
+      fail('TC-10.2.12: Exception', err);
+      failed++;
+    }
+
+    // TEST 13: TC-10.2.13 - Hardening AUD-10.3: Khách vãng lai gửi join:table kèm restaurantId chỉ được join table và public_menu (KHÔNG vào room nhân viên)
+    try {
+      if (!guestSocket) throw new Error('Guest socket not connected');
+
+      const joinRes = await emitAsync(guestSocket, 'join:table', {
+        tableId: tableAId,
+        restaurantId: restaurantAId,
+      });
+
+      const healthGuest = await emitAsync(guestSocket, 'ping:health');
+      const guestRooms: string[] = healthGuest.rooms || [];
+
+      const inTableRoom = guestRooms.includes(`table_${tableAId}`);
+      const inPublicMenu = guestRooms.includes(`public_menu_${restaurantAId}`);
+      const inStaffRoom = guestRooms.includes(`restaurant_${restaurantAId}`);
+      const inBranchRoom = guestRooms.some((r) => r.startsWith(`restaurant_${restaurantAId}_branch_`));
+
+      if (joinRes?.success === true && inTableRoom && inPublicMenu && !inStaffRoom && !inBranchRoom) {
+        pass('TC-10.2.13: Hardening AUD-10.3: Khách vãng lai tuyệt đối không thể join room nhân viên qua join:table');
+        passed++;
+      } else {
+        fail('TC-10.2.13: Khách vãng lai lọt vào room nhân viên', { guestRooms, inStaffRoom, inBranchRoom });
+        failed++;
+      }
+    } catch (err) {
+      fail('TC-10.2.13: Exception', err);
+      failed++;
+    }
 
   } catch (err: any) {
     console.error('Fatal Suite 2 Error:', err);
   } finally {
+    if (staffSocketA) { staffSocketA.removeAllListeners(); staffSocketA.disconnect(); }
+    if (guestSocket) { guestSocket.removeAllListeners(); guestSocket.disconnect(); }
+    if (tableGuestSocket) { tableGuestSocket.removeAllListeners(); tableGuestSocket.disconnect(); }
+    if (branchA2StaffSocket) { branchA2StaffSocket.removeAllListeners(); branchA2StaffSocket.disconnect(); }
     if (app) {
       await app.close();
     }

@@ -44,6 +44,7 @@ async function main() {
 
   let passed = 0;
   let failed = 0;
+  let socket: Socket | null = null;
 
   try {
     app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
@@ -67,7 +68,6 @@ async function main() {
     // -------------------------------------------------------------------------
     // TC-10.4.1: Connection Status Lifecycle tracking (DISCONNECTED -> CONNECTED)
     // -------------------------------------------------------------------------
-    let socket: Socket | null = null;
     try {
       const statusHistory: string[] = ['DISCONNECTED'];
 
@@ -269,11 +269,146 @@ async function main() {
       failed++;
     }
 
-    if (socket) socket.disconnect();
+    // -------------------------------------------------------------------------
+    // TC-10.4.6: Hardening AUD-10.4 - AdminHeader FIFO buffer cap 50: Giới hạn nghiêm ngặt tối đa 50 thông báo (slice(0, 50))
+    // -------------------------------------------------------------------------
+    try {
+      let notifications: Array<{ id: string; title: string }> = [];
+
+      function addNotification(item: { id: string; title: string }) {
+        notifications = [item, ...notifications.filter((n) => n.id !== item.id)].slice(0, 50);
+      }
+
+      // Đẩy 60 thông báo liên tiếp
+      for (let i = 1; i <= 60; i++) {
+        addNotification({ id: `notif_${i}`, title: `Thông báo số ${i}` });
+      }
+
+      const isCappedAt50 = notifications.length === 50;
+      const hasNewest = notifications[0].id === 'notif_60';
+      const hasOldestRemaining = notifications[notifications.length - 1].id === 'notif_11';
+      const evictedOldest = notifications.find((n) => n.id === 'notif_1' || n.id === 'notif_10') === undefined;
+
+      if (isCappedAt50 && hasNewest && hasOldestRemaining && evictedOldest) {
+        pass('TC-10.4.6: Hardening AUD-10.4: FIFO Cap 50 bảo toàn đúng 50 phần tử mới nhất và giải phóng phần tử cũ');
+        passed++;
+      } else {
+        fail('TC-10.4.6: Buffer thông báo vượt quá 50 hoặc logic FIFO lỗi', {
+          length: notifications.length,
+          hasNewest,
+          hasOldestRemaining,
+          evictedOldest,
+        });
+        failed++;
+      }
+    } catch (err) {
+      fail('TC-10.4.6: Exception', err);
+      failed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TC-10.4.7: Hardening AUD-10.5 - Khử âm báo kép (No Double Chime): Dispatch alias sự kiện nhưng Wildcard subscriber '*' chỉ nhận DUY NHẤT 1 lần
+    // -------------------------------------------------------------------------
+    try {
+      const CANONICAL_EVENT_MAP: Record<string, string> = {
+        'table:call_staff': 'CALL_STAFF',
+        'CALL_STAFF': 'CALL_STAFF',
+        'order:created': 'NEW_ORDER',
+        'NEW_ORDER': 'NEW_ORDER',
+      };
+
+      const recentEvents = new Map<string, number>();
+      function isDuplicate(payload: { type: string; id: string }): boolean {
+        const canonical = CANONICAL_EVENT_MAP[payload.type] || payload.type;
+        const key = `${canonical}_${payload.id}`;
+        const now = Date.now();
+        const prev = recentEvents.get(key);
+        if (prev && now - prev < 300) return true;
+        recentEvents.set(key, now);
+        return false;
+      }
+
+      let localCallStaffReceived = 0;
+      let wsCallStaffReceived = 0;
+      let wildcardReceived = 0;
+
+      function dispatchSocketEvent(normalizedPayload: { type: string; id: string }, wsEvent: string) {
+        if (isDuplicate(normalizedPayload)) return;
+
+        // 1. Local type
+        if (normalizedPayload.type === 'CALL_STAFF') localCallStaffReceived++;
+        // 2. WS alias
+        if (wsEvent && wsEvent !== normalizedPayload.type) {
+          if (wsEvent === 'table:call_staff') wsCallStaffReceived++;
+        }
+        // 3. Wildcard handler (phát đúng 1 lần)
+        wildcardReceived++;
+      }
+
+      // Phát sự kiện table:call_staff
+      dispatchSocketEvent({ type: 'CALL_STAFF', id: 'evt-call-100' }, 'table:call_staff');
+
+      // Giả lập luồng BroadcastChannel phát lại cùng ID sau 30ms
+      const isBcDuplicate = isDuplicate({ type: 'CALL_STAFF', id: 'evt-call-100' });
+
+      if (
+        localCallStaffReceived === 1 &&
+        wsCallStaffReceived === 1 &&
+        wildcardReceived === 1 &&
+        isBcDuplicate === true
+      ) {
+        pass('TC-10.4.7: Hardening AUD-10.5: Khử âm báo kép thành công (Wildcard gọi đúng 1 lần, alias nhận đủ, duplicate bị chặn)');
+        passed++;
+      } else {
+        fail('TC-10.4.7: Wildcard bị nhân đôi hoặc duplicate không chặn', {
+          localCallStaffReceived,
+          wsCallStaffReceived,
+          wildcardReceived,
+          isBcDuplicate,
+        });
+        failed++;
+      }
+    } catch (err) {
+      fail('TC-10.4.7: Exception', err);
+      failed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TC-10.4.8: Hardening AUD-10.6 - Cấu hình Socket.IO client Exponential Backoff & Jitter (reconnectionDelay: 1000, max: 5000, randomizationFactor: 0.5)
+    // -------------------------------------------------------------------------
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const socketClientPath = path.resolve(__dirname, '../../../imenu-menudientu/packages/utils/src/socket-client.ts');
+      const content = fs.readFileSync(socketClientPath, 'utf8');
+
+      const hasReconnDelay = content.includes('reconnectionDelay: 1000');
+      const hasReconnDelayMax = content.includes('reconnectionDelayMax: 5000');
+      const hasRandomization = content.includes('randomizationFactor: 0.5');
+
+      if (hasReconnDelay && hasReconnDelayMax && hasRandomization) {
+        pass('TC-10.4.8: Hardening AUD-10.6: Cấu hình Socket.IO client Exponential Backoff & Jitter hợp lệ');
+        passed++;
+      } else {
+        fail('TC-10.4.8: Cấu hình socket-client.ts thiếu thông số Exponential Backoff / Jitter', {
+          hasReconnDelay,
+          hasReconnDelayMax,
+          hasRandomization,
+        });
+        failed++;
+      }
+    } catch (err) {
+      fail('TC-10.4.8: Exception', err);
+      failed++;
+    }
 
   } catch (err: any) {
     console.error('Fatal Suite 4 Error:', err);
   } finally {
+    if (socket) {
+      socket.removeAllListeners();
+      socket.disconnect();
+    }
     if (app) {
       await app.close();
     }

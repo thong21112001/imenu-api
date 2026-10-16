@@ -47,7 +47,7 @@ const suites: SuiteConfig[] = [
     name: 'Call Staff & Acknowledgment Flow (Port 3125)',
     cmd: 'npx',
     args: ['ts-node', 'tests/phase-10-realtime/call-staff-notification.test.ts'],
-    casesCount: 13,
+    casesCount: 16,
     cwd: backendDir,
   },
   {
@@ -55,7 +55,7 @@ const suites: SuiteConfig[] = [
     name: 'WebSocket Room Security & Multi-Tenant Isolation (Port 3126)',
     cmd: 'npx',
     args: ['ts-node', 'tests/phase-10-realtime/websocket-room-security.test.ts'],
-    casesCount: 10,
+    casesCount: 13,
     cwd: backendDir,
   },
   {
@@ -79,7 +79,7 @@ const suites: SuiteConfig[] = [
     name: 'Client Resilience, Reconnect & Deduplication (Port 3128)',
     cmd: 'npx',
     args: ['ts-node', 'tests/phase-10-realtime/subphase-10-4-client-resilience.test.ts'],
-    casesCount: 5,
+    casesCount: 8,
     cwd: backendDir,
   },
   {

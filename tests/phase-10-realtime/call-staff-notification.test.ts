@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { TablesService } from '../../src/modules/tables/tables.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { io, Socket } from 'socket.io-client';
 
@@ -77,6 +78,10 @@ async function main() {
 
   let passed = 0;
   let failed = 0;
+  let staffClient: Socket | null = null;
+  let guestTableClient: Socket | null = null;
+  let connection: Connection | null = null;
+  let restaurantId: string | null = null;
 
   try {
     app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
@@ -90,7 +95,7 @@ async function main() {
     );
     await app.listen(TEST_PORT);
 
-    const connection = app.get<Connection>(getConnectionToken());
+    connection = app.get<Connection>(getConnectionToken());
     const eventEmitter = app.get<EventEmitter2>(EventEmitter2);
 
     const timestamp = Date.now();
@@ -117,10 +122,10 @@ async function main() {
       throw new Error(`Đăng ký nhà hàng thất bại: ${JSON.stringify(regRes.data)}`);
     }
 
-    const restaurantId = regRes.data.data.restaurant.id || regRes.data.data.restaurant._id;
+    restaurantId = regRes.data.data.restaurant.id || regRes.data.data.restaurant._id;
     const ownerToken = regRes.data.data.accessToken;
 
-    const restDoc = await connection.collection('restaurants').findOne({ _id: new Types.ObjectId(restaurantId) });
+    const restDoc = await connection.collection('restaurants').findOne({ _id: new Types.ObjectId(restaurantId!) });
     const branch1Id = restDoc!.branches[0]._id.toString();
     const restaurantSlug = restDoc!.slug;
 
@@ -245,8 +250,8 @@ async function main() {
     ]);
 
     // Connect real Socket.IO clients
-    const staffClient = await createClient({ token: ownerToken });
-    const guestTableClient = await createClient({
+    staffClient = await createClient({ token: ownerToken });
+    guestTableClient = await createClient({
       query: { tableId: activeTableId.toString(), restaurantId: restaurantId.toString() },
     });
 
@@ -470,9 +475,10 @@ async function main() {
       if (
         res2.status === 200 &&
         res2.data?.data?.cooldownActive === true &&
+        res2.data?.data?.isCooldownReplay === true &&
         typeof res2.data?.data?.remainingSeconds === 'number'
       ) {
-        pass('TC-10.1.9: Cooldown chống spam 10s hoạt động (cooldownActive: true)', `còn: ${res2.data?.data?.remainingSeconds}s`);
+        pass('TC-10.1.9: Cooldown chống spam 10s hoạt động (cooldownActive: true, isCooldownReplay: true)', `còn: ${res2.data?.data?.remainingSeconds}s`);
         passed++;
       } else {
         fail('TC-10.1.9: Cooldown không hoạt động', res2);
@@ -605,12 +611,135 @@ async function main() {
       failed++;
     }
 
-    staffClient.disconnect();
-    guestTableClient.disconnect();
+    // -------------------------------------------------------------------------
+    // TC-10.1.14: Hardening AUD-10.1 - Chống spam cooldown trả về isCooldownReplay: true và KHÔNG bắn trùng WebSocket event
+    // -------------------------------------------------------------------------
+    try {
+      // Khôi phục qrStatus: 'active' cho activeTableId sau khi bị revoked ở TC-10.1.13
+      await connection.collection('tables').updateOne(
+        { _id: activeTableId },
+        { $set: { qrStatus: 'active' } },
+      );
+
+      let callStaffWsEventCount = 0;
+      const countHandler = () => {
+        callStaffWsEventCount++;
+      };
+      staffClient.on('table:call_staff', countHandler);
+
+      // Gọi lần 1 thành công (với bypass cooldown để chắc chắn tạo sự kiện mới)
+      const resFirst = await request(`/tables/${activeTableId}/call-staff`, {
+        method: 'POST',
+        headers: { 'x-test-bypass-cooldown': 'true' },
+        body: JSON.stringify({ reason: 'Gọi lần 1 chuẩn' }),
+      });
+
+      await new Promise((r) => setTimeout(r, 150));
+      const countAfterFirst = callStaffWsEventCount;
+
+      // Gọi lần 2 ngay lập tức KHÔNG bypass cooldown -> kích hoạt cơ chế cooldown
+      const resCooldown = await request(`/tables/${activeTableId}/call-staff`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: 'Gọi lần 2 spam liền tay' }),
+      });
+
+      await new Promise((r) => setTimeout(r, 150));
+      const countAfterSecond = callStaffWsEventCount;
+
+      staffClient.off('table:call_staff', countHandler);
+
+      if (
+        resFirst.status === 200 &&
+        resCooldown.status === 200 &&
+        resCooldown.data?.data?.cooldownActive === true &&
+        resCooldown.data?.data?.isCooldownReplay === true &&
+        countAfterFirst >= 1 &&
+        countAfterSecond === countAfterFirst
+      ) {
+        pass('TC-10.1.14: Hardening AUD-10.1: Cooldown trả về isCooldownReplay: true và KHÔNG bắn trùng WebSocket event');
+        passed++;
+      } else {
+        fail('TC-10.1.14: Cooldown vẫn bắn trùng WebSocket hoặc thiếu isCooldownReplay', {
+          resCooldown,
+          countAfterFirst,
+          countAfterSecond,
+        });
+        failed++;
+      }
+    } catch (e) {
+      fail('TC-10.1.14: Exception', e);
+      failed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TC-10.1.15: Hardening AUD-10.1 - Giới hạn chặt độ dài note (> 500 ký tự bị từ chối 400 Bad Request)
+    // -------------------------------------------------------------------------
+    try {
+      const longNote = 'N'.repeat(501);
+      const res = await request(`/tables/${activeTableId}/call-staff`, {
+        method: 'POST',
+        headers: { 'x-test-bypass-cooldown': 'true' },
+        body: JSON.stringify({ reason: 'Xin tương ớt', note: longNote }),
+      });
+
+      if (res.status === 400) {
+        pass('TC-10.1.15: Hardening AUD-10.1: Note vượt quá 500 ký tự bị từ chối 400 Bad Request');
+        passed++;
+      } else {
+        fail('TC-10.1.15: Note > 500 ký tự không bị chặn', res);
+        failed++;
+      }
+    } catch (e) {
+      fail('TC-10.1.15: Exception', e);
+      failed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TC-10.1.16: Hardening AUD-10.1 - Cơ chế TTL eviction dọn dẹp bộ nhớ callStaffCooldowns tự động
+    // -------------------------------------------------------------------------
+    try {
+      const tablesService = app.get<TablesService>(TablesService);
+      // Ghi nhận trước khi prune
+      const sizeBefore = tablesService.getCallStaffCooldownsSize();
+      // Giả lập dọn dẹp các mục cũ hơn 0ms (tất cả các mục đang có)
+      const sizeAfter = tablesService.pruneCallStaffCooldowns(0);
+
+      if (sizeBefore >= 1 && sizeAfter === 0) {
+        pass('TC-10.1.16: Hardening AUD-10.1: TTL eviction dọn dẹp bộ nhớ callStaffCooldowns thành công');
+        passed++;
+      } else {
+        fail('TC-10.1.16: TTL eviction dọn dẹp thất bại', { sizeBefore, sizeAfter });
+        failed++;
+      }
+    } catch (e) {
+      fail('TC-10.1.16: Exception', e);
+      failed++;
+    }
 
   } catch (err: any) {
     console.error('Fatal Suite 1 Error:', err);
   } finally {
+    if (staffClient) {
+      staffClient.removeAllListeners();
+      staffClient.disconnect();
+    }
+    if (guestTableClient) {
+      guestTableClient.removeAllListeners();
+      guestTableClient.disconnect();
+    }
+    if (connection && restaurantId) {
+      try {
+        const restObjId = new Types.ObjectId(restaurantId);
+        await connection.collection('tables').deleteMany({ restaurantId: restObjId });
+        await connection.collection('table_zones').deleteMany({ restaurantId: restObjId });
+        await connection.collection('orders').deleteMany({ restaurantId: restObjId });
+        await connection.collection('users').deleteMany({ restaurantId: restObjId });
+        await connection.collection('restaurants').deleteOne({ _id: restObjId });
+        console.log(`  ${colors.green}✔ [Zero Garbage Teardown] Đã dọn dẹp sạch sẽ toàn bộ dữ liệu kiểm thử MongoDB Suite 1${colors.reset}`);
+      } catch (cleanErr: any) {
+        console.warn('Lỗi teardown MongoDB Suite 1:', cleanErr.message);
+      }
+    }
     if (app) {
       await app.close();
     }

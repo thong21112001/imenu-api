@@ -191,9 +191,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       return { success: false, message: 'Missing restaurantId' };
     }
 
-    // 1. Rời các phòng branch cũ của nhà hàng đó
+    // 1. Rời các phòng branch cũ của nhà hàng đó (Duyệt an toàn qua Array.from(client.rooms))
     const prefix = `restaurant_${restId}_branch_`;
-    for (const room of client.rooms) {
+    for (const room of Array.from(client.rooms)) {
       if (room.startsWith(prefix)) {
         client.leave(room);
         this.logger.log(`Client [${client.id}] left old branch room: ${room}`);
@@ -215,7 +215,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   /**
-   * Client chủ động rời phòng nhà hàng
+   * Client chủ động rời phòng nhà hàng (Dọn dẹp triệt để mọi phòng nhà hàng, chi nhánh, menu công khai)
    */
   @SubscribeMessage('leave:restaurant')
   handleLeaveRestaurant(
@@ -224,14 +224,21 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   ) {
     if (!data?.restaurantId) return { success: false, message: 'Missing restaurantId' };
     const restRoom = `restaurant_${data.restaurantId}`;
-    client.leave(restRoom);
+    const publicMenuRoom = `public_menu_${data.restaurantId}`;
     const prefix = `restaurant_${data.restaurantId}_branch_`;
-    for (const room of client.rooms) {
-      if (room.startsWith(prefix)) {
+
+    for (const room of Array.from(client.rooms)) {
+      if (
+        room === restRoom ||
+        room === publicMenuRoom ||
+        room.startsWith(prefix) ||
+        room.startsWith(`restaurant_${data.restaurantId}`)
+      ) {
         client.leave(room);
+        this.logger.log(`Client [${client.id}] left room: ${room}`);
       }
     }
-    this.logger.log(`Client [${client.id}] left restaurant [${data.restaurantId}]`);
+    this.logger.log(`Client [${client.id}] left restaurant [${data.restaurantId}] and associated rooms`);
     return { success: true, message: `Left restaurant ${data.restaurantId}` };
   }
 

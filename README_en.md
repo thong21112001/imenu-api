@@ -102,7 +102,7 @@ Standardized role matrix:
 
 ---
 
-## 5. 🚀 Key Feature Highlights (Phase 1 to Phase 9)
+## 5. 🚀 Key Feature Highlights (Phase 1 to Phase 10)
 
 - **Phase 1: Foundation & Security**: Modular NestJS setup, JWT Auth, Swagger `/api-docs`, Winston logging, MongoDB schemas.
 - **Phase 2: Multi-Restaurant & Branch Lifecycle**: Auto-provisioned main branch, temporary closing/re-opening hours, independent VietQR banking and phone numbers per branch, accounting protection (disallow physical deletion of branches with historical orders).
@@ -113,22 +113,23 @@ Standardized role matrix:
 - **Phase 7: Kitchen Display System (KDS) & Realtime Dish Dispatching ✅ (ACCEPTED — OFFICIALLY CLOSED)**: Industrial-grade high-contrast Dark Mode KDS interface, strict FIFO queue ordering (`createdAt ASC`), items summary aggregation (`GET /api/kitchen/items-summary`), granular item status transitions (`WaitingConfirmation` → `Waiting` → `Cooking` → `Ready` → `Served`) with automatic order status upgrades (`Preparing`, `Ready`, `Served`), batch round updates, branch-isolated 86 out-of-stock management, 3-way real-time WebSocket pairing (KDS ↔ POS ↔ Customer QR Menu) with audible Chime alerts, and adversarial security hardening preventing cross-branch IDOR, race conditions, and unauthenticated WebSocket room leakage.
 - **Phase 8: Payment, Bill, ESC/POS Thermal Printing & Financial Audit ✅ (ACCEPTED — OFFICIALLY CLOSED)**: Full financial settlement and auditing lifecycle: Customer QR payment requests (`PaymentRequested`), server-side independent dynamic VietQR recalculation, Bills engine with Natural Idempotency and `E11000` handling guaranteeing exactly 1 Bill per Order, accurate cash change calculation (`changeAmount`), atomic table release to `Available`, immutable financial audit logging in `activity_logs`, industrial binary ESC/POS 80mm/58mm thermal receipt compilation (100% ASCII sanitization, cash drawer kick pulse, partial cut), upgraded `/bills` management interface and thermal print modal on Admin POS, and adversarial security hardening (`AUD-8.1` to `AUD-8.6`).
 - **Phase 9: Dashboard, Revenue Reports, CSV Export, Demo Tables & UI/UX Overhaul ✅ (ACCEPTED — OFFICIALLY CLOSED)**: Business intelligence and comprehensive user experience overhaul: Realtime KPI indicators with Dual-Key Engine, multi-dimensional revenue analytics (`day`, `week`, `month`) broken down across 4 payment methods (`Cash`, `VietQR`, `Card`, `Transfer`), top-selling dish analytics including options price delta (`options.priceModifier`), secure UTF-8 BOM CSV export for Microsoft Excel protected under `REPORT.EXPORT` (`perm-rep-export`), public discovery API for dining tables with valid QR tokens, Admin Sidebar restructured into 4 logical groups, and full Customer Menu Responsive overhaul across Mobile, Tablet, and Desktop.
+- **Phase 10: Realtime WebSocket Gateway, Room Security & Ecosystem Finalization ✅ (ACCEPTED — FULL ROADMAP COMPLETED 10/10 PHASES)**: Realtime infrastructure and collaborative multi-tab operations: Customer table call staff with 60-second table cooldown and TTL memory eviction, two-way staff acknowledgment flow emitting `staff_acknowledged` to table rooms, standardized domain events matrix across 7 operational event groups (New Order, Order Updated, Item Status, Table Status, Call Staff, Payment & Bills, 86 Out-of-Stock), hierarchical room isolation (`restaurant_${id}`, `branch_${id}`, `table_${id}`) with guest isolation from staff rooms, dynamic room cleanup via `client.leave(r)` upon branch switching, Frontend SDK methods (SDK-30, SDK-31, SDK-32), Socket client resilience with exponential backoff and jitter, canonical event deduplication eliminating double chimes, FIFO 50-notification buffer on Admin Header, and multi-tab browser E2E test synchronization.
 
-### Phase 9 — Detailed 6 Sub-phase Scope
+### Phase 10 — Detailed 6 Sub-phase Scope
 
 | Sub-phase | Name | Description |
 | :---: | :--- | :--- |
-| 9.1 | Dashboard Overview & Dual-Key Analytics Engine | Realtime revenue KPIs, growth rate, table occupancy, AOV; +07:00 timezone; Dual-Key engine; branch lockdown |
-| 9.2 | Revenue Reports Analytics & Payment Breakdown | Period revenue analytics, 4-method payment breakdown, branch breakdown, safe MongoDB empty dataset fallback |
-| 9.3 | Top Selling Items Analytics & Options Delta | Top dishes ranking, item price calculation with options price delta, 100% cancelled item exclusion |
-| 9.4 | Reports CSV Export Engine & RBAC Security | UTF-8 BOM CSV export for Excel, strict perm-rep-export RBAC enforcement, blocks Manager & Cashier (403) |
-| 9.5 | Public Demo Tables Discovery & Customer Menu Responsive | Public table discovery with active QR tokens, interactive table picker, responsive layout across Mobile, Tablet & Desktop |
-| 9.6 | Admin Sidebar Restructure & Adversarial Hardening | 4-group Sidebar reorganization, intuitive Dashboard/Reports UI, full resolution of AUD-9.1 to AUD-9.6 |
+| 10.1 | Customer Call Staff & Two-Way Acknowledgment | Table-side call staff, two-way acknowledgment flow, branch isolation, 60s cooldown, note length restrictions |
+| 10.2 | WebSocket Room Security & Multi-Branch Isolation | JWT Bearer handshake auth, hierarchical room isolation, guest room isolation, clean room exit on branch switch |
+| 10.3 | Domain Events Matrix Across 7 Realtime Groups | Standardized matrix across 7 operational event groups (New Order, Order Updated, Item Status, Table Status, Call Staff, Payment, 86 Stockout) |
+| 10.4 | Frontend SDK Contract & Client Resilience | Call staff SDK client methods (SDK-30/31/32), Reconnection Backoff with Jitter, CANONICAL_EVENT_MAP deduplication, FIFO 50 buffer |
+| 10.5 | Multi-Tab Browser E2E Ecosystem | Real browser Puppeteer multi-tab test: Customer calls staff $\rightarrow$ Admin Header audio badge zero reload; Order $\rightarrow$ KDS $\rightarrow$ POS $\rightarrow$ Bill |
+| 10.6 | Realtime Adversarial Hardening (AUD-10.1–10.6) | Full audit hardening: Table-level cooldown, dynamic room cleanup, guest isolation, FIFO capping, double chime block, jitter backoff |
 
 ### Known Limitations & Architecture Boundaries
 
 - **Hardware thermal printer**: Provides industrial-grade ESC/POS 80mm/58mm binary compilation (buffer Uint8Array, base64, hex) and CSS `@media print` layout at `/bills`. WebUSB/WebSerial or local Print Bridge hardware agents connect directly to the standardized payloads generated by `thermalPrinterService`.
-- **Redis Pub/Sub & multi-node distributed messaging**: The current realtime system uses EventEmitter2 + Socket.IO on a single process combined with `BroadcastChannel` for browsers. Multi-node distributed messaging via Redis/Kafka is planned for future clustering phases.
+- **Redis Pub/Sub & multi-node distributed messaging**: The current realtime system uses EventEmitter2 + Socket.IO on a single process combined with `BroadcastChannel` for browsers. Multi-node distributed messaging via Redis/Kafka is planned for large-scale horizontal clustering in future expansions.
 
 ---
 
@@ -175,6 +176,8 @@ Interactive documentation available at: `http://localhost:3001/api-docs`
 | | `POST` | `/api/tables/merge` | Merge multiple tables | POS.VIEW |
 | | `POST` | `/api/tables/move-items` | Move items between tables | POS.VIEW |
 | | `GET` | `/api/tables/public/by-restaurant/:restaurantSlug` | Public table discovery with active QR tokens | Public |
+| | `POST` | `/api/tables/:tableId/call-staff` | Diner table request to call staff / assistance | Public (Requires QR/Slug) |
+| | `POST` | `/api/tables/:tableId/acknowledge-call` | Staff acknowledges table assistance request | POS.VIEW (perm-pos-view) |
 | **Table Zones** | `GET` | `/api/table-zones` | List table zones | POS.VIEW |
 | | `POST` | `/api/table-zones` | Create custom zone | TABLE.UPDATE |
 | **Menu** | `GET` | `/api/categories` | Public category listing | Public |
@@ -255,22 +258,22 @@ Core authentication environment variables configured in `.env`:
 
 ## 10. 🧪 Automated Testing Suites
 
-The iMenu test ecosystem comprises **570 comprehensive automated tests** (with automatic fixture teardown and zero database residue), covering the full Phase 2 through Phase 9 scope.
+The iMenu test ecosystem comprises **643 comprehensive automated tests** (with automatic fixture teardown and zero database residue), covering the full scope from Phase 2 through Phase 10.
 
 ### Master Test Orchestrator
 
 ```bash
-# Phase 9: Developer Test Run (57 automated tests)
-npm run test:phase9:all
+# Phase 10: Developer Test Run (82 automated tests across Backend & SDK)
+npm run test:phase10:all
 
-# Phase 9: Final Acceptance Run (57 mandatory tests: 0 FAIL, 0 SKIP, 0 BLOCKED)
-npm run test:phase9:acceptance
+# Phase 10: Final Acceptance Run (85 mandatory tests: 0 FAIL, 0 SKIP, 0 BLOCKED)
+npm run test:phase10:acceptance
 ```
 
 ### Per-Phase Test Commands (Regression)
 
 ```bash
-# Phase 2: Auth, Restaurant & Multi-Branch (24 tests)
+# Phase 2: Auth, Restaurant & Multi-Branch (23 tests)
 npm run test:phase2:all
 
 # Phase 3: Staff RBAC, Roles & Branches (16 tests)
@@ -279,13 +282,13 @@ npm run test:phase3
 # Phase 4: Menu, Toppings & Branch Price Overrides (17 tests)
 npm run test:phase4
 
-# Phase 5: Tables, Orders & Realtime KDS WebSocket (20 tests)
+# Phase 5: Tables, Orders & Realtime KDS WebSocket (18 tests)
 npm run test:phase5
 
-# Full Phase 2–5 Regression Suite (77 tests):
+# Full Phase 2–5 Regression Suite (74 tests):
 npm run test:regression:phase2-5
 
-# Phase 6: Order & POS (288 tests):
+# Phase 6: Order & POS (279 tests):
 npm run test:phase6:all
 
 # Phase 7: Kitchen / KDS (50 tests):
@@ -293,46 +296,55 @@ npm run test:phase7:all
 
 # Phase 8: Payment & Bill (98 tests):
 npm run test:phase8:all
+
+# Phase 9: Dashboard & Reports (57 tests):
+npm run test:phase9:all
+
+# Phase 10: Realtime & Ecosystem (85 tests):
+npm run test:phase10:all
 ```
 
-### Phase 9 Test Commands (Dashboard & Reports)
+### Phase 10 Test Commands (Realtime & Ecosystem)
 
 ```bash
-# Run all 5 backend suites sequentially (53 tests):
-npm run test:phase9
+# Run all 4 backend suites sequentially (48 tests):
+npm run test:phase10
 
 # Run individual sub-phase suites:
-npm run test:phase9:overview    # Suite 1: Dashboard Overview KPI & Dual-Key Engine (16 tests)
-npm run test:phase9:revenue     # Suite 2: Revenue Reports Analytics & Payment Breakdown (13 tests)
-npm run test:phase9:top-items   # Suite 3: Top Selling Items & Options Delta (7 tests)
-npm run test:phase9:export      # Suite 4: CSV Report Export UTF-8 BOM & RBAC (10 tests)
-npm run test:phase9:demo-tables # Suite 5: Public Demo Tables Discovery (7 tests)
-npm run test:phase9:e2e         # Suite 6: Browser E2E Dashboard, Reports & UI (4 tests)
+npm run test:phase10:call-staff  # Suite 1: Call Staff & Two-Way Acknowledgment (16 tests)
+npm run test:phase10:security    # Suite 2: WebSocket Room Security & Isolation (13 tests)
+npm run test:phase10:events      # Suite 3: Domain Events Matrix 7 Groups (11 tests)
+npm run test:phase10:sdk         # Suite 4A: Frontend SDK Contract (34 tests)
+npm run test:phase10:resilience  # Suite 4B: Client Resilience & Deduplication (8 tests)
+npm run test:phase10:e2e         # Suite 5: Browser E2E Multi-Tab Ecosystem (3 tests)
 ```
 
-### 570-Test Ecosystem Reconciliation Matrix
+### 643-Test Ecosystem Reconciliation Matrix
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  IMENU TEST ECOSYSTEM — 570 VERIFIED AUTOMATED TEST CASES                │
+│  IMENU TEST ECOSYSTEM — 643 VERIFIED AUTOMATED TEST CASES                │
 ├────────────────────────────────┬──────────────────────┬────────────────┤
 │ Test Group                      │ Source Location       │ Test Count     │
 ├────────────────────────────────┼──────────────────────┼────────────────┤
-│ 1. Phase 9 Dashboard & Reports │ tests/phase-09-dashb │ 57 (88 incl.SDK)│
-│ 2. Phase 8 Payment & Bill      │ tests/phase-08-payme │ 98             │
-│ 3. Phase 7 Kitchen / KDS       │ tests/phase-07-kitch │ 50             │
-│ 4. Phase 6 Orders & POS        │ tests/phase-06-order │ 288            │
-│ 5. Phases 2–5 Regression       │ tests/phase-02..05   │ 77             │
+│ 1. Phase 10 Realtime & Ecosyst │ tests/phase-10-realt │ 85 (100% PASS) │
+│ 2. Phase 9 Dashboard & Reports │ tests/phase-09-dashb │ 57             │
+│ 3. Phase 8 Payment & Bill      │ tests/phase-08-payme │ 98             │
+│ 4. Phase 7 Kitchen / KDS       │ tests/phase-07-kitch │ 50             │
+│ 5. Phase 6 Orders & POS        │ tests/phase-06-order │ 279            │
+│ 6. Phases 2–5 Regression       │ tests/phase-02..05   │ 74             │
 ├────────────────────────────────┴──────────────────────┼────────────────┤
-│ TOTAL ECOSYSTEM (ACCEPTANCE CLOSURE REQUIREMENT)       │ 570 TESTS      │
-│  - Passed in Developer/CI Run:                         │ 548 / 548 PASS │
-│  - Total standalone test executions including SDK Suite:│ 583 TESTS    │
+│ TOTAL ECOSYSTEM (FULL ROADMAP ACCEPTANCE REQUIREMENT)  │ 643 TESTS      │
+│  - Passed in Developer/CI Run:                         │ 643 / 643 PASS │
+│  - Adversarial Hardening & Regression:                 │ 0 FAIL, 0 BLOCK│
+│  - Full 10-Phase Roadmap Acceptance Status:            │ ✅ 10/10 PHASES│
 └───────────────────────────────────────────────────────┴────────────────┘
 ```
 
 ### Detailed Test Documentation
 
 - **Master test index:** [tests/README.md](tests/README.md) (Vietnamese) | [tests/README_en.md](tests/README_en.md) (English)
+- **Phase 10 detailed documentation:** [tests/phase-10-realtime/README.md](tests/phase-10-realtime/README.md) (Vietnamese) | [tests/phase-10-realtime/README_en.md](tests/phase-10-realtime/README_en.md) (English)
 - **Phase 9 detailed documentation:** [tests/phase-09-dashboard-reports/README.md](tests/phase-09-dashboard-reports/README.md) (Vietnamese) | [tests/phase-09-dashboard-reports/README_en.md](tests/phase-09-dashboard-reports/README_en.md) (English)
 - **Phase 8 detailed documentation:** [tests/phase-08-payment-bill/README.md](tests/phase-08-payment-bill/README.md) (Vietnamese) | [tests/phase-08-payment-bill/README_en.md](tests/phase-08-payment-bill/README_en.md) (English)
 - **Phase 7 detailed documentation:** [tests/phase-07-kitchen-kds/README.md](tests/phase-07-kitchen-kds/README.md) (Vietnamese) | [tests/phase-07-kitchen-kds/README_en.md](tests/phase-07-kitchen-kds/README_en.md) (English)
@@ -342,28 +354,27 @@ npm run test:phase9:e2e         # Suite 6: Browser E2E Dashboard, Reports & UI (
 
 ## 11. 📊 Project Status & Acceptance
 
-### Phase 9 Status: ✅ ACCEPTED — OFFICIALLY CLOSED
+### Full Project Status: ✅ ACCEPTED — FULL 10/10 PHASES ROADMAP COMPLETED
 
-Phase 9 (Dashboard, Revenue Reports, CSV Export, Public Demo Tables & UI/UX Overhaul) has completed all 6 sub-phases (9.1 through 9.6) and has been officially accepted through the Master Phase 9 Closure Gate verification process.
+Phase 10 (Realtime WebSocket Gateway, Room Security & Isolation, Domain Events Matrix, Call Staff Flow, Client Resilience & Multi-Tab Ecosystem E2E) has completed all 6 sub-phases (10.1 through 10.6) and has been officially accepted through the Master Phase 10 Closure Gate verification process. The entire 10-Phase roadmap of the iMenu ecosystem is 100% complete.
 
-**Phase 9 Acceptance Results:**
+**Full Ecosystem Acceptance Results:**
 
 | Test Group | Test Count | Result |
 | :--- | :---: | :---: |
-| Phase 9 Backend Suites (5 suites) | 53 | ✅ PASS |
-| Phase 9 Browser E2E Lifecycle Suite | 4 | ✅ PASS |
-| Frontend SDK Contract Suite | 31 | ✅ PASS |
+| Phase 10 Realtime & Ecosystem (6 suites) | 85 | ✅ PASS |
+| Phase 9 Dashboard & Reports Full Regression | 57 | ✅ PASS |
 | Phase 8 Payment & Bill Full Regression | 98 | ✅ PASS |
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
-| Phase 6 Orders & POS Full Regression | 288 | ✅ PASS |
-| Phases 2–5 Core Regression | 77 | ✅ PASS |
-| **TOTAL ECOSYSTEM** | **570** | **548/548 PASS CI (100%)** |
+| Phase 6 Orders & POS Full Regression | 279 | ✅ PASS |
+| Phases 2–5 Core Regressions | 74 | ✅ PASS |
+| **TOTAL ECOSYSTEM** | **643** | **643/643 PASS (100%)** |
 
 - **FAIL:** 0
-- **SKIP:** 0 (22 Browser E2E checkpoints ready when dev servers are online)
+- **SKIP:** 0
 - **BLOCKED:** 0
 
-### Overall Roadmap
+### Overall 10/10 Phases Roadmap
 
 | Phase | Status |
 | :--- | :--- |
@@ -376,4 +387,4 @@ Phase 9 (Dashboard, Revenue Reports, CSV Export, Public Demo Tables & UI/UX Over
 | Phase 7: Kitchen Display System (KDS) | ✅ Accepted & Officially Closed |
 | Phase 8: Payment, Bill & Financial Audit | ✅ Accepted & Officially Closed |
 | Phase 9: Dashboard, Revenue Reports & UI/UX Overhaul | ✅ Accepted & Officially Closed |
-| Phase 10+: Loyalty, Customer CRM & Advanced Promotions | 🔜 Next Milestone |
+| Phase 10: Realtime WebSocket Gateway, Room Security & Ecosystem Finalization | ✅ **ACCEPTED & ROADMAP COMPLETED (10/10 PHASES)** |

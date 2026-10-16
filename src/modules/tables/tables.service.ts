@@ -1329,13 +1329,24 @@ export class TablesService {
       throw new NotFoundException('Không tìm thấy bàn ăn');
     }
 
+    // 0. Kiểm tra reason & note không được rỗng hoặc vượt quá giới hạn
+    if (!dto.reason || !dto.reason.trim()) {
+      throw new BadRequestException('Lý do gọi nhân viên không được để trống');
+    }
+    if (dto.reason.trim().length > 200) {
+      throw new BadRequestException('Lý do gọi nhân viên tối đa 200 ký tự');
+    }
+    if (dto.note && dto.note.trim().length > 500) {
+      throw new BadRequestException('Ghi chú tối đa 500 ký tự');
+    }
+
     // 1. Kiểm tra trạng thái QR của bàn (nếu revoked hoặc inactive thì ném 403 Forbidden)
     if (table.qrStatus !== 'active') {
       throw new ForbiddenException('Mã QR của bàn đã bị thu hồi hoặc tạm ngưng');
     }
 
     // 2. Nếu client truyền qrToken thì kiểm tra khớp table.qrToken
-    if (dto.qrToken && table.qrToken && dto.qrToken !== table.qrToken) {
+    if (dto.qrToken && (!table.qrToken || dto.qrToken !== table.qrToken)) {
       throw new ForbiddenException('Mã QR Token của bàn không hợp lệ');
     }
 
@@ -1347,8 +1358,18 @@ export class TablesService {
       }
     }
 
-    // 4. Cơ chế chống spam (Cooldown 10 giây per table)
+    // 4. Cơ chế chống spam (Cooldown 10 giây per table + TTL Eviction để chống rò rỉ RAM)
     const now = Date.now();
+
+    // Dọn dẹp cache sau mỗi đợt gọi nếu kích thước Map > 200 (hoặc phần tử cũ hơn 60s)
+    if (this.callStaffCooldowns.size > 200) {
+      for (const [tId, val] of this.callStaffCooldowns.entries()) {
+        if (now - val.timestamp > 60000) {
+          this.callStaffCooldowns.delete(tId);
+        }
+      }
+    }
+
     const lastCall = this.callStaffCooldowns.get(tableId);
     if (!bypassCooldown && lastCall && now - lastCall.timestamp < 10000) {
       const remainingSeconds = Math.ceil((10000 - (now - lastCall.timestamp)) / 1000);
@@ -1362,6 +1383,7 @@ export class TablesService {
         reason: dto.reason.trim(),
         note: dto.note?.trim() || '',
         cooldownActive: true,
+        isCooldownReplay: true,
         remainingSeconds,
         createdAt: new Date(lastCall.timestamp).toISOString(),
         message: `Yêu cầu đang được xử lý. Vui lòng đợi ${remainingSeconds} giây trước khi gửi lại.`,
@@ -1391,6 +1413,7 @@ export class TablesService {
     return {
       ...payload,
       cooldownActive: false,
+      isCooldownReplay: false,
       remainingSeconds: 10,
       message: 'Yêu cầu gọi nhân viên đã được gửi thành công',
     };
@@ -1440,6 +1463,23 @@ export class TablesService {
     this.eventEmitter.emit('table.call_acknowledged', payload);
 
     return payload;
+  }
+
+  /**
+   * Helper dọn dẹp bộ nhớ Cooldown (AUD-10.1 TTL eviction test support)
+   */
+  pruneCallStaffCooldowns(olderThanMs: number = 60000): number {
+    const now = Date.now();
+    for (const [tId, val] of this.callStaffCooldowns.entries()) {
+      if (now - val.timestamp >= olderThanMs) {
+        this.callStaffCooldowns.delete(tId);
+      }
+    }
+    return this.callStaffCooldowns.size;
+  }
+
+  getCallStaffCooldownsSize(): number {
+    return this.callStaffCooldowns.size;
   }
 }
 

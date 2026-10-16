@@ -369,16 +369,19 @@ async function main() {
       failed++;
     }
 
-    // Clean up sockets
-    staffSocket?.disconnect();
-    guestSocket?.disconnect();
-    tableGuestSocket?.disconnect();
-    branchBStaffSocket?.disconnect();
-
   } catch (globalErr) {
     console.error('Fatal test error:', globalErr);
     failed++;
   } finally {
+    staffSocket?.removeAllListeners();
+    staffSocket?.disconnect();
+    guestSocket?.removeAllListeners();
+    guestSocket?.disconnect();
+    tableGuestSocket?.removeAllListeners();
+    tableGuestSocket?.disconnect();
+    branchBStaffSocket?.removeAllListeners();
+    branchBStaffSocket?.disconnect();
+
     if (app) {
       await app.close();
     }

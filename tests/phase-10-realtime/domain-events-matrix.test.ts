@@ -56,8 +56,9 @@ function createClient(options: { token?: string; query?: Record<string, string> 
   });
 }
 
-function waitForEvent<T = any>(socket: Socket, eventName: string, timeoutMs = 3000): Promise<T> {
+function waitForEvent<T = any>(socket: Socket | null, eventName: string, timeoutMs = 3000): Promise<T> {
   return new Promise((resolve, reject) => {
+    if (!socket) return reject(new Error(`Cannot wait for event "${eventName}" on null socket`));
     const timer = setTimeout(() => {
       socket.off(eventName, listener);
       reject(new Error(`Timeout waiting for event "${eventName}" on socket ${socket.id}`));
@@ -80,6 +81,8 @@ async function main() {
 
   let passed = 0;
   let failed = 0;
+  let staffSocket: Socket | null = null;
+  let guestTableSocket: Socket | null = null;
 
   try {
     app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
@@ -104,8 +107,8 @@ async function main() {
     });
 
     // 1. Connect staff and table sockets
-    const staffSocket = await createClient({ token: staffToken });
-    const guestTableSocket = await createClient({
+    staffSocket = await createClient({ token: staffToken });
+    guestTableSocket = await createClient({
       query: { tableId, restaurantId },
     });
 
@@ -431,12 +434,17 @@ async function main() {
       failed++;
     }
 
-    staffSocket.disconnect();
-    guestTableSocket.disconnect();
-
   } catch (err: any) {
     console.error('Fatal Suite 3 Error:', err);
   } finally {
+    if (staffSocket) {
+      staffSocket.removeAllListeners();
+      staffSocket.disconnect();
+    }
+    if (guestTableSocket) {
+      guestTableSocket.removeAllListeners();
+      guestTableSocket.disconnect();
+    }
     if (app) {
       await app.close();
     }

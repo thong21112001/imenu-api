@@ -69,40 +69,67 @@ tests/
 │   ├── e2e-payment-bill-runner.test.ts# P8-E2E: Kịch bản Browser E2E Payment & Bill (5 ca)
 │   └── run-all-phase8.ts              # P8-MASTER: Master Test Orchestrator Phase 8 (98 ca test)
 │
-└── phase-09-dashboard-reports/        # [✅ ĐÃ NGHIỆM THU] Phase 9: Dashboard, Báo Cáo Doanh Thu & Tối Ưu UI/UX
-    ├── README.md                      # Hướng dẫn kiểm thử Phase 9 toàn diện (Tiếng Việt)
-    ├── README_en.md                   # Comprehensive Phase 9 test guide (English)
-    ├── dashboard-overview.test.ts     # P9-01: Chỉ số KPI tổng quan & Dual-Key Engine (16 ca)
-    ├── reports-revenue-analytics.test.ts # P9-02: Báo cáo Doanh thu & Phân rã thanh toán (13 ca)
-    ├── reports-top-items.test.ts      # P9-03: Món ăn bán chạy & Options Price Delta (7 ca)
-    ├── reports-export-rbac.test.ts    # P9-04: Xuất CSV UTF-8 BOM cho Excel & Phân quyền RBAC (10 ca)
-    ├── customer-demo-tables.test.ts   # P9-05: Khám phá bàn ăn thực tế & QR Resolution (7 ca)
-    ├── e2e-dashboard-reports-runner.test.ts # P9-06: Browser E2E Dashboard, Reports & UI (4 ca)
-    └── run-all-phase9.ts              # P9-MASTER: Master Test Orchestrator Phase 9 (57 ca test)
+├── phase-09-dashboard-reports/        # [HOÀN THÀNH] Phase 9: Dashboard, Báo Cáo Doanh Thu & Tối Ưu UI/UX
+│   ├── README.md                      # Hướng dẫn kiểm thử Phase 9 toàn diện (Tiếng Việt)
+│   ├── README_en.md                   # Comprehensive Phase 9 test guide (English)
+│   ├── dashboard-overview.test.ts     # P9-01: Chỉ số KPI tổng quan & Dual-Key Engine (16 ca)
+│   ├── reports-revenue-analytics.test.ts # P9-02: Báo cáo Doanh thu & Phân rã thanh toán (13 ca)
+│   ├── reports-top-items.test.ts      # P9-03: Món ăn bán chạy & Options Price Delta (7 ca)
+│   ├── reports-export-rbac.test.ts    # P9-04: Xuất CSV UTF-8 BOM cho Excel & Phân quyền RBAC (10 ca)
+│   ├── customer-demo-tables.test.ts   # P9-05: Khám phá bàn ăn thực tế & QR Resolution (7 ca)
+│   ├── e2e-dashboard-reports-runner.test.ts # P9-06: Browser E2E Dashboard, Reports & UI (4 ca)
+│   └── run-all-phase9.ts              # P9-MASTER: Master Test Orchestrator Phase 9 (57 ca test)
+│
+└── phase-10-realtime/                  # [✅ ĐÃ NGHIỆM THU] Phase 10: Thời Gian Thực, Phân Lập Phòng WebSocket & Hoàn Tất Lộ Trình
+    ├── README.md                      # Hướng dẫn kiểm thử Phase 10 toàn diện (Tiếng Việt)
+    ├── README_en.md                   # Comprehensive Phase 10 test guide (English)
+    ├── call-staff-notification.test.ts # P10-01: Khách gọi nhân viên & luồng phản hồi 2 chiều (16 ca)
+    ├── websocket-room-security.test.ts # P10-02: Bảo mật phòng WebSocket & phân lập đa chi nhánh (13 ca)
+    ├── domain-events-matrix.test.ts   # P10-03: Ma trận 7 nhóm sự kiện miền thời gian thực (11 ca)
+    ├── subphase-10-4-client-resilience.test.ts # P10-04B: Khả năng phục hồi kết nối, Jitter Backoff & Deduplication (8 ca)
+    ├── e2e-realtime-runner.test.ts    # P10-05: Wrapper gọi kịch bản Browser E2E Đa Tab Hệ Sinh Thái (3 ca)
+    └── run-all-phase10.ts             # P10-MASTER: Master Test Orchestrator Phase 10 (85 ca test)
 ```
 
 ---
 
-## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 9 (Phase 9 Sub-phase Mapping)
+## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 10 (Phase 10 Sub-phase Mapping)
 
-Toàn bộ các phân hệ của Phase 9 được tích hợp tập trung vào thư mục `tests/phase-09-dashboard-reports/`:
+Toàn bộ các phân hệ của Phase 10 được tích hợp tập trung vào thư mục `tests/phase-10-realtime/`:
 
 | Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
-| **9.1 Realtime Dashboard Overview** | `dashboard-overview.test.ts` | Chỉ số KPI doanh thu hôm nay/hôm qua, tăng trưởng, tỷ lệ lấp đầy bàn, Dual-Key Engine, phân lập chi nhánh, loại trừ bàn xóa mềm (`isDeleted: true`), hardening TC-9.1-AUD-01 | 16 | **PASS** |
-| **9.2 Revenue Analytics Engine** | `reports-revenue-analytics.test.ts` | Báo cáo doanh thu thời gian (`day`, `week`, `month`), phân rã 4 phương thức (`Cash`, `VietQR`, `Card`, `Transfer`), phân rã chi nhánh, fallback rỗng an toàn, hardening TC-9.2-AUD-01 | 13 | **PASS** |
-| **9.3 Top Selling Items Analytics** | `reports-top-items.test.ts` | Món ăn bán chạy nhất, tính chính xác giá món kèm tùy chọn (`options.priceModifier`), loại bỏ 100% món bị hủy (`Cancelled`), hardening TC-9.3-AUD-01 | 7 | **PASS** |
-| **9.4 CSV Export & RBAC Security** | `reports-export-rbac.test.ts` | Xuất báo cáo CSV UTF-8 BOM cho Excel, tiêu đề cột chuẩn, phân quyền nghiêm ngặt (`perm-rep-export`), chặn Manager & Cashier (403), hardening TC-9.4-AUD-01 | 10 | **PASS** |
-| **9.5 Customer Demo Tables & QR** | `customer-demo-tables.test.ts` | API công khai lấy danh sách bàn ăn thực tế theo slug nhà hàng (`/api/tables/public/by-restaurant/:restaurantSlug`), kiểm tra token QR, nhóm khu vực bàn | 7 | **PASS** |
-| **9.6 Browser E2E & Hardening** | `e2e-dashboard-reports-runner.test.ts` | Kịch bản kiểm thử E2E trình duyệt thật kiểm chứng 4 trạm: Admin Sidebar 4 nhóm, Dashboard KPI, Báo cáo Doanh thu & Top Items kèm xuất CSV, Thực đơn Responsive 3 viewports | 4 | **PASS** |
-| **9.6 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Hợp đồng API Frontend SDK đầy đủ cho các endpoint Phase 9: `dashboard.getOverview` (SDK-26), `reports.getRevenue` (SDK-27), `reports.getTopItems` (SDK-28), `tables.listPublicBySlug` (SDK-29) | 31 | **PASS** |
-| **9.6 Master Orchestrator** | `run-all-phase9.ts` | Master Test Orchestrator Phase 9: Chế độ Dev (57 ca) & Chế độ Acceptance (Closure Gate) | N/A | **READY** |
+| **10.1 Call Staff & Acknowledgment** | `call-staff-notification.test.ts` | Khách gọi nhân viên tại bàn, nhân viên tiếp nhận 2 chiều, phân lập chi nhánh, Cooldown chống spam 60s (`isCooldownReplay`), giới hạn độ dài `reason`/`note`, dọn dẹp TTL map, RBAC `perm-pos-view`, hardening TC-10.1.14–16 | 16 | **PASS** |
+| **10.2 WebSocket Room Security** | `websocket-room-security.test.ts` | Xác thực JWT Bearer handshake, phân lập phòng đa cấp (`restaurant_${id}`, `branch_${id}`, `table_${id}`), cô lập khách vãng lai, dọn sạch phòng cũ khi `switch:branch` và `leave:restaurant`, hardening TC-10.2.11–13 | 13 | **PASS** |
+| **10.3 Domain Events Matrix** | `domain-events-matrix.test.ts` | Ma trận 7 nhóm sự kiện thời gian thực (New Order, Order Updated, Item Status, Table Status, Call Staff, Payment & Bill, KDS 86 Out-of-Stock), tính toàn vẹn payload và kênh broadcast | 11 | **PASS** |
+| **10.4 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Hợp đồng API Frontend SDK đầy đủ: `tables.callStaff` (SDK-30), `tables.acknowledgeCall` (SDK-31), `customerOrders.callStaff` (SDK-32) kèm 31 ca test kế thừa | 34 | **PASS** |
+| **10.4 Client Resilience Suite** | `subphase-10-4-client-resilience.test.ts` | Khả năng tự phục hồi kết nối, cấu hình Reconnection Jitter Backoff, khử trùng lặp `CANONICAL_EVENT_MAP`, FIFO ring buffer 50 thông báo, hardening TC-10.4.6–8 | 8 | **PASS** |
+| **10.5 Multi-Tab Browser E2E** | `e2e-realtime-runner.test.ts` | Kịch bản kiểm thử E2E trình duyệt thật đa tab: Khách gọi nhân viên $\rightarrow$ Admin Header chuông reo không reload; Nhân viên tiếp nhận $\rightarrow$ Khách nhận toast; Vòng đời Order $\rightarrow$ KDS $\rightarrow$ POS $\rightarrow$ Bill không reload | 3 | **PASS** |
+| **10.6 Master Orchestrator** | `run-all-phase10.ts` | Master Test Orchestrator Phase 10: Chế độ Dev (Suites 1–5 Backend & SDK: 82 ca) & Chế độ Acceptance (Full 6 Suites: 85 ca) | N/A | **READY** |
 
 ---
 
 ## 3. ⚡ Danh Mục Lệnh Thực Thi Kiểm Thử (Master Test Commands)
 
 Tất cả các lệnh kiểm thử được đăng ký tại `package.json`:
+
+### 🔹 Kiểm Thử Phase 10 (Realtime & Ecosystem Finalization):
+```powershell
+# Chạy toàn bộ suite Phase 10 (85 ca test):
+npm run test:phase10:all
+
+# Chạy ở chế độ Acceptance khắt khe (Official Quality Gate):
+npm run test:phase10:acceptance
+
+# Chạy riêng lẻ từng suite Phase 10:
+npm run test:phase10:call-staff  # Suite 1: Khách gọi nhân viên & xác nhận hai chiều (16 ca)
+npm run test:phase10:security    # Suite 2: Bảo mật phòng WebSocket & phân lập chi nhánh (13 ca)
+npm run test:phase10:events      # Suite 3: Ma trận 7 nhóm sự kiện miền thời gian thực (11 ca)
+npm run test:phase10:sdk         # Suite 4A: Hợp đồng Frontend SDK Contract (34 ca)
+npm run test:phase10:resilience  # Suite 4B: Khả năng phục hồi kết nối & khử trùng lặp (8 ca)
+npm run test:phase10:e2e         # Suite 5: Kịch bản Browser E2E đa tab thời gian thực (3 ca)
+npm run test:phase10             # Chạy 4 suite Backend liên tiếp (48 ca)
+```
 
 ### 🔹 Kiểm Thử Phase 9 (Dashboard & Reports):
 ```powershell
@@ -154,7 +181,7 @@ npm run test:phase7              # Chạy cả 4 suite Backend liên tiếp (30 
 
 ### 🔹 Kiểm Thử Phase 6 (Order & POS):
 ```powershell
-# Chạy toàn bộ suite Phase 6 (288 ca test):
+# Chạy toàn bộ suite Phase 6 (279 ca test mandatory):
 npm run test:phase6:all
 npm run test:phase6:acceptance
 
@@ -171,7 +198,7 @@ npm run test:phase6:e2e          # Sub-phase 6.9: Browser E2E Lifecycle (9 check
 
 ### 🔹 Hồi Quy Toàn Hệ Sinh Thái (Phases 2–5):
 ```powershell
-# Phase 2: Auth, Nhà hàng & Multi-Branch (26 ca)
+# Phase 2: Auth, Nhà hàng & Multi-Branch (23 ca)
 npm run test:phase2:all
 
 # Phase 3: Nhân sự & Phân quyền RBAC (16 ca)
@@ -183,30 +210,30 @@ npm run test:phase4
 # Phase 5: Bàn ăn, Đơn hàng & Realtime KDS (18 ca)
 npm run test:phase5
 
-# Toàn bộ hồi quy Phases 2–5 (77 ca):
+# Toàn bộ hồi quy Phases 2–5 (74 ca):
 npm run test:regression:phase2-5
 ```
 
 ---
 
-## 4. 📊 Đối Chiếu 570 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
+## 4. 📊 Đối Chiếu 643 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  TỔNG HỢP 570 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 9)                       │
+│  TỔNG HỢP 643 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 10)                      │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Phân Hệ Kiểm Thử               │ Số Tệp / Kịch Bản            │ Số Ca Test Thực Tế     │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
-│ Phase 9 Dashboard & Reports    │ 7 tệp kiểm thử (BE + SDK+E2E)│ 57 (88 ca cả SDK)      │
+│ Phase 10 Realtime & Ecosystem  │ 6 tệp kiểm thử (BE + SDK+E2E)│ 85 (100% PASS)         │
+│ Phase 9 Dashboard & Reports    │ 7 tệp kiểm thử (BE + SDK+E2E)│ 57                     │
 │ Phase 8 Payment & Bill Suites  │ 6 tệp kiểm thử (BE + SDK+E2E)│ 98                     │
 │ Phase 7 Kitchen / KDS Suites   │ 6 tệp kiểm thử (BE + SDK+E2E)│ 50                     │
-│ Phase 6 Orders & POS Suites    │ 9 tệp kiểm thử (BE + SDK+E2E)│ 288                    │
-│ Phases 2–5 Regression Suites   │ 5 tệp kiểm thử               │ 77                     │
+│ Phase 6 Orders & POS Suites    │ 9 tệp kiểm thử (BE + SDK+E2E)│ 279                    │
+│ Phases 2–5 Regression Suites   │ 5 tệp kiểm thử               │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)        │ 570 CA TEST (RUNNERS)  │
-│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 548 / 548 PASS (100%)  │
-│  - Số ca test E2E trình duyệt chờ bật full dev server:         │ 22 Checkpoints         │
-│  - Tổng số ca kiểm chứng độc lập tính cả Frontend SDK Suite:   │ 583 CA TEST TOÀN DIỆN  │
+│ TỔNG CỘNG HỆ SINH THÁI (FULL ECOSYSTEM ROADMAP ACCEPTED)       │ 643 CA TEST (PASS)     │
+│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 643 / 643 PASS (100%)  │
+│  - Tỷ lệ thất bại & chặn (Fail/Blocked):                       │ 0 FAIL, 0 BLOCKED      │
+│  - Trạng thái nghiệm thu toàn bộ lộ trình:                     │ ✅ 10/10 PHASES HOÀN TẤT│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
-
