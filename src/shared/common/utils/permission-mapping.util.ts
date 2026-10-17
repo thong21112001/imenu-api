@@ -37,6 +37,8 @@ const ALIASES: Record<string, PermissionPair> = {
   'perm-role-manage': { resource: ResourceType.ROLE, action: ActionType.UPDATE },
   'perm-qr-print': { resource: ResourceType.QR_CODE, action: ActionType.PRINT },
   'perm-settings': { resource: ResourceType.SETTING, action: ActionType.UPDATE },
+  'perm-review-view': { resource: ResourceType.REVIEW, action: ActionType.VIEW },
+  'perm-review-reply': { resource: ResourceType.REVIEW, action: ActionType.UPDATE },
 };
 
 Object.entries(ALIASES).forEach(([id, pair]) => {

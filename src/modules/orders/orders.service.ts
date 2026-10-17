@@ -167,6 +167,7 @@ export class OrdersService {
         customerNote: dto.customerNote || '',
         openedAt: new Date(),
         createdBy: validUserOid,
+        receiptAccessToken: crypto.randomBytes(24).toString('hex'),
       });
 
       let savedOrder: OrderDocument;
@@ -587,6 +588,7 @@ export class OrdersService {
         orderSource: 'QR_CUSTOMER',
         customerNote: dto.customerNote || '',
         openedAt: new Date(),
+        receiptAccessToken: crypto.randomBytes(24).toString('hex'),
       });
 
       let savedOrder: OrderDocument;
@@ -2494,11 +2496,18 @@ export class OrdersService {
     }
 
     const targetPaymentMethod = dto?.paymentMethod || order.paymentMethod || 'VietQR';
+    if (!order.receiptAccessToken) {
+      order.receiptAccessToken = crypto.randomBytes(24).toString('hex');
+    }
 
     // Idempotent: nếu đơn đã ở PaymentRequested, cập nhật paymentMethod nếu có và trả về
     if (order.status === 'PaymentRequested') {
+      let needsSave = false;
       if (dto?.paymentMethod && order.paymentMethod !== dto.paymentMethod) {
         order.paymentMethod = dto.paymentMethod;
+        needsSave = true;
+      }
+      if (order.isModified && (order.isModified('receiptAccessToken') || needsSave)) {
         await order.save();
       }
 
@@ -2512,6 +2521,7 @@ export class OrdersService {
         order: order.toObject(),
         restaurantId: order.restaurantId.toString(),
         branchId: order.branchId,
+        receiptAccessToken: order.receiptAccessToken,
       });
 
       if (updatedTable) {
@@ -2692,11 +2702,30 @@ export class OrdersService {
     restaurantId?: string,
     caller?: any,
     qrAuth?: { restaurantSlug?: string; tableCode?: string; qrToken?: string },
+    receiptAccessToken?: string,
   ): Promise<ReceiptData> {
     let order: any;
     let restaurant: any;
 
-    if (qrAuth?.restaurantSlug && qrAuth?.tableCode && qrAuth?.qrToken) {
+    if (receiptAccessToken) {
+      if (!Types.ObjectId.isValid(orderId)) {
+        throw new NotFoundException('Không tìm thấy đơn hàng');
+      }
+      order = await this.orderModel.findOne({
+        _id: new Types.ObjectId(orderId),
+        receiptAccessToken,
+      });
+      if (!order) {
+        throw new NotFoundException('Không tìm thấy đơn hàng hoặc mã truy cập hóa đơn không hợp lệ');
+      }
+      const referenceTime = order.closedAt || order.updatedAt || order.createdAt;
+      const ageMs = Date.now() - new Date(referenceTime).getTime();
+      const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+      if (ageMs > MAX_AGE_MS) {
+        throw new BadRequestException('Mã truy cập hóa đơn điện tử đã hết hạn (chỉ khả dụng trong vòng 24 giờ sau thanh toán)');
+      }
+      restaurant = await this.restaurantModel.findById(order.restaurantId);
+    } else if (qrAuth?.restaurantSlug && qrAuth?.tableCode && qrAuth?.qrToken) {
       const session = await this.validateQrSession(
         qrAuth.restaurantSlug,
         qrAuth.tableCode,
@@ -2713,7 +2742,7 @@ export class OrdersService {
       restaurant = await this.restaurantModel.findById(order.restaurantId);
     } else {
       throw new BadRequestException(
-        'Yêu cầu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken) hoặc quyền truy cập của nhân viên',
+        'Yêu cầu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken), receiptAccessToken hoặc quyền truy cập của nhân viên',
       );
     }
 
@@ -3019,6 +3048,7 @@ export class OrdersService {
             status: 'Paid',
             closedAt,
             paidBy: validUserOid,
+            receiptAccessToken: order.receiptAccessToken || crypto.randomBytes(24).toString('hex'),
           },
         },
         { new: true },
@@ -3065,6 +3095,7 @@ export class OrdersService {
         restaurantId,
         branchId: claimedOrder.branchId,
         changeAmount,
+        receiptAccessToken: claimedOrder.receiptAccessToken,
       });
 
       // 6. TẠO HOẶC LẤY CHỨNG TỪ BILL BẤT BIẾN

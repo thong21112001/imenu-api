@@ -173,13 +173,32 @@ export class OrdersController {
     @Query('restaurantSlug') restaurantSlug?: string,
     @Query('tableCode') tableCode?: string,
     @Query('qrToken') qrToken?: string,
+    @Query('receiptAccessToken') receiptAccessToken?: string,
   ) {
-    if (!restaurantSlug || !tableCode || !qrToken) {
-      throw new BadRequestException('Thiếu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken)');
+    if (!receiptAccessToken && (!restaurantSlug || !tableCode || !qrToken)) {
+      throw new BadRequestException('Thiếu thông tin phiên QR hợp lệ (restaurantSlug, tableCode, qrToken) hoặc mã receiptAccessToken');
     }
-    const qrAuth = { restaurantSlug, tableCode, qrToken };
-    const receipt = await this.ordersService.getReceiptForOrder(id, undefined, undefined, qrAuth);
+    const qrAuth = restaurantSlug && tableCode && qrToken ? { restaurantSlug, tableCode, qrToken } : undefined;
+    const receipt = await this.ordersService.getReceiptForOrder(id, undefined, undefined, qrAuth, receiptAccessToken);
     return new OkResponse({ message: 'Lấy dữ liệu hóa đơn thành công', data: receipt });
+  }
+
+  @ApiOperation({ summary: 'Tải dữ liệu hóa đơn điện tử chính thức (Khách QR Public)' })
+  @Public()
+  @Get(['customer/:id/download-bill', 'public/customer/:id/download-bill'])
+  async getCustomerDownloadBill(
+    @Param('id') id: string,
+    @Query('restaurantSlug') restaurantSlug?: string,
+    @Query('tableCode') tableCode?: string,
+    @Query('qrToken') qrToken?: string,
+    @Query('receiptAccessToken') receiptAccessToken?: string,
+  ) {
+    if (!receiptAccessToken && (!restaurantSlug || !tableCode || !qrToken)) {
+      throw new BadRequestException('Thiếu thông tin phiên QR hợp lệ hoặc receiptAccessToken');
+    }
+    const qrAuth = restaurantSlug && tableCode && qrToken ? { restaurantSlug, tableCode, qrToken } : undefined;
+    const receipt = await this.ordersService.getReceiptForOrder(id, undefined, undefined, qrAuth, receiptAccessToken);
+    return new OkResponse({ message: 'Tải dữ liệu hóa đơn thành công', data: receipt });
   }
 
   // =========================================================================

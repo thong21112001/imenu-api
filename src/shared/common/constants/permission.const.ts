@@ -15,6 +15,7 @@ export enum ResourceType {
   BRANCH = 'BRANCH',           // Quan ly chi nhanh
   ROLE = 'ROLE',               // Quan ly vai tro
   ACTIVITY_LOG = 'ACTIVITY_LOG',// Nhat ky kiem toan he thong
+  REVIEW = 'REVIEW',           // Danh gia khach hang (Phase 11)
 }
 
 /**
@@ -91,6 +92,10 @@ export const IMENU_PERMISSIONS = {
   SETTING_VIEW: { id: 'perm-set-view', resource: ResourceType.SETTING, action: ActionType.VIEW, name: 'Xem cai dat nha hang' },
   SETTING_EDIT: { id: 'perm-set-edit', resource: ResourceType.SETTING, action: ActionType.UPDATE, name: 'Chinh sua cai dat nha hang' },
   SETTING_MANAGE: { id: 'perm-settings', resource: ResourceType.SETTING, action: ActionType.UPDATE, name: 'Cau hinh he thong & cai dat nha hang' },
+
+  // Danh gia Khach hang (Phase 11)
+  REVIEW_VIEW: { id: 'perm-review-view', resource: ResourceType.REVIEW, action: ActionType.VIEW, name: 'Xem đánh giá khách hàng' },
+  REVIEW_REPLY: { id: 'perm-review-reply', resource: ResourceType.REVIEW, action: ActionType.UPDATE, name: 'Phản hồi đánh giá khách hàng' },
 };
 
 export const ALL_SYSTEM_PERMISSION_IDS: string[] = Array.from(
@@ -285,5 +290,23 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
     groupIcon: '⚙️',
     name: 'Cài đặt nhà hàng',
     description: 'Cấu hình thông tin nhà hàng, tài khoản ngân hàng',
+  },
+
+  // 6. Danh Gia Khach Hang (Phase 11)
+  {
+    id: 'perm-review-view',
+    groupId: 'group-reviews',
+    groupName: 'Đánh Giá Khách Hàng',
+    groupIcon: '⭐',
+    name: 'Xem đánh giá',
+    description: 'Xem danh sách và thống kê đánh giá của khách hàng',
+  },
+  {
+    id: 'perm-review-reply',
+    groupId: 'group-reviews',
+    groupName: 'Đánh Giá Khách Hàng',
+    groupIcon: '💬',
+    name: 'Phản hồi đánh giá',
+    description: 'Gửi phản hồi cho nhận xét của khách hàng',
   },
 ];

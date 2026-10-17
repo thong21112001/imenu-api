@@ -24,6 +24,7 @@ import { BillsModule } from './modules/bills/bills.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
     BillsModule,
     DashboardModule,
     ReportsModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [
