@@ -237,25 +237,33 @@ export class OrdersService {
       throw new BadRequestException('qrToken không được để trống');
     }
 
-    // 1. Tìm nhà hàng theo slug
-    const normalizedSlug = restaurantSlug.toLowerCase().trim();
-    const restaurant = await this.restaurantModel.findOne({ slug: normalizedSlug });
+    // 1. Tìm nhà hàng theo slug không phân biệt hoa thường
+    const escapedSlug = restaurantSlug.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const restaurant = await this.restaurantModel.findOne({
+      slug: { $regex: new RegExp('^' + escapedSlug + '$', 'i') },
+    });
     if (!restaurant) {
       throw new NotFoundException(`Không tìm thấy nhà hàng với mã: ${restaurantSlug}`);
     }
 
-    // 2. Tìm bàn ăn theo mã bàn thuộc nhà hàng (Cưỡng chế Restaurant Isolation)
+    // 2. Tìm danh sách bàn thuộc nhà hàng có code khớp không phân biệt chữ hoa/thường (case-insensitive)
     const normalizedCode = tableCode.trim();
-    const table = await this.tableModel.findOne({
-      code: normalizedCode,
+    const escapedCode = normalizedCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const candidateTables = await this.tableModel.find({
+      code: { $regex: new RegExp(`^${escapedCode}$`, 'i') },
       restaurantId: restaurant._id,
       isDeleted: { $ne: true },
     });
-    if (!table) {
+    if (!candidateTables || candidateTables.length === 0) {
       throw new NotFoundException(
         `Không tìm thấy bàn ăn "${tableCode}" thuộc nhà hàng "${restaurant.name}"`,
       );
     }
+    // Nếu nhà hàng có nhiều chi nhánh cùng có mã bàn B03, ưu tiên chọn đúng bàn khớp qrToken
+    const table =
+      candidateTables.find(
+        (t) => t.qrToken && t.qrToken.trim() === qrToken.trim(),
+      ) || candidateTables[0];
 
     // 3. Khớp mã bí mật qrToken
     if (!table.qrToken || table.qrToken.trim() !== qrToken.trim()) {
@@ -908,6 +916,8 @@ export class OrdersService {
       zoneId?: string;
       capacity?: number;
       qrStatus?: string;
+      wifiSsid?: string;
+      wifiPassword?: string;
     };
     activeOrder: Order | null;
   }> {
@@ -953,6 +963,8 @@ export class OrdersService {
         zoneId: (table as any).zoneId ? (table as any).zoneId.toString() : undefined,
         capacity: table.capacity,
         qrStatus: table.qrStatus,
+        wifiSsid: table.wifiSsid || '',
+        wifiPassword: table.wifiPassword || '',
       },
       activeOrder,
     };
