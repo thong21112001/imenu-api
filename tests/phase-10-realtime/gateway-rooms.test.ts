@@ -72,6 +72,11 @@ async function main() {
   let passed = 0;
   let failed = 0;
 
+  let staffSocket: Socket | null = null;
+  let guestSocket: Socket | null = null;
+  let tableGuestSocket: Socket | null = null;
+  let branchBStaffSocket: Socket | null = null;
+
   try {
     app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
     await app.listen(TEST_PORT);
@@ -104,7 +109,6 @@ async function main() {
     });
 
     // TEST 1: TC-10.2.1 - Authenticated staff joins restaurant and branch room on connection
-    let staffSocket: Socket | null = null;
     try {
       staffSocket = await createClient({ token: hqOwnerToken });
       const health = await emitAsync(staffSocket, 'ping:health');
@@ -126,7 +130,6 @@ async function main() {
     }
 
     // TEST 2: TC-10.2.2 - Guest cannot join staff restaurant room directly
-    let guestSocket: Socket | null = null;
     try {
       guestSocket = await createClient(); // Unauthenticated guest
       const joinRes = await emitAsync(guestSocket, 'join:restaurant', { restaurantId });
@@ -143,7 +146,6 @@ async function main() {
     }
 
     // TEST 3: TC-10.2.3 - Guest connects with tableId & restaurantId query params
-    let tableGuestSocket: Socket | null = null;
     try {
       tableGuestSocket = await createClient({
         query: { tableId, restaurantId },
@@ -200,7 +202,6 @@ async function main() {
     }
 
     // TEST 5: TC-10.2.5 - Branch isolation for branch staff
-    let branchBStaffSocket: Socket | null = null;
     try {
       branchBStaffSocket = await createClient({ token: branchBStaffToken });
 

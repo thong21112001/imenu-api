@@ -64,7 +64,7 @@ const suites: SuiteConfig[] = [
     group: 'phase11_backend',
     cmd: 'npx',
     args: ['ts-node', 'tests/phase-11-review-digital-bill/branch-review-isolation.test.ts'],
-    casesCount: 8,
+    casesCount: 9,
     isMandatoryInDev: true,
     isMandatoryInAcceptance: true,
     cwd: backendDir,

@@ -510,6 +510,21 @@ export class ReviewsService {
     review.isHidden = !review.isHidden;
     await review.save();
 
+    // Ghi nhật ký kiểm toán (Activity Log)
+    this.eventEmitter.emit('activity.log', {
+      action: ActivityAction.UPDATE || 'update',
+      module: ActivityModule.SYSTEM || 'review',
+      entityType: 'Review',
+      restaurantId,
+      branchId: review.branchId,
+      targetId: review._id.toString(),
+      userId: user.userId,
+      userName: user.fullName || user.username || 'Quản lý',
+      userRole: user.role,
+      newData: { isHidden: review.isHidden, orderCode: review.orderCode },
+      note: `${review.isHidden ? 'Ẩn' : 'Hiện'} đánh giá đơn ${review.orderCode}`,
+    });
+
     return review.toObject();
   }
 }
