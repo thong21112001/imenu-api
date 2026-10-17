@@ -80,38 +80,59 @@ tests/
 │   ├── e2e-dashboard-reports-runner.test.ts # P9-06: Browser E2E Dashboard, Reports & UI (4 ca)
 │   └── run-all-phase9.ts              # P9-MASTER: Master Test Orchestrator Phase 9 (57 ca test)
 │
-└── phase-10-realtime/                  # [✅ ĐÃ NGHIỆM THU] Phase 10: Thời Gian Thực, Phân Lập Phòng WebSocket & Hoàn Tất Lộ Trình
-    ├── README.md                      # Hướng dẫn kiểm thử Phase 10 toàn diện (Tiếng Việt)
-    ├── README_en.md                   # Comprehensive Phase 10 test guide (English)
-    ├── call-staff-notification.test.ts # P10-01: Khách gọi nhân viên & luồng phản hồi 2 chiều (16 ca)
-    ├── websocket-room-security.test.ts # P10-02: Bảo mật phòng WebSocket & phân lập đa chi nhánh (13 ca)
-    ├── domain-events-matrix.test.ts   # P10-03: Ma trận 7 nhóm sự kiện miền thời gian thực (11 ca)
-    ├── subphase-10-4-client-resilience.test.ts # P10-04B: Khả năng phục hồi kết nối, Jitter Backoff & Deduplication (8 ca)
-    ├── e2e-realtime-runner.test.ts    # P10-05: Wrapper gọi kịch bản Browser E2E Đa Tab Hệ Sinh Thái (3 ca)
-    └── run-all-phase10.ts             # P10-MASTER: Master Test Orchestrator Phase 10 (85 ca test)
+├── phase-10-realtime/                  # [HOÀN THÀNH] Phase 10: Thời Gian Thực, Phân Lập Phòng WebSocket & Hoàn Tất Lộ Trình
+│   ├── README.md                      # Hướng dẫn kiểm thử Phase 10 toàn diện (Tiếng Việt)
+│   ├── README_en.md                   # Comprehensive Phase 10 test guide (English)
+│   ├── call-staff-notification.test.ts # P10-01: Khách gọi nhân viên & luồng phản hồi 2 chiều (16 ca)
+│   ├── websocket-room-security.test.ts # P10-02: Bảo mật phòng WebSocket & phân lập đa chi nhánh (13 ca)
+│   ├── domain-events-matrix.test.ts   # P10-03: Ma trận 7 nhóm sự kiện miền thời gian thực (11 ca)
+│   ├── subphase-10-4-client-resilience.test.ts # P10-04B: Khả năng phục hồi kết nối, Jitter Backoff & Deduplication (8 ca)
+│   ├── e2e-realtime-runner.test.ts    # P10-05: Wrapper gọi kịch bản Browser E2E Đa Tab Hệ Sinh Thái (3 ca)
+│   └── run-all-phase10.ts             # P10-MASTER: Master Test Orchestrator Phase 10 (85 ca test)
+│
+└── phase-11-review-digital-bill/       # [✅ ĐÃ NGHIỆM THU] Phase 11: Đánh Giá Khách Hàng Theo Chi Nhánh & Hóa Đơn Điện Tử
+    ├── README.md                      # Hướng dẫn kiểm thử Phase 11 toàn diện (Tiếng Việt)
+    ├── README_en.md                   # Comprehensive Phase 11 test guide (English)
+    ├── customer-review-submission.test.ts # P11-01: Khách gửi đánh giá, State Machine Guard & Atomic CAS (11 ca)
+    ├── branch-review-isolation.test.ts    # P11-02: Phân lập chi nhánh, Thống kê CSAT & Moderation RBAC (9 ca)
+    ├── digital-bill-download.test.ts      # P11-03: Mã truy cập hóa đơn điện tử 48 hex & Hết hạn 24h (7 ca)
+    └── run-all-phase11.ts                 # P11-MASTER: Master Test Orchestrator Phase 11 (67 ca test)
 ```
 
 ---
 
-## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 10 (Phase 10 Sub-phase Mapping)
+## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 11 (Phase 11 Sub-phase Mapping)
 
-Toàn bộ các phân hệ của Phase 10 được tích hợp tập trung vào thư mục `tests/phase-10-realtime/`:
+Toàn bộ các phân hệ của Phase 11 được tích hợp tập trung vào thư mục `tests/phase-11-review-digital-bill/`:
 
 | Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
-| **10.1 Call Staff & Acknowledgment** | `call-staff-notification.test.ts` | Khách gọi nhân viên tại bàn, nhân viên tiếp nhận 2 chiều, phân lập chi nhánh, Cooldown chống spam 60s (`isCooldownReplay`), giới hạn độ dài `reason`/`note`, dọn dẹp TTL map, RBAC `perm-pos-view`, hardening TC-10.1.14–16 | 16 | **PASS** |
-| **10.2 WebSocket Room Security** | `websocket-room-security.test.ts` | Xác thực JWT Bearer handshake, phân lập phòng đa cấp (`restaurant_${id}`, `branch_${id}`, `table_${id}`), cô lập khách vãng lai, dọn sạch phòng cũ khi `switch:branch` và `leave:restaurant`, hardening TC-10.2.11–13 | 13 | **PASS** |
-| **10.3 Domain Events Matrix** | `domain-events-matrix.test.ts` | Ma trận 7 nhóm sự kiện thời gian thực (New Order, Order Updated, Item Status, Table Status, Call Staff, Payment & Bill, KDS 86 Out-of-Stock), tính toàn vẹn payload và kênh broadcast | 11 | **PASS** |
-| **10.4 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Hợp đồng API Frontend SDK đầy đủ: `tables.callStaff` (SDK-30), `tables.acknowledgeCall` (SDK-31), `customerOrders.callStaff` (SDK-32) kèm 31 ca test kế thừa | 34 | **PASS** |
-| **10.4 Client Resilience Suite** | `subphase-10-4-client-resilience.test.ts` | Khả năng tự phục hồi kết nối, cấu hình Reconnection Jitter Backoff, khử trùng lặp `CANONICAL_EVENT_MAP`, FIFO ring buffer 50 thông báo, hardening TC-10.4.6–8 | 8 | **PASS** |
-| **10.5 Multi-Tab Browser E2E** | `e2e-realtime-runner.test.ts` | Kịch bản kiểm thử E2E trình duyệt thật đa tab: Khách gọi nhân viên $\rightarrow$ Admin Header chuông reo không reload; Nhân viên tiếp nhận $\rightarrow$ Khách nhận toast; Vòng đời Order $\rightarrow$ KDS $\rightarrow$ POS $\rightarrow$ Bill không reload | 3 | **PASS** |
-| **10.6 Master Orchestrator** | `run-all-phase10.ts` | Master Test Orchestrator Phase 10: Chế độ Dev (Suites 1–5 Backend & SDK: 82 ca) & Chế độ Acceptance (Full 6 Suites: 85 ca) | N/A | **READY** |
+| **11.1 Customer Review Submission** | `customer-review-submission.test.ts` | Gửi đánh giá, State Machine Guard (`PaymentRequested`/`Paid`), cờ `isReviewed` & `reviewId`, chặn trùng lặp, Atomic CAS Concurrency 10 reqs (`AUD-11.1`), chống IDOR (`AUD-11.3`), validation rating $\le 5$ & comment $\le 500$ ký tự, đọc lại review | 11 | **PASS** |
+| **11.2 Branch Isolation & CSAT** | `branch-review-isolation.test.ts` | Phân lập chi nhánh (`AUD-11.5`), ngăn chặn bypass filter, quyền xem toàn chuỗi của HQ Owner, tổng hợp CSAT (`/reviews/summary`), quản lý gửi phản hồi, chặn phản hồi chéo (403), quyền ẩn/hiện chỉ dành cho Owner (`AUD-11.7`), RBAC `perm-review-view` | 9 | **PASS** |
+| **11.3 Digital Bill Download** | `digital-bill-download.test.ts` | Sinh mã `receiptAccessToken` ngẫu nhiên 48 hex, chỉ mục tối ưu, chặn token giả mạo (404), hết hạn sau 24 giờ (`AUD-11.4` -> 400 Bad Request), tải thành công trong 24h, endpoint `GET customer/:id/receipt` chấp nhận token | 7 | **PASS** |
+| **11.4 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Hợp đồng API Frontend SDK đầy đủ: `customerOrders.downloadBill` (SDK-33), `reviews.createCustomerReview` (SDK-34), `reviews.getCustomerReviewByOrder` (SDK-35), `reviews.list` (SDK-36), `reviews.getSummary & reply` (SDK-37), `renderReceiptToPngDataUrl` xuất ảnh hóa đơn 80mm Retina (SDK-38) | 40 | **PASS** |
+| **11.5 Master Orchestrator** | `run-all-phase11.ts` | Master Test Orchestrator Phase 11: Tự động điều phối 4 test suites (67 test cases) ở cả 2 chế độ Developer Run và Final Acceptance Run | N/A | **READY** |
 
 ---
 
 ## 3. ⚡ Danh Mục Lệnh Thực Thi Kiểm Thử (Master Test Commands)
 
 Tất cả các lệnh kiểm thử được đăng ký tại `package.json`:
+
+### 🔹 Kiểm Thử Phase 11 (Customer Review & Digital Bill Download):
+```powershell
+# Chạy toàn bộ suite Phase 11 (67 ca test):
+npm run test:phase11:all
+
+# Chạy ở chế độ Acceptance khắt khe (Official Quality Gate):
+npm run test:phase11:acceptance
+
+# Chạy riêng lẻ từng suite Phase 11:
+npm run test:phase11:submission # Suite 1: Khách gửi đánh giá & Atomic CAS (11 ca)
+npm run test:phase11:isolation  # Suite 2: Phân lập chi nhánh & Moderation RBAC (9 ca)
+npm run test:phase11:bill       # Suite 3: Mã hóa đơn điện tử & Hết hạn 24 giờ (7 ca)
+npm run test:phase11            # Chạy cả 3 suite Backend liên tiếp (27 ca)
+```
 
 ### 🔹 Kiểm Thử Phase 10 (Realtime & Ecosystem Finalization):
 ```powershell
@@ -216,24 +237,25 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Đối Chiếu 643 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
+## 4. 📊 Đối Chiếu 710 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  TỔNG HỢP 643 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 10)                      │
+│  TỔNG HỢP 710 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 11)                      │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Phân Hệ Kiểm Thử               │ Số Tệp / Kịch Bản            │ Số Ca Test Thực Tế     │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
-│ Phase 10 Realtime & Ecosystem  │ 6 tệp kiểm thử (BE + SDK+E2E)│ 85 (100% PASS)         │
+│ Phase 11 Review & Digital Bill │ 4 tệp kiểm thử (BE + SDK)    │ 67 (100% PASS)         │
+│ Phase 10 Realtime & Ecosystem  │ 6 tệp kiểm thử (BE + SDK+E2E)│ 85                     │
 │ Phase 9 Dashboard & Reports    │ 7 tệp kiểm thử (BE + SDK+E2E)│ 57                     │
 │ Phase 8 Payment & Bill Suites  │ 6 tệp kiểm thử (BE + SDK+E2E)│ 98                     │
 │ Phase 7 Kitchen / KDS Suites   │ 6 tệp kiểm thử (BE + SDK+E2E)│ 50                     │
 │ Phase 6 Orders & POS Suites    │ 9 tệp kiểm thử (BE + SDK+E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 tệp kiểm thử               │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ TỔNG CỘNG HỆ SINH THÁI (FULL ECOSYSTEM ROADMAP ACCEPTED)       │ 643 CA TEST (PASS)     │
-│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 643 / 643 PASS (100%)  │
+│ TỔNG CỘNG HỆ SINH THÁI (FULL ECOSYSTEM ROADMAP ACCEPTED)       │ 710 CA TEST (PASS)     │
+│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 710 / 710 PASS (100%)  │
 │  - Tỷ lệ thất bại & chặn (Fail/Blocked):                       │ 0 FAIL, 0 BLOCKED      │
-│  - Trạng thái nghiệm thu toàn bộ lộ trình:                     │ ✅ 10/10 PHASES HOÀN TẤT│
+│  - Trạng thái nghiệm thu toàn bộ lộ trình:                     │ ✅ 11/11 PHASES HOÀN TẤT│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
