@@ -27,6 +27,7 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { CounterModule } from './shared/common/counter/counter.module';
 import { SalesModule } from './modules/sales/sales.module';
+import { PlatformModule } from './modules/platform/platform.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { SalesModule } from './modules/sales/sales.module';
     ReportsModule,
     ReviewsModule,
     SalesModule,
+    PlatformModule,
   ],
   controllers: [AppController],
   providers: [

@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3120;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -92,7 +93,7 @@ async function main() {
           fullName: 'P9 Owner',
           phone: '0912345678',
           email: `owner.p9.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -133,7 +134,7 @@ async function main() {
         fullName: 'Cashier User',
         username: `cashier_${timestamp}`,
         email: `cashier.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0912345679',
         roleId: cashierRole!._id.toString(),
         branchId: branch1Id,
@@ -143,7 +144,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `cashier.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     cashierToken = cashierLogin.data.data.accessToken;
@@ -156,7 +157,7 @@ async function main() {
         fullName: 'Waiter User',
         username: `waiter_${timestamp}`,
         email: `waiter.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0912345680',
         roleId: waiterRole!._id.toString(),
         branchId: branch1Id,
@@ -166,7 +167,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `waiter.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     waiterToken = waiterLogin.data.data.accessToken;
@@ -179,7 +180,7 @@ async function main() {
         fullName: 'Chef User',
         username: `chef_${timestamp}`,
         email: `chef.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0912345681',
         roleId: kitchenRole!._id.toString(),
         branchId: branch1Id,
@@ -189,7 +190,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `chef.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     chefNoPermToken = chefLogin.data.data.accessToken;
@@ -202,7 +203,7 @@ async function main() {
         fullName: 'Branch 2 Cashier',
         username: `b2cashier_${timestamp}`,
         email: `b2cashier.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0912345682',
         roleId: cashierRole!._id.toString(),
         branchId: branch2Id,
@@ -212,7 +213,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `b2cashier.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     branch2StaffToken = branch2Login.data.data.accessToken;

@@ -6,6 +6,7 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3134;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -94,7 +95,7 @@ async function main() {
       salesRole.slug = 'sales_rep';
     }
 
-    const hashedPassword = await bcrypt.hash('Password@123', 10);
+    const hashedPassword = await bcrypt.hash(getTestFixtureSecret(), 10);
 
     // Create Sales Rep A
     const salesAId = new Types.ObjectId();
@@ -131,7 +132,7 @@ async function main() {
     // Login Sales Rep A
     const loginARes = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: salesAEmail, password: 'Password@123' }),
+      body: JSON.stringify({ email: salesAEmail, password: getTestFixtureSecret() }),
     });
     const tokenA = loginARes.data?.data?.accessToken;
     if (!tokenA) {
@@ -141,7 +142,7 @@ async function main() {
     // Login Sales Rep B
     const loginBRes = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: salesBEmail, password: 'Password@123' }),
+      body: JSON.stringify({ email: salesBEmail, password: getTestFixtureSecret() }),
     });
     const tokenB = loginBRes.data?.data?.accessToken;
     if (!tokenB) {

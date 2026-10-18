@@ -6,6 +6,7 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
+import { getAltFixtureSecret, getInvalidFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3099;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -65,7 +66,7 @@ async function main() {
   let failed = 0;
 
   const testEmail = `test.owner.${Date.now()}@sample.vn`;
-  const testPassword = 'TestPassword@123';
+  const testPassword = getAltFixtureSecret();
   let accessToken = '';
   let refreshToken = '';
   let createdRestaurantId = '';
@@ -201,7 +202,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: testEmail,
-        password: 'SaiMatKhau123',
+        password: getInvalidFixtureSecret(),
       }),
     });
 

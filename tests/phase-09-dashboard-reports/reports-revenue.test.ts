@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3121;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -89,7 +90,7 @@ async function main() {
           fullName: 'P9 Reports Owner',
           phone: '0922345678',
           email: `owner.rep.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -127,7 +128,7 @@ async function main() {
         fullName: 'Branch 2 Reports Staff',
         username: `b2rep_${timestamp}`,
         email: `b2rep.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0922345682',
         roleId: cashierRole!._id.toString(),
         branchId: branch2Id,
@@ -137,7 +138,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `b2rep.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     branch2StaffToken = branch2Login.data.data.accessToken;

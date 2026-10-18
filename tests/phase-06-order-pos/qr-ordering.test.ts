@@ -7,6 +7,7 @@ import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
+import { getSampleStorePass2, getSampleWifiPasscode } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3108;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -99,7 +100,7 @@ async function main() {
         accountName: 'ANH HIEN COFFEE',
       },
       wifiSsid: 'CoffeeAnhHien_5G',
-      wifiPassword: 'cafeanhhien888',
+      wifiPassword: getSampleStorePass2(),
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -125,7 +126,7 @@ async function main() {
       qrToken: qrTokenB03,
       qrStatus: 'active',
       wifiSsid: 'CoffeeAnhHien_B03',
-      wifiPassword: 'pass_b03_secret',
+      wifiPassword: getSampleWifiPasscode(),
       isDeleted: false,
       createdAt: new Date(),
     });
@@ -165,7 +166,7 @@ async function main() {
       ctxRes.status === 200 &&
       ctxData?.table?.code === 'B03' &&
       ctxData?.table?.wifiSsid === 'CoffeeAnhHien_B03' &&
-      ctxData?.table?.wifiPassword === 'pass_b03_secret' &&
+      ctxData?.table?.wifiPassword === getSampleWifiPasscode() &&
       ctxData?.restaurant?.bankAccount?.accountNo === '0901234567'
     ) {
       pass(

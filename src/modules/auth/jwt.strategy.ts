@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { JwtConstants } from '../../shared/common/constants/envConstants';
@@ -30,14 +30,32 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Tai khoan khong ton tai hoac da bi khoa');
     }
 
+    // AUD-13.2: Kiểm tra tính hợp lệ của phiên làm việc qua tokenVersion
+    if (
+      payload.tokenVersion !== undefined &&
+      user.tokenVersion !== undefined &&
+      payload.tokenVersion !== user.tokenVersion
+    ) {
+      throw new UnauthorizedException('Phiên đăng nhập đã hết hạn hoặc đã bị thu hồi');
+    }
+
     let isMainBranch = false;
     const roleSlug = (user.role as any)?.slug?.toLowerCase() || '';
+    const isSuperAdmin =
+      roleSlug === 'system_admin' ||
+      roleSlug === 'super_admin' ||
+      (user as any).isSuperAdmin === true;
 
-    if (roleSlug === 'system_admin' || roleSlug === 'super_admin') {
+    if (isSuperAdmin) {
       isMainBranch = true;
     } else if (user.restaurantId) {
       try {
         const restaurant = await this.restaurantsService.findById(user.restaurantId.toString());
+        // AUD-13.2: Chặn tức thì các tài khoản thuộc nhà hàng đang bị khóa/tạm ngưng
+        if (restaurant?.isSuspended || restaurant?.subscriptionStatus === 'SUSPENDED') {
+          throw new ForbiddenException('Nhà hàng đang tạm ngưng hoạt động. Vui lòng liên hệ quản trị hệ thống.');
+        }
+
         if (restaurant?.branches && restaurant.branches.length > 0) {
           if (!user.branchId) {
             isMainBranch = roleSlug === 'restaurant_admin';
@@ -48,7 +66,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             isMainBranch = !!branch?.isMainBranch;
           }
         }
-      } catch {
+      } catch (err: any) {
+        if (err instanceof ForbiddenException) throw err;
         isMainBranch = false;
       }
     }

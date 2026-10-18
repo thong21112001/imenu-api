@@ -7,6 +7,7 @@ import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3112;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -94,7 +95,7 @@ async function main() {
           fullName: 'Chủ Quán Concurrency',
           phone: '0907770001',
           email: `owner.occ.${ts}@imenu.test`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -175,14 +176,14 @@ async function main() {
         fullName: 'Bếp Trưởng OCC',
         phone: '0907770002',
         email: `kitchen.occ.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         role: 'kitchen',
         branchId,
       }),
     });
     const lgnK = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `kitchen.occ.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `kitchen.occ.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     kitchenToken = lgnK.data?.data?.accessToken;
 

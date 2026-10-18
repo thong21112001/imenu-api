@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3117;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -86,7 +87,7 @@ async function main() {
           fullName: 'P8 Audit Owner',
           phone: '0901234567',
           email: `p8audit.owner.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -110,7 +111,7 @@ async function main() {
           fullName: 'P8 Audit Owner B',
           phone: '0907777777',
           email: `p8audit.ownerb.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -414,7 +415,7 @@ async function main() {
         fullName: 'Phục Vụ Audit Test',
         username: `waiteraudit_${timestamp}`,
         email: `waiter.audit.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0908888888',
         roleId: waiterRole!._id.toString(),
       }),
@@ -423,7 +424,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `waiter.audit.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const waiterToken = waiterLoginRes.data?.data?.accessToken;
@@ -451,7 +452,7 @@ async function main() {
           fullName: 'Dup Owner',
           phone: '0901234567',
           email: `p8audit.owner.${timestamp}@imenu.vn`, // Trùng email đã đăng ký
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });

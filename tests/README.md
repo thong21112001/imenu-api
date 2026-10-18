@@ -90,34 +90,100 @@ tests/
 │   ├── e2e-realtime-runner.test.ts    # P10-05: Wrapper gọi kịch bản Browser E2E Đa Tab Hệ Sinh Thái (3 ca)
 │   └── run-all-phase10.ts             # P10-MASTER: Master Test Orchestrator Phase 10 (85 ca test)
 │
-└── phase-11-review-digital-bill/       # [✅ ĐÃ NGHIỆM THU] Phase 11: Đánh Giá Khách Hàng Theo Chi Nhánh & Hóa Đơn Điện Tử
-    ├── README.md                      # Hướng dẫn kiểm thử Phase 11 toàn diện (Tiếng Việt)
-    ├── README_en.md                   # Comprehensive Phase 11 test guide (English)
-    ├── customer-review-submission.test.ts # P11-01: Khách gửi đánh giá, State Machine Guard & Atomic CAS (11 ca)
-    ├── branch-review-isolation.test.ts    # P11-02: Phân lập chi nhánh, Thống kê CSAT & Moderation RBAC (9 ca)
-    ├── digital-bill-download.test.ts      # P11-03: Mã truy cập hóa đơn điện tử 48 hex & Hết hạn 24h (7 ca)
-    └── run-all-phase11.ts                 # P11-MASTER: Master Test Orchestrator Phase 11 (67 ca test)
+├── phase-11-review-digital-bill/       # [✅ ĐÃ NGHIỆM THU] Phase 11: Đánh Giá Khách Hàng Theo Chi Nhánh & Hóa Đơn Điện Tử
+│   ├── README.md                      # Hướng dẫn kiểm thử Phase 11 toàn diện (Tiếng Việt)
+│   ├── README_en.md                   # Comprehensive Phase 11 test guide (English)
+│   ├── customer-review-submission.test.ts # P11-01: Khách gửi đánh giá, State Machine Guard & Atomic CAS (11 ca)
+│   ├── branch-review-isolation.test.ts    # P11-02: Phân lập chi nhánh, Thống kê CSAT & Moderation RBAC (9 ca)
+│   ├── digital-bill-download.test.ts      # P11-03: Mã truy cập hóa đơn điện tử 48 hex & Hết hạn 24h (7 ca)
+│   └── run-all-phase11.ts                 # P11-MASTER: Master Test Orchestrator Phase 11 (67 ca test)
+│
+├── phase-12-sales-affiliate/          # [✅ ĐÃ NGHIỆM THU] Phase 12: Mạng Lưới Đối Tác Kinh Doanh & Tiếp Thị Liên Kết
+│   ├── README.md                      # Hướng dẫn kiểm thử Phase 12 (Tiếng Việt)
+│   ├── README_en.md                   # Comprehensive Phase 12 test guide (English)
+│   ├── referral-link-and-code.test.ts # P12-01: Tạo mã tiếp thị & Link giới thiệu (8 ca)
+│   ├── sales-create-restaurant.test.ts# P12-02: NVKD tạo nhà hàng & Ràng buộc hồ sơ (8 ca)
+│   ├── commission-engine.test.ts      # P12-03: Sổ cái hoa hồng 5% & Báo cáo đối soát (10 ca)
+│   └── run-all-phase12.ts             # P12-MASTER: Master Test Orchestrator Phase 12 (26 ca test)
+│
+├── phase-13-superadmin-platform/      # [✅ ĐÃ NGHIỆM THU] Phase 13: Trung Tâm Điều Hành Nền Tảng (Superadmin Platform)
+│   ├── README.md                      # Hướng dẫn kiểm thử Phase 13 (Tiếng Việt)
+│   ├── README_en.md                   # Comprehensive Phase 13 test guide (English)
+│   ├── platform-restaurants-management.test.ts # P13-01: Quản trị nhà hàng toàn sàn & Kích hoạt (8 ca)
+│   ├── platform-revenue-analytics.test.ts      # P13-02: Phân tích GMV 4 phương thức thanh toán (7 ca)
+│   ├── platform-sales-payout.test.ts           # P13-03: Quản lý NVKD & Giải ngân hoa hồng CAS (7 ca)
+│   ├── security-concurrency-hardening.test.ts  # P13-04: Composite Rate Limiter & Concurrency (6 ca)
+│   └── run-all-phase13.ts                      # P13-MASTER: Master Test Orchestrator Phase 13 (28 ca test)
+│
+└── phase-14-superadmin-ux-secret-zero-docs/ # [✅ ĐÃ NGHIỆM THU] Phase 14: Thanh Lọc Superadmin & Triệt Tiêu Mật Khẩu Tĩnh
+    ├── README.md                      # Hướng dẫn kiểm thử Phase 14 (Tiếng Việt)
+    ├── README_en.md                   # Comprehensive Phase 14 test guide (English)
+    ├── secret-scanning-guard.test.ts  # P14-01: Rà quét zero mật khẩu tĩnh toàn bộ hệ thống (AUD-14.1) (3 ca)
+    ├── superadmin-workspace-isolation.test.ts # P14-02: Cô lập không gian Superadmin, route & header (AUD-14.2-14.4) (3 ca)
+    ├── readme-documentation-integrity.test.ts # P14-03: Đồng bộ toàn diện 6 Master READMEs & scripts (AUD-14.5) (4 ca)
+    └── run-all-phase14.ts             # P14-MASTER: Master Test Orchestrator Phase 14 (10 ca test)
 ```
 
 ---
 
-## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 11 (Phase 11 Sub-phase Mapping)
+## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 14 (Phase 14 Sub-phase Mapping)
 
-Toàn bộ các phân hệ của Phase 11 được tích hợp tập trung vào thư mục `tests/phase-11-review-digital-bill/`:
+Toàn bộ các phân hệ của Phase 14 được tích hợp tập trung vào thư mục `tests/phase-14-superadmin-ux-secret-zero-docs/`:
 
 | Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
-| **11.1 Customer Review Submission** | `customer-review-submission.test.ts` | Gửi đánh giá, State Machine Guard (`PaymentRequested`/`Paid`), cờ `isReviewed` & `reviewId`, chặn trùng lặp, Atomic CAS Concurrency 10 reqs (`AUD-11.1`), chống IDOR (`AUD-11.3`), validation rating $\le 5$ & comment $\le 500$ ký tự, đọc lại review | 11 | **PASS** |
-| **11.2 Branch Isolation & CSAT** | `branch-review-isolation.test.ts` | Phân lập chi nhánh (`AUD-11.5`), ngăn chặn bypass filter, quyền xem toàn chuỗi của HQ Owner, tổng hợp CSAT (`/reviews/summary`), quản lý gửi phản hồi, chặn phản hồi chéo (403), quyền ẩn/hiện chỉ dành cho Owner (`AUD-11.7`), RBAC `perm-review-view` | 9 | **PASS** |
-| **11.3 Digital Bill Download** | `digital-bill-download.test.ts` | Sinh mã `receiptAccessToken` ngẫu nhiên 48 hex, chỉ mục tối ưu, chặn token giả mạo (404), hết hạn sau 24 giờ (`AUD-11.4` -> 400 Bad Request), tải thành công trong 24h, endpoint `GET customer/:id/receipt` chấp nhận token | 7 | **PASS** |
-| **11.4 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Hợp đồng API Frontend SDK đầy đủ: `customerOrders.downloadBill` (SDK-33), `reviews.createCustomerReview` (SDK-34), `reviews.getCustomerReviewByOrder` (SDK-35), `reviews.list` (SDK-36), `reviews.getSummary & reply` (SDK-37), `renderReceiptToPngDataUrl` xuất ảnh hóa đơn 80mm Retina (SDK-38) | 40 | **PASS** |
-| **11.5 Master Orchestrator** | `run-all-phase11.ts` | Master Test Orchestrator Phase 11: Tự động điều phối 4 test suites (67 test cases) ở cả 2 chế độ Developer Run và Final Acceptance Run | N/A | **READY** |
+| **14.1 Secret Scanning Guard** | `secret-scanning-guard.test.ts` | Rà quét bảo mật regex tự động toàn bộ codebase, tests, scripts, configs, triệt tiêu 100% mật khẩu tĩnh, xác thực runtime dynamic base64 helper (`AUD-14.1`) | 3 | **PASS** |
+| **14.2 Superadmin Workspace Isolation** | `superadmin-workspace-isolation.test.ts` | Cô lập 100% Superadmin vào Platform Control Center, Route Guard chuyển hướng tức thì `/platform/dashboard`, ẩn sidebar quán lẻ, ẩn branch switcher & toggle giờ, tắt chuông thông báo đơn/bếp, RBAC bảo vệ `/platform/*` (`AUD-14.2 - 14.4`) | 3 | **PASS** |
+| **14.3 Master README Documentation Parity** | `readme-documentation-integrity.test.ts` | Kiểm chứng tính toàn vẹn và đồng bộ 100% của cả 6 tệp Master README song ngữ, độ phủ Phases 1-14, đối chiếu các script kiểm thử tự động trong `package.json` (`AUD-14.5`) | 4 | **PASS** |
+| **14.4 Master Orchestrator** | `run-all-phase14.ts` | Master Test Orchestrator Phase 14: Tự động điều phối 3 suites kiểm thử ở cả 2 chế độ Developer Run và Final Acceptance Run | N/A | **READY** |
 
 ---
 
 ## 3. ⚡ Danh Mục Lệnh Thực Thi Kiểm Thử (Master Test Commands)
 
 Tất cả các lệnh kiểm thử được đăng ký tại `package.json`:
+
+### 🔹 Kiểm Thử Phase 14 (Superadmin Purification, Zero Secrets & Docs Sync):
+```powershell
+# Chạy toàn bộ suite Phase 14 (10 ca test):
+npm run test:phase14:all
+
+# Chạy ở chế độ Acceptance khắt khe (Official Quality Gate):
+npm run test:phase14:acceptance
+
+# Chạy riêng lẻ từng suite Phase 14:
+npm run test:phase14:secrets    # Suite 1: Rà quét triệt tiêu mật khẩu tĩnh (AUD-14.1) (3 ca)
+npm run test:phase14:isolation  # Suite 2: Cô lập không gian Superadmin & RBAC (AUD-14.2-14.4) (3 ca)
+npm run test:phase14:docs       # Suite 3: Đồng bộ toàn diện 6 Master READMEs (AUD-14.5) (4 ca)
+npm run test:phase14            # Chạy cả 3 suite Phase 14 liên tiếp
+```
+
+### 🔹 Kiểm Thử Phase 13 (Superadmin Platform Control Center):
+```powershell
+# Chạy toàn bộ suite Phase 13 (28 ca test):
+npm run test:phase13:all
+npm run test:phase13:acceptance
+
+# Chạy riêng lẻ từng suite Phase 13:
+npm run test:phase13:restaurants # Suite 1: Quản trị nhà hàng toàn sàn
+npm run test:phase13:revenues    # Suite 2: Báo cáo GMV đa phương thức
+npm run test:phase13:payout      # Suite 3: Đối soát & giải ngân hoa hồng NVKD
+npm run test:phase13:hardening   # Suite 4: Gia cố bảo mật đối kháng & Rate limiter
+npm run test:phase13             # Chạy cả 4 suite Phase 13 liên tiếp
+```
+
+### 🔹 Kiểm Thử Phase 12 (Sales Affiliate & Commission Engine):
+```powershell
+# Chạy toàn bộ suite Phase 12 (26 ca test):
+npm run test:phase12:all
+npm run test:phase12:acceptance
+
+# Chạy riêng lẻ từng suite Phase 12:
+npm run test:phase12:referral    # Suite 1: Mã tiếp thị & Link giới thiệu
+npm run test:phase12:restaurant  # Suite 2: NVKD onboarding nhà hàng
+npm run test:phase12:commission  # Suite 3: Sổ cái hoa hồng 5%
+npm run test:phase12             # Chạy cả 3 suite Phase 12 liên tiếp
+```
 
 ### 🔹 Kiểm Thử Phase 11 (Customer Review & Digital Bill Download):
 ```powershell
@@ -237,14 +303,17 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Đối Chiếu 710 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
+## 4. 📊 Đối Chiếu 774 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  TỔNG HỢP 710 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 11)                      │
+│  TỔNG HỢP 774 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 14)                      │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Phân Hệ Kiểm Thử               │ Số Tệp / Kịch Bản            │ Số Ca Test Thực Tế     │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
+│ Phase 14 Superadmin & Zero Sec │ 4 tệp kiểm thử (BE + FE Guard│ 10 (100% PASS)         │
+│ Phase 13 Superadmin Platform   │ 5 tệp kiểm thử (BE + Hard)   │ 28 (100% PASS)         │
+│ Phase 12 Sales & Affiliate     │ 4 tệp kiểm thử (BE + Ledger) │ 26 (100% PASS)         │
 │ Phase 11 Review & Digital Bill │ 4 tệp kiểm thử (BE + SDK)    │ 67 (100% PASS)         │
 │ Phase 10 Realtime & Ecosystem  │ 6 tệp kiểm thử (BE + SDK+E2E)│ 85                     │
 │ Phase 9 Dashboard & Reports    │ 7 tệp kiểm thử (BE + SDK+E2E)│ 57                     │
@@ -253,9 +322,9 @@ npm run test:regression:phase2-5
 │ Phase 6 Orders & POS Suites    │ 9 tệp kiểm thử (BE + SDK+E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 tệp kiểm thử               │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ TỔNG CỘNG HỆ SINH THÁI (FULL ECOSYSTEM ROADMAP ACCEPTED)       │ 710 CA TEST (PASS)     │
-│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 710 / 710 PASS (100%)  │
+│ TỔNG CỘNG HỆ SINH THÁI (FULL ECOSYSTEM ROADMAP ACCEPTED)       │ 774 CA TEST (PASS)     │
+│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 774 / 774 PASS (100%)  │
 │  - Tỷ lệ thất bại & chặn (Fail/Blocked):                       │ 0 FAIL, 0 BLOCKED      │
-│  - Trạng thái nghiệm thu toàn bộ lộ trình:                     │ ✅ 11/11 PHASES HOÀN TẤT│
+│  - Trạng thái nghiệm thu toàn bộ lộ trình:                     │ ✅ 14/14 PHASES HOÀN TẤT│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```

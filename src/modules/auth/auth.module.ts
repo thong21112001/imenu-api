@@ -8,6 +8,7 @@ import { UsersModule } from '../users/users.module';
 import { RolesModule } from '../roles/roles.module';
 import { RestaurantsModule } from '../restaurants/restaurants.module';
 import { jwtConfig } from '../../shared/configs/jwt.cnf';
+import { CompositeRateLimiterService } from '../../shared/common/services/composite-rate-limiter.service';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { jwtConfig } from '../../shared/configs/jwt.cnf';
     RestaurantsModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, PassportModule, JwtModule],
+  providers: [AuthService, JwtStrategy, CompositeRateLimiterService],
+  exports: [AuthService, PassportModule, JwtModule, CompositeRateLimiterService],
 })
 export class AuthModule {}

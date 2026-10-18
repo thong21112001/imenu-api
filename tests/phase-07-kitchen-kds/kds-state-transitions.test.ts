@@ -7,6 +7,7 @@ import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3111;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -94,7 +95,7 @@ async function main() {
           fullName: 'Chủ Quán ST',
           phone: '0905550001',
           email: `owner.st.${ts}@imenu.test`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -185,14 +186,14 @@ async function main() {
         fullName: 'Bếp Trưởng State',
         phone: '0905550002',
         email: `chef.st.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         role: 'kitchen',
         branchId,
       }),
     });
     const lgnK = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `chef.st.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `chef.st.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     kitchenToken = lgnK.data?.data?.accessToken;
 
@@ -584,14 +585,14 @@ async function main() {
         fullName: 'Bếp viên Chuyền',
         phone: '0905551111',
         email: `cookonly.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         roleId: roleCookOnlyId,
         branchId,
       }),
     });
     const cookOnlyLogin = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `cookonly.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `cookonly.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     const cookOnlyToken = cookOnlyLogin.data?.data?.accessToken;
 
@@ -615,14 +616,14 @@ async function main() {
         fullName: 'Thủ kho Bếp',
         phone: '0905552222',
         email: `outonly.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         roleId: roleOutOnlyId,
         branchId,
       }),
     });
     const outOnlyLogin = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `outonly.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `outonly.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     const outOnlyToken = outOnlyLogin.data?.data?.accessToken;
 

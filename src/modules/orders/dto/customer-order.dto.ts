@@ -7,6 +7,7 @@ import {
   ValidateNested,
   IsOptional,
   IsEnum,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateOrderItemDto } from './create-order.dto';
@@ -39,6 +40,11 @@ export class CustomerCreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
+
+  @ApiPropertyOptional({ description: 'Tự động gộp thành Round tiếp theo nếu bàn vừa có đơn hoạt động (AUD-13.4)' })
+  @IsOptional()
+  @IsBoolean()
+  autoMergeRound2?: boolean;
 }
 
 export class CustomerAddItemsDto {

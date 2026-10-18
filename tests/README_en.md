@@ -90,34 +90,100 @@ tests/
 │   ├── e2e-realtime-runner.test.ts    # P10-05: Multi-Tab Browser E2E Realtime Ecosystem (3 tests)
 │   └── run-all-phase10.ts             # P10-MASTER: Master Test Orchestrator Phase 10 (85 tests)
 │
-└── phase-11-review-digital-bill/       # [✅ ACCEPTED] Phase 11: Customer Review Per Branch & Digital Bill Download
-    ├── README.md                      # Comprehensive Phase 11 test guide (Vietnamese)
-    ├── README_en.md                   # Comprehensive Phase 11 test guide (English)
-    ├── customer-review-submission.test.ts # P11-01: Customer Review Submission, State Machine & Atomic CAS (11 tests)
-    ├── branch-review-isolation.test.ts    # P11-02: Multi-Branch Isolation, CSAT Analytics & Moderation RBAC (9 tests)
-    ├── digital-bill-download.test.ts      # P11-03: 48-Hex Digital Bill Access Token & 24h Expiration (7 tests)
-    └── run-all-phase11.ts                 # P11-MASTER: Master Test Orchestrator Phase 11 (67 tests)
+├── phase-11-review-digital-bill/       # [✅ ACCEPTED] Phase 11: Customer Review Per Branch & Digital Bill Download
+│   ├── README.md                      # Comprehensive Phase 11 test guide (Vietnamese)
+│   ├── README_en.md                   # Comprehensive Phase 11 test guide (English)
+│   ├── customer-review-submission.test.ts # P11-01: Customer Review Submission, State Machine & Atomic CAS (11 tests)
+│   ├── branch-review-isolation.test.ts    # P11-02: Multi-Branch Isolation, CSAT Analytics & Moderation RBAC (9 tests)
+│   ├── digital-bill-download.test.ts      # P11-03: 48-Hex Digital Bill Access Token & 24h Expiration (7 tests)
+│   └── run-all-phase11.ts                 # P11-MASTER: Master Test Orchestrator Phase 11 (67 tests)
+│
+├── phase-12-sales-affiliate/          # [✅ ACCEPTED] Phase 12: Business Partner Network & Affiliate Marketing
+│   ├── README.md                      # Comprehensive Phase 12 test guide (Vietnamese)
+│   ├── README_en.md                   # Comprehensive Phase 12 test guide (English)
+│   ├── referral-link-and-code.test.ts # P12-01: Referral Code & Tracking Link Generator (8 tests)
+│   ├── sales-create-restaurant.test.ts# P12-02: Sales Rep Onboarding & Application Attribution (8 tests)
+│   ├── commission-engine.test.ts      # P12-03: 5% Commission Ledger & Financial Audit (10 tests)
+│   └── run-all-phase12.ts             # P12-MASTER: Master Test Orchestrator Phase 12 (26 tests)
+│
+├── phase-13-superadmin-platform/      # [✅ ACCEPTED] Phase 13: Superadmin Platform Control Center
+│   ├── README.md                      # Comprehensive Phase 13 test guide (Vietnamese)
+│   ├── README_en.md                   # Comprehensive Phase 13 test guide (English)
+│   ├── platform-restaurants-management.test.ts # P13-01: Multi-Tenant Catalog & Status Management (8 tests)
+│   ├── platform-revenue-analytics.test.ts      # P13-02: Multi-Method GMV Analytics (7 tests)
+│   ├── platform-sales-payout.test.ts           # P13-03: Sales Rep Directory & CAS Bulk Payout (7 tests)
+│   ├── security-concurrency-hardening.test.ts  # P13-04: Composite Rate Limiter & Concurrency (6 tests)
+│   └── run-all-phase13.ts                      # P13-MASTER: Master Test Orchestrator Phase 13 (28 tests)
+│
+└── phase-14-superadmin-ux-secret-zero-docs/ # [✅ ACCEPTED] Phase 14: Superadmin Purification & Zero Secrets
+    ├── README.md                      # Comprehensive Phase 14 test guide (Vietnamese)
+    ├── README_en.md                   # Comprehensive Phase 14 test guide (English)
+    ├── secret-scanning-guard.test.ts  # P14-01: Zero Static Secret Scanner & Dynamic Credentials Guard (AUD-14.1) (3 tests)
+    ├── superadmin-workspace-isolation.test.ts # P14-02: 100% Superadmin Isolation, Route & Header Muting (AUD-14.2-14.4) (3 tests)
+    ├── readme-documentation-integrity.test.ts # P14-03: Master README Parity & Script Alignment (AUD-14.5) (4 tests)
+    └── run-all-phase14.ts             # P14-MASTER: Master Test Orchestrator Phase 14 (10 tests)
 ```
 
 ---
 
-## 2. 🗺️ Phase 11 Sub-phase Mapping
+## 2. 🗺️ Phase 14 Sub-phase Mapping
 
-All Phase 11 functional sub-phases are consolidated inside `tests/phase-11-review-digital-bill/`:
+All Phase 14 functional sub-phases are consolidated inside `tests/phase-14-superadmin-ux-secret-zero-docs/`:
 
 | Sub-phase | Test File | Primary Focus | Test Count | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| **11.1 Customer Review Submission** | `customer-review-submission.test.ts` | Review submission, State Machine Guard (`PaymentRequested`/`Paid`), `isReviewed` & `reviewId`, duplicate prevention, Atomic CAS Concurrency (`AUD-11.1`), anti-IDOR (`AUD-11.3`), validation rating $\le 5$ & comment $\le 500$ chars | 11 | **PASS** |
-| **11.2 Branch Isolation & CSAT** | `branch-review-isolation.test.ts` | Multi-branch isolation (`AUD-11.5`), filter bypass prevention, HQ owner multi-branch access, CSAT summary (`/reviews/summary`), merchant replies, cross-branch reply prevention (403), Owner-only moderation toggle (`AUD-11.7`), RBAC | 9 | **PASS** |
-| **11.3 Digital Bill Download** | `digital-bill-download.test.ts` | 48-hex random `receiptAccessToken`, compound index, forged token rejection (404), 24h expiration (`AUD-11.4` -> 400 Bad Request), valid download within 24h, diner receipt query compatibility | 7 | **PASS** |
-| **11.4 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Frontend SDK Contract verification: `customerOrders.downloadBill` (SDK-33), `reviews.createCustomerReview` (SDK-34), `reviews.getCustomerReviewByOrder` (SDK-35), `reviews.list` (SDK-36), `reviews.getSummary & reply` (SDK-37), `renderReceiptToPngDataUrl` 80mm Retina PNG (SDK-38) | 40 | **PASS** |
-| **11.5 Master Orchestrator** | `run-all-phase11.ts` | Master Test Orchestrator Phase 11: Automated runner for all 4 test suites (67 test cases) in Developer Run and Acceptance Run modes | N/A | **READY** |
+| **14.1 Secret Scanning Guard** | `secret-scanning-guard.test.ts` | Automated regex security scanner across codebases, tests, scripts, configs; 100% eradication of hardcoded secrets; runtime Base64 dynamic decoding (`AUD-14.1`) | 3 | **PASS** |
+| **14.2 Superadmin Workspace Isolation** | `superadmin-workspace-isolation.test.ts` | 100% Superadmin isolation into Platform Control Center, instant redirect from store routes to `/platform/dashboard`, navbar isolation, branch switcher & toggle hiding, chime muting, `/api/platform/*` RBAC (`AUD-14.2 - 14.4`) | 3 | **PASS** |
+| **14.3 Master README Documentation Parity** | `readme-documentation-integrity.test.ts` | Integrity and 100% bilingual parity across all 6 Master READMEs, full Phase 1-14 coverage, automated test script synchronization in `package.json` (`AUD-14.5`) | 4 | **PASS** |
+| **14.4 Master Orchestrator** | `run-all-phase14.ts` | Master Test Orchestrator Phase 14: Automated runner for all 3 test suites (10 test cases) in Developer Run and Acceptance Run modes | N/A | **READY** |
 
 ---
 
 ## 3. ⚡ Master Test Commands
 
 All test execution commands are registered in `package.json`:
+
+### 🔹 Phase 14 (Superadmin Purification, Zero Secrets & Docs Sync) Tests:
+```powershell
+# Run the entire Phase 14 suite (10 tests):
+npm run test:phase14:all
+
+# Run in strict Acceptance mode (Official Quality Gate):
+npm run test:phase14:acceptance
+
+# Run individual Phase 14 suites:
+npm run test:phase14:secrets    # Suite 1: Zero Static Secret Scanner Guard (AUD-14.1) (3 tests)
+npm run test:phase14:isolation  # Suite 2: Superadmin Workspace Isolation & RBAC (AUD-14.2-14.4) (3 tests)
+npm run test:phase14:docs       # Suite 3: Master README Parity & Script Alignment (AUD-14.5) (4 tests)
+npm run test:phase14            # Run all 3 Phase 14 suites sequentially
+```
+
+### 🔹 Phase 13 (Superadmin Platform Control Center) Tests:
+```powershell
+# Run the entire Phase 13 suite (28 tests):
+npm run test:phase13:all
+npm run test:phase13:acceptance
+
+# Run individual Phase 13 suites:
+npm run test:phase13:restaurants # Suite 1: Multi-tenant Catalog & Status Management
+npm run test:phase13:revenues    # Suite 2: Multi-method GMV Analytics
+npm run test:phase13:payout      # Suite 3: Sales Rep Directory & CAS Bulk Payout
+npm run test:phase13:hardening   # Suite 4: Adversarial Hardening & Rate Limiter
+npm run test:phase13             # Run all 4 Phase 13 suites sequentially
+```
+
+### 🔹 Phase 12 (Sales Affiliate & Commission Engine) Tests:
+```powershell
+# Run the entire Phase 12 suite (26 tests):
+npm run test:phase12:all
+npm run test:phase12:acceptance
+
+# Run individual Phase 12 suites:
+npm run test:phase12:referral    # Suite 1: Referral Code & Tracking Links
+npm run test:phase12:restaurant  # Suite 2: Sales Rep Onboarding
+npm run test:phase12:commission  # Suite 3: 5% Commission Ledger
+npm run test:phase12             # Run all 3 Phase 12 suites sequentially
+```
 
 ### 🔹 Phase 11 (Customer Review & Digital Bill Download) Tests:
 ```powershell
@@ -237,14 +303,17 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Ecosystem Test Reconciliation Matrix (710 Test Cases)
+## 4. 📊 Ecosystem Test Reconciliation Matrix (774 Test Cases)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 11)                                │
+│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 14)                                │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Test Subsystem                 │ Test Scripts / Files         │ Actual Test Cases      │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
+│ Phase 14 Superadmin & Zero Sec │ 4 test files (BE + FE Guard) │ 10 (100% PASS)         │
+│ Phase 13 Superadmin Platform   │ 5 test files (BE + Hard)     │ 28 (100% PASS)         │
+│ Phase 12 Sales & Affiliate     │ 4 test files (BE + Ledger)   │ 26 (100% PASS)         │
 │ Phase 11 Review & Digital Bill │ 4 test files (BE + SDK)      │ 67 (100% PASS)         │
 │ Phase 10 Realtime & Ecosystem  │ 6 test files (BE + SDK + E2E)│ 85                     │
 │ Phase 9 Dashboard & Reports    │ 7 test files (BE + SDK + E2E)│ 57                     │
@@ -253,10 +322,10 @@ npm run test:regression:phase2-5
 │ Phase 6 Orders & POS Suites    │ 9 test files (BE + SDK + E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 test files                 │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 710 TEST CASES (PASS)  │
-│  - Passed in Developer/CI Run:                                 │ 710 / 710 PASS (100%)  │
+│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 774 TEST CASES (PASS)  │
+│  - Passed in Developer/CI Run:                                 │ 774 / 774 PASS (100%)  │
 │  - Failure & Blocked Rates:                                    │ 0 FAIL, 0 BLOCKED      │
-│  - Full 11-Phase Roadmap Acceptance Status:                    │ ✅ 11/11 PHASES PASSED │
+│  - Full 14-Phase Roadmap Acceptance Status:                    │ ✅ 14/14 PHASES PASSED │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

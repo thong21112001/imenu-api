@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3116;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -92,7 +93,7 @@ async function main() {
           fullName: 'Owner Restaurant A',
           phone: '0901111111',
           email: `owner.a.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -116,7 +117,7 @@ async function main() {
           fullName: 'Owner Restaurant B',
           phone: '0902222222',
           email: `owner.b.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -148,7 +149,7 @@ async function main() {
         fullName: 'Phục Vụ A1',
         username: `waitera1_${timestamp}`,
         email: `waiter.a1.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0904444444',
         roleId: waiterRole!._id.toString(),
         branchId: branchA1Id,
@@ -158,7 +159,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `waiter.a1.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     waiterAToken = waiterLoginRes.data?.data?.accessToken;
@@ -171,7 +172,7 @@ async function main() {
         fullName: 'Thu Ngân A2',
         username: `cashiera2_${timestamp}`,
         email: `cashier.a2.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0905555555',
         roleId: cashierRole!._id.toString(),
         branchId: branchA2Id,
@@ -181,7 +182,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `cashier.a2.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     cashierA2Token = cashierLoginRes.data?.data?.accessToken;
@@ -607,7 +608,7 @@ async function main() {
         fullName: 'Đầu Bếp A1',
         username: `kitchena1_${timestamp}`,
         email: `kitchen.a1.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0906666666',
         roleId: kitchenRole!._id.toString(),
         branchId: branchA1Id,
@@ -617,7 +618,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `kitchen.a1.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const kitchenToken = kitchenLoginRes.data?.data?.accessToken;
@@ -662,7 +663,7 @@ async function main() {
         fullName: 'Custom Cashier A1',
         username: `custompay_${timestamp}`,
         email: `custom.pay.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0907777777',
         roleId: customRoleId,
         branchId: branchA1Id,
@@ -672,7 +673,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `custom.pay.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const customPayToken = customLoginRes.data?.data?.accessToken;

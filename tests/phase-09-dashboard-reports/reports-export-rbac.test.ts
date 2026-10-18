@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3123;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -100,7 +101,7 @@ async function main() {
           fullName: 'P9 Admin User A',
           phone: '0944445678',
           email: `admin.expa.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -130,7 +131,7 @@ async function main() {
           fullName: 'P9 Admin User B',
           phone: '0944445699',
           email: `admin.expb.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -151,7 +152,7 @@ async function main() {
         fullName: 'Branch Manager User A',
         username: `manager_a_${timestamp}`,
         email: `manager.a.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0944445679',
         roleId: managerRole!._id.toString(),
         branchId: branchAId,
@@ -162,7 +163,7 @@ async function main() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: `manager.a.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     managerAToken = managerLogin.data.data.accessToken;

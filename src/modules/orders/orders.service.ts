@@ -171,15 +171,26 @@ export class OrdersService {
       });
 
       let savedOrder: OrderDocument;
-      try {
-        savedOrder = await order.save();
-      } catch (err: any) {
-        if (err?.code === 11000) {
-          throw new ConflictException(
-            `Bàn "${table.name}" hiện đang có đơn hàng hoạt động vừa được khởi tạo bởi khách khác hoặc yêu cầu tạo đơn bị trùng lặp.`,
-          );
+      let saveAttempts = 0;
+      while (true) {
+        try {
+          savedOrder = await order.save();
+          break;
+        } catch (err: any) {
+          if (err?.code === 11000) {
+            const isOrderCodeDup = err?.keyPattern?.orderCode || err?.message?.includes('orderCode');
+            if (isOrderCodeDup && saveAttempts < 5) {
+              saveAttempts++;
+              const newSuffix = Math.floor(1000 + Math.random() * 9000);
+              order.orderCode = `ORD-${dateStr}-${newSuffix}`;
+              continue;
+            }
+            throw new ConflictException(
+              `Bàn "${table.name}" hiện đang có đơn hàng hoạt động vừa được khởi tạo bởi khách khác hoặc yêu cầu tạo đơn bị trùng lặp.`,
+            );
+          }
+          throw err;
         }
-        throw err;
       }
 
       // 3. Cập nhật trạng thái bàn sang Occupied
@@ -504,6 +515,11 @@ export class OrdersService {
       dto.qrToken,
     );
 
+    // AUD-13.2: Chặn tạo đơn khi nhà hàng bị tạm ngưng / khóa
+    if (restaurant.isSuspended || restaurant.subscriptionStatus === 'SUSPENDED') {
+      throw new ForbiddenException('Nhà hàng đang tạm ngưng hoạt động. Vui lòng liên hệ nhân viên.');
+    }
+
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Đơn hàng phải chứa ít nhất 1 món ăn');
     }
@@ -528,8 +544,23 @@ export class OrdersService {
       });
 
       if (activeOrder) {
+        if (dto.autoMergeRound2) {
+          return (await this.addItemsByCustomer(
+            {
+              restaurantSlug: dto.restaurantSlug,
+              tableCode: dto.tableCode,
+              qrToken: dto.qrToken,
+              orderId: activeOrder._id.toString(),
+              items: dto.items,
+              note: dto.customerNote,
+            },
+            activeOrder._id.toString(),
+            idempotencyKey,
+          )) as any;
+        }
+
         throw new ConflictException(
-          `Bàn "${table.name}" hiện đang có đơn hàng hoạt động (${activeOrder.orderCode}). Vui lòng chọn tính năng gọi thêm món.`,
+          `Bàn "${table.name}" hiện đang có đơn hàng hoạt động với mã ${activeOrder.orderCode}. Vui lòng sử dụng tính năng gọi thêm món.`,
         );
       }
 
@@ -592,16 +623,57 @@ export class OrdersService {
       });
 
       let savedOrder: OrderDocument;
-      try {
-        savedOrder = await order.save();
-      } catch (err: any) {
-        // DEF-6.5-002: Bắt lỗi E11000 từ MongoDB partial unique index (active order per table)
-        if (err?.code === 11000) {
-          throw new ConflictException(
-            `Bàn "${table.name}" hiện đang có đơn hàng hoạt động vừa được khởi tạo bởi khách khác hoặc yêu cầu tạo đơn bị trùng lặp.`,
-          );
+      let saveAttempts = 0;
+      while (true) {
+        try {
+          savedOrder = await order.save();
+          break;
+        } catch (err: any) {
+          // DEF-6.5-002 & AUD-13.4: Bắt lỗi E11000 từ MongoDB partial unique index (active order per table)
+          // khi 2 khách cùng bàn bấm gửi đơn Đợt 1 đồng thời ở cùng một mili-giây
+          if (err?.code === 11000) {
+            const isOrderCodeDup = err?.keyPattern?.orderCode || err?.message?.includes('orderCode');
+            if (isOrderCodeDup && saveAttempts < 5) {
+              saveAttempts++;
+              const newSuffix = Math.floor(1000 + Math.random() * 9000);
+              order.orderCode = `ORD-${dateStr}-${newSuffix}`;
+              continue;
+            }
+
+            const concurrentActiveOrder = await this.orderModel.findOne({
+              tableId: table._id,
+              restaurantId: restaurant._id,
+              status: {
+                $in: [
+                  'WaitingConfirmation',
+                  'Confirmed',
+                  'Preparing',
+                  'Ready',
+                  'Served',
+                  'PaymentRequested',
+                ],
+              },
+            });
+            if (concurrentActiveOrder && dto.autoMergeRound2) {
+              return (await this.addItemsByCustomer(
+                {
+                  restaurantSlug: dto.restaurantSlug,
+                  tableCode: dto.tableCode,
+                  qrToken: dto.qrToken,
+                  orderId: concurrentActiveOrder._id.toString(),
+                  items: dto.items,
+                  note: dto.customerNote,
+                },
+                concurrentActiveOrder._id.toString(),
+                idempotencyKey,
+              )) as any;
+            }
+            throw new ConflictException(
+              `Bàn "${table.name}" hiện đang có đơn hàng hoạt động vừa được khởi tạo bởi khách khác hoặc yêu cầu tạo đơn bị trùng lặp.`,
+            );
+          }
+          throw err;
         }
-        throw err;
       }
 
       // 6. Cập nhật trạng thái bàn sang Occupied

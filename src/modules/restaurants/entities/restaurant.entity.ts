@@ -82,6 +82,16 @@ export class Restaurant {
 
   @Prop({ default: 0 })
   activationPaidBillsCount: number;
+
+  // --- THUỘC TÍNH KHÓA & TẠM NGƯNG HOẠT ĐỘNG (PHASE 13) ---
+  @Prop({ default: false, index: true })
+  isSuspended: boolean;
+
+  @Prop({ trim: true })
+  suspendReason?: string;
+
+  @Prop()
+  suspendedAt?: Date;
 }
 
 export type RestaurantDocument = Restaurant & Document;

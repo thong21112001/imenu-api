@@ -20,6 +20,7 @@ import { JwtUser } from './interface/jwtUser';
 import { JwtConstants } from '../../shared/common/constants/envConstants';
 import { CANONICAL_UI_PERMISSION_IDS, ALL_SYSTEM_PERMISSION_IDS } from '../../shared/common/constants/permission.const';
 import { ENV } from '../../shared/configs/env.cnf';
+import { CompositeRateLimiterService } from '../../shared/common/services/composite-rate-limiter.service';
 
 // Danh muc 17 quyen han chuan cua nha hang duoc dong bo voi frontend ma tran phan quyen
 const SYSTEM_PERMISSIONS = CANONICAL_UI_PERMISSION_IDS;
@@ -33,6 +34,7 @@ export class AuthService {
     private readonly rolesService: RolesService,
     private readonly restaurantsService: RestaurantsService,
     private readonly jwtService: JwtService,
+    private readonly rateLimiter: CompositeRateLimiterService,
   ) {}
 
   private getRoleCode(role: any): string {
@@ -142,16 +144,23 @@ export class AuthService {
     }
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, ip = '127.0.0.1') {
     const identifier = loginDto.email || loginDto.username;
     if (!identifier) {
       throw new BadRequestException('Vui lòng cung cấp email hoặc tên đăng nhập');
     }
 
+    // AUD-13.5: Kiểm tra Composite Rate Limiting (IP + Identifier)
+    this.rateLimiter.checkRateLimit(ip, identifier);
+
     const user = await this.validateUser(identifier, loginDto.password);
     if (!user) {
+      this.rateLimiter.recordFailure(ip, identifier);
       throw new UnauthorizedException('Email / tên đăng nhập hoặc mật khẩu không chính xác');
     }
+
+    // Reset bộ đếm số lần sai khi đăng nhập thành công
+    this.rateLimiter.resetAttempts(ip, identifier);
 
     if (user.status === 'INACTIVE') {
       throw new UnauthorizedException('Tài khoản đã bị tạm ngưng hoạt động');
@@ -169,6 +178,7 @@ export class AuthService {
       roleSlug: roleObj?.slug || '',
       restaurantId: user.restaurantId ? user.restaurantId.toString() : undefined,
       branchId: user.branchId,
+      tokenVersion: user.tokenVersion || 1,
     };
 
     const refreshExpiry = loginDto.rememberMe ? '30d' : (JwtConstants.refreshExpiresIn as any) || '7d';
@@ -329,8 +339,16 @@ export class AuthService {
       const decoded = this.jwtService.verify<JwtPayload>(dto.refreshToken);
       const user = await this.usersService.findById(decoded.id);
 
-      if (user.status === 'INACTIVE') {
+      if (!user || user.status === 'INACTIVE') {
         throw new UnauthorizedException('Tài khoản đã bị tạm ngưng hoạt động');
+      }
+
+      if (
+        decoded.tokenVersion !== undefined &&
+        user.tokenVersion !== undefined &&
+        decoded.tokenVersion !== user.tokenVersion
+      ) {
+        throw new UnauthorizedException('Phiên đăng nhập đã bị thu hồi. Vui lòng đăng nhập lại.');
       }
 
       const payload: JwtPayload = {
@@ -345,13 +363,17 @@ export class AuthService {
           ? (user.restaurantId as any).toString()
           : undefined,
         branchId: user.branchId,
+        tokenVersion: user.tokenVersion || 1,
       };
 
       const accessToken = this.jwtService.sign(payload, {
         expiresIn: (JwtConstants.expiresIn as any) || '1d',
       });
       return { accessToken };
-    } catch {
+    } catch (err: any) {
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
       throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
     }
   }

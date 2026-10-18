@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3133;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -190,7 +191,7 @@ async function main() {
             fullName: demoSales.fullName,
             phone: demoSales.phone,
             email: demoSales.email,
-            password: 'Password@123',
+            password: getTestFixtureSecret(),
           },
           referralCode: 'IMENU-DEMO88',
         }),
@@ -230,7 +231,7 @@ async function main() {
             fullName: 'Chủ Quán Đại Sứ',
             phone: `0977${String(timestamp).slice(-6)}`,
             email: `chuquan.${timestamp}@gmail.com`,
-            password: 'Password@123',
+            password: getTestFixtureSecret(),
           },
           referralCode: 'IMENU-DEMO88',
           acquisitionChannel: 'AFFILIATE_LINK',

@@ -11,6 +11,7 @@ import { UsersService } from '../../src/modules/users/users.service';
 import { CategoriesService } from '../../src/modules/menu/categories.service';
 import { TablesService } from '../../src/modules/tables/tables.service';
 import { hashPassword } from '../../src/shared/common/utils/password.util';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3097;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -120,7 +121,7 @@ async function main() {
           fullName: 'Chủ Quán 5A',
           phone: '0901111111',
           email: emailOwnerA,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -144,7 +145,7 @@ async function main() {
           fullName: 'Chủ Quán 5B',
           phone: '0902222222',
           email: emailOwnerB,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -167,7 +168,7 @@ async function main() {
         fullName: 'Thu Ngân 5A',
         username: `cashier_p5_${timestamp}`,
         email: emailCashier,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0903333333',
         roleId: cashierRole._id.toString(),
       }),
@@ -183,7 +184,7 @@ async function main() {
         fullName: 'Bếp Trưởng 5A',
         username: `kitchen_p5_${timestamp}`,
         email: emailKitchen,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0904444444',
         roleId: kitchenRole._id.toString(),
       }),
@@ -199,7 +200,7 @@ async function main() {
         fullName: 'Phục Vụ 5A',
         username: `waiter_p5_${timestamp}`,
         email: emailWaiter,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0905555555',
         roleId: waiterRole._id.toString(),
       }),
@@ -211,19 +212,19 @@ async function main() {
     // Login Cashier, Kitchen, Waiter
     const loginCashier = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: emailCashier, password: 'Password@123' }),
+      body: JSON.stringify({ email: emailCashier, password: getTestFixtureSecret() }),
     });
     cashierToken = loginCashier.data.data.accessToken;
 
     const loginKitchen = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: emailKitchen, password: 'Password@123' }),
+      body: JSON.stringify({ email: emailKitchen, password: getTestFixtureSecret() }),
     });
     kitchenToken = loginKitchen.data.data.accessToken;
 
     const loginWaiter = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: emailWaiter, password: 'Password@123' }),
+      body: JSON.stringify({ email: emailWaiter, password: getTestFixtureSecret() }),
     });
     waiterToken = loginWaiter.data.data.accessToken;
 

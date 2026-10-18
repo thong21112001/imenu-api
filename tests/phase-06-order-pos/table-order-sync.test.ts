@@ -6,6 +6,7 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3101;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -116,7 +117,7 @@ async function main() {
           fullName: 'Chủ Quán A',
           phone: '0901111111',
           email: `owner.sync.a.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -160,7 +161,7 @@ async function main() {
         fullName: 'Thu Ngân CN1',
         username: `cashier_a_${timestamp}`,
         email: cashier1Email,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0901234111',
         roleId: cashierRole._id.toString(),
         branchId: branchAId,
@@ -168,7 +169,7 @@ async function main() {
     });
     const loginCashierA = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: cashier1Email, password: 'Password@123' }),
+      body: JSON.stringify({ email: cashier1Email, password: getTestFixtureSecret() }),
     });
     cashierAToken = loginCashierA.data?.data?.accessToken;
 
@@ -181,7 +182,7 @@ async function main() {
         fullName: 'Thu Ngân CN2',
         username: `cashier_a2_${timestamp}`,
         email: cashier2Email,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0901234222',
         roleId: cashierRole._id.toString(),
         branchId: branchA2Id,
@@ -189,7 +190,7 @@ async function main() {
     });
     const loginCashierA2 = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: cashier2Email, password: 'Password@123' }),
+      body: JSON.stringify({ email: cashier2Email, password: getTestFixtureSecret() }),
     });
     branchA2CashierToken = loginCashierA2.data?.data?.accessToken;
 
@@ -206,7 +207,7 @@ async function main() {
           fullName: 'Chủ Quán B',
           phone: '0909999999',
           email: `owner.sync.b.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -224,7 +225,7 @@ async function main() {
         fullName: 'Thu Ngân Quán B',
         username: `cashier_b_${timestamp}`,
         email: cashierBEmail,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0909999111',
         roleId: cashierRole._id.toString(),
         branchId: branchBId,
@@ -232,7 +233,7 @@ async function main() {
     });
     const loginCashierB = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: cashierBEmail, password: 'Password@123' }),
+      body: JSON.stringify({ email: cashierBEmail, password: getTestFixtureSecret() }),
     });
     cashierBToken = loginCashierB.data?.data?.accessToken;
 
