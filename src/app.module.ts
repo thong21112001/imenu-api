@@ -25,6 +25,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { CounterModule } from './shared/common/counter/counter.module';
+import { SalesModule } from './modules/sales/sales.module';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
       delimiter: '.',
     }),
     LoggerModule,
+    CounterModule,
     RealtimeModule,
     RolesModule,
     UsersModule,
@@ -47,6 +50,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     DashboardModule,
     ReportsModule,
     ReviewsModule,
+    SalesModule,
   ],
   controllers: [AppController],
   providers: [

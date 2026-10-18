@@ -55,9 +55,54 @@ export class User {
 
   @Prop()
   lastLogin?: Date;
+
+  // --- THUỘC TÍNH NVKD & AFFILIATE (PHASE 12) ---
+  @Prop({ uppercase: true, trim: true })
+  referralCode?: string;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, index: true })
+  parentSalesId?: Types.ObjectId;
+
+  @Prop({
+    type: {
+      setupCommissionRate: { type: Number, default: 50 },
+      renewalCommissionRate: { type: Number, default: 20 },
+      activationBonusAmount: { type: Number, default: 250000 },
+      teamBonusAmount: { type: Number, default: 250000 },
+    },
+    default: () => ({
+      setupCommissionRate: 50,
+      renewalCommissionRate: 20,
+      activationBonusAmount: 250000,
+      teamBonusAmount: 250000,
+    }),
+  })
+  salesCommissionPolicy?: {
+    setupCommissionRate: number;
+    renewalCommissionRate: number;
+    activationBonusAmount: number;
+    teamBonusAmount: number;
+  };
+
+  @Prop({
+    type: {
+      bankId: { type: String, trim: true },
+      bankName: { type: String, trim: true },
+      accountNo: { type: String, trim: true },
+      accountName: { type: String, trim: true },
+    },
+    default: () => ({}),
+  })
+  payoutBankAccount?: {
+    bankId?: string;
+    bankName?: string;
+    accountNo?: string;
+    accountName?: string;
+  };
 }
 
 export type UserDocument = User & Document;
 export const UserSchema = SchemaFactory.createForClass(User);
 
 UserSchema.index({ restaurantId: 1, isDeleted: 1, status: 1 });
+UserSchema.index({ referralCode: 1 }, { unique: true, sparse: true });

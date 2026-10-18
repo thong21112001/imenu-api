@@ -134,6 +134,14 @@ export class UsersService {
     return query.exec();
   }
 
+  async findByReferralCode(code: string): Promise<UserDocument | null> {
+    if (!code) return null;
+    return this.userModel.findOne({
+      referralCode: code.trim().toUpperCase(),
+      isDeleted: { $ne: true },
+    }).populate('role').exec();
+  }
+
   async findByEmailOrUsername(identifier: string, selectPassword = false): Promise<UserDocument | null> {
     const query = this.userModel.findOne({
       $or: [

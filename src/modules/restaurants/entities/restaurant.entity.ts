@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import mongoose, { Document, Types } from 'mongoose';
 import { Branch, BranchSchema } from './branch.schema';
 import { BankAccount } from './bank-account.schema';
 
@@ -46,11 +46,48 @@ export class Restaurant {
   @Prop({ default: null, trim: true })
   wifiPassword?: string;
 
-  @Prop({ default: 'Basic', enum: ['Basic', 'Standard', 'Advanced', 'Pro', 'Enterprise'] })
+  @Prop({ default: 'Basic', enum: ['Basic', 'Standard', 'Advanced', 'Pro', 'Professional', 'Enterprise'] })
   plan: string;
+
+  // --- THUỘC TÍNH AFFILIATE & SALES PARTNER (PHASE 12) ---
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, index: true })
+  referredBySalesId?: Types.ObjectId;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false })
+  createdBySalesId?: Types.ObjectId;
+
+  @Prop({ uppercase: true, trim: true })
+  referralCodeUsed?: string;
+
+  @Prop({
+    default: 'ORGANIC',
+    enum: ['ORGANIC', 'AFFILIATE_LINK', 'REFERRAL_CODE', 'SALES_ASSISTED', 'SALES_DIRECT_CREATE'],
+  })
+  acquisitionChannel: string;
+
+  @Prop({
+    default: 'TRIAL',
+    enum: ['TRIAL', 'ACTIVE', 'ACTIVE_FREE', 'ACTIVE_PAID', 'SUSPENDED'],
+  })
+  subscriptionStatus: string;
+
+  @Prop()
+  planExpiresAt?: Date;
+
+  @Prop({ default: false, index: true })
+  isActivationQualified: boolean;
+
+  @Prop()
+  activationQualifiedAt?: Date;
+
+  @Prop({ default: 0 })
+  activationPaidBillsCount: number;
 }
 
 export type RestaurantDocument = Restaurant & Document;
 export const RestaurantSchema = SchemaFactory.createForClass(Restaurant);
+
+RestaurantSchema.index({ referredBySalesId: 1, isActivationQualified: 1 });
+RestaurantSchema.index({ subscriptionStatus: 1 });
 
 

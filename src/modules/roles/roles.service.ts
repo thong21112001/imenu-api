@@ -158,6 +158,19 @@ export class RolesService implements OnApplicationBootstrap {
           'perm-table-view', 'perm-pos-view', 'perm-pos-order',
         ],
       },
+      {
+        name: 'Nhân viên Kinh doanh / Đối tác Phát triển (Sales Rep)',
+        slug: 'sales_rep',
+        isSystem: true,
+        color: '#0d9488',
+        description: 'Phát triển thị trường, kết nối nhà hàng đối tác và quản lý hoa hồng tiếp thị liên kết',
+        permissions: [
+          { resource: ResourceType.SALES, actions: [ActionType.VIEW, ActionType.CREATE] },
+        ],
+        permissionIds: [
+          'perm-sales-view', 'perm-sales-create-restaurant',
+        ],
+      },
     ];
 
     for (const roleData of defaultRoles) {

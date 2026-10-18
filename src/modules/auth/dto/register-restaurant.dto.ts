@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   MinLength,
   ValidateNested,
@@ -57,4 +58,15 @@ export class RegisterRestaurantDto {
   @ValidateNested()
   @Type(() => OwnerInfoDto)
   owner: OwnerInfoDto;
+
+  @ApiProperty({ example: 'IMENU-MINHAN', required: false })
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
+
+  @ApiProperty({ example: 'AFFILIATE_LINK', required: false })
+  @IsOptional()
+  @IsString()
+  acquisitionChannel?: string;
 }
+

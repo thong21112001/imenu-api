@@ -74,6 +74,12 @@
     "test:phase11": "npm run test:phase11:submission && npm run test:phase11:isolation && npm run test:phase11:bill",
     "test:phase11:all": "ts-node tests/phase-11-review-digital-bill/run-all-phase11.ts --mode=dev",
     "test:phase11:acceptance": "ts-node tests/phase-11-review-digital-bill/run-all-phase11.ts --mode=acceptance",
+    "test:phase12:referral": "ts-node tests/phase-12-sales-affiliate/referral-link-and-code.test.ts",
+    "test:phase12:restaurant": "ts-node tests/phase-12-sales-affiliate/sales-create-restaurant.test.ts",
+    "test:phase12:commission": "ts-node tests/phase-12-sales-affiliate/commission-engine.test.ts",
+    "test:phase12": "npm run test:phase12:referral && npm run test:phase12:restaurant && npm run test:phase12:commission",
+    "test:phase12:all": "ts-node tests/phase-12-sales-affiliate/run-all-phase12.ts --mode=dev",
+    "test:phase12:acceptance": "ts-node tests/phase-12-sales-affiliate/run-all-phase12.ts --mode=acceptance",
     "seed": "ts-node src/database/seed.ts",
     "seed:clean": "ts-node src/database/seed.ts --clean"
   },
