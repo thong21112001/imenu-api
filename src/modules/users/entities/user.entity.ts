@@ -99,6 +99,10 @@ export class User {
     accountNo?: string;
     accountName?: string;
   };
+
+  // --- PHIÊN ĐĂNG NHẬP & BẢO MẬT (PHASE 13) ---
+  @Prop({ default: 1 })
+  tokenVersion: number;
 }
 
 export type UserDocument = User & Document;

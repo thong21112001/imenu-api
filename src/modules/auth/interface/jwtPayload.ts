@@ -6,4 +6,5 @@ export interface JwtPayload {
   roleSlug: string;
   restaurantId?: string;
   branchId?: string;
+  tokenVersion?: number;
 }
