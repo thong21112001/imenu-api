@@ -51,6 +51,8 @@ export class AuthService {
         return 'KITCHEN';
       case 'waiter':
         return 'WAITER';
+      case 'sales_rep':
+        return 'SALES_REP';
       default:
         return (slug || 'STAFF').toUpperCase();
     }
@@ -70,6 +72,9 @@ export class AuthService {
       return convertSubdocsToPermissionIds(role.permissions);
     }
     // Fallback cho cac role mac dinh chua co document permissionIds cu the
+    if (roleSlug === 'sales_rep') {
+      return ['perm-sales-view', 'perm-sales-create-restaurant'];
+    }
     if (roleSlug === 'restaurant_admin') {
       return SYSTEM_PERMISSIONS;
     }
@@ -202,6 +207,33 @@ export class AuthService {
   }
 
   async register(dto: RegisterRestaurantDto) {
+    // Xử lý mã giới thiệu và attribution NVKD (Phase 12)
+    let referredBySalesId: Types.ObjectId | undefined;
+    let referralCodeUsed: string | undefined;
+    let acquisitionChannel = dto.acquisitionChannel || 'ORGANIC';
+
+    if (dto.referralCode && dto.referralCode.trim()) {
+      const cleanCode = dto.referralCode.trim().toUpperCase();
+      const salesUser = await this.usersService.findByReferralCode(cleanCode);
+      if (!salesUser) {
+        throw new BadRequestException('Mã giới thiệu không tồn tại hoặc đã hết hiệu lực');
+      }
+
+      // AUD-12.5: Chống tự giới thiệu chính mình (Self-referral guard)
+      if (
+        salesUser.email.toLowerCase() === dto.owner.email.trim().toLowerCase() ||
+        (salesUser.phone && salesUser.phone === dto.owner.phone?.trim())
+      ) {
+        throw new BadRequestException('Chủ quán không được phép tự giới thiệu chính mình!');
+      }
+
+      referredBySalesId = salesUser._id;
+      referralCodeUsed = cleanCode;
+      if (!dto.acquisitionChannel) {
+        acquisitionChannel = 'REFERRAL_CODE';
+      }
+    }
+
     const existingEmail = await this.usersService.findByEmail(dto.owner.email);
     if (existingEmail) {
       throw new ConflictException('Email chủ quán đã được đăng ký trên hệ thống');
@@ -217,6 +249,12 @@ export class AuthService {
       address: dto.restaurant.address,
       plan: 'Basic',
       isOpen: true,
+      referredBySalesId,
+      referralCodeUsed,
+      acquisitionChannel,
+      subscriptionStatus: 'TRIAL',
+      isActivationQualified: false,
+      activationPaidBillsCount: 0,
       branches: [
         {
           _id: mainBranchId,

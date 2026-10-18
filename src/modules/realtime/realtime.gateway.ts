@@ -697,4 +697,41 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       `Broadcast [table:qr_updated] to ${restRoom} and table_${payload.tableId} (Status: ${payload.qrStatus})`,
     );
   }
+
+  /**
+   * Phase 11: Lắng nghe sự kiện khách hàng gửi đánh giá mới
+   */
+  @OnEvent('review.created')
+  handleReviewCreatedEvent(payload: {
+    review: any;
+    restaurantId: string;
+    branchId: string;
+    orderId: string;
+    overallRating: number;
+    isLowRatingAlert?: boolean;
+  }) {
+    if (!payload?.restaurantId) return;
+
+    const eventPayload = {
+      type: 'NEW_REVIEW',
+      data: payload.review,
+      restaurantId: payload.restaurantId,
+      branchId: payload.branchId,
+      orderId: payload.orderId,
+      overallRating: payload.overallRating,
+      isLowRatingAlert: payload.isLowRatingAlert ?? payload.overallRating <= 2,
+    };
+
+    const restRoom = `restaurant_${payload.restaurantId}`;
+    this.server.to(restRoom).emit('review:created', eventPayload);
+
+    if (payload.branchId) {
+      const branchRoom = `restaurant_${payload.restaurantId}_branch_${payload.branchId}`;
+      this.server.to(branchRoom).emit('review:created', eventPayload);
+    }
+
+    this.logger.log(
+      `Broadcast [review:created] to ${restRoom} (Branch: ${payload.branchId}, Rating: ${payload.overallRating} sao, LowRatingAlert: ${eventPayload.isLowRatingAlert})`,
+    );
+  }
 }

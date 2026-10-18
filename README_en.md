@@ -196,7 +196,14 @@ Interactive documentation available at: `http://localhost:3001/api-docs`
 | | `POST` | `/api/orders/customer/:id/request-payment` | Customer requests payment via QR | Public |
 | | `GET` | `/api/orders/customer/:id/vietqr` | Fetch dynamic server-calculated VietQR | Public |
 | | `GET` | `/api/orders/customer/:id/receipt` | Customer electronic receipt view | Public |
+| | `GET` | `/api/orders/customer/:id/download-bill` | Customer digital bill download (24h token) | Public (receiptAccessToken) |
 | | `POST` | `/api/orders/:id/complete-payment` | Natural idempotent settlement & table release | POS.CONFIRM (perm-pos-pay) |
+| **Reviews & CSAT** | `POST` | `/api/reviews/customer` | Customer meal quality review submission (Atomic CAS 1x) | Public (QR / Token) |
+| | `GET` | `/api/reviews/customer/by-order/:orderId` | Customer review lookup by order | Public (QR / Token) |
+| | `GET` | `/api/reviews` | Paginated reviews list with branch & rating filters | REVIEW.VIEW (perm-review-view) |
+| | `GET` | `/api/reviews/summary` | Overall CSAT KPIs & multi-branch analytics breakdown | REVIEW.VIEW (perm-review-view) |
+| | `POST` | `/api/reviews/:id/reply` | Staff response to customer review | REVIEW.REPLY (perm-review-reply) |
+| | `PATCH` | `/api/reviews/:id/toggle-hidden` | Moderation toggle review visibility | RESTAURANT.ADMIN (Restaurant Owner) |
 | **Bills & Invoicing** | `GET` | `/api/bills` | List generated bills (filters, search, pagination) | BILL.VIEW (perm-pos-pay) |
 | | `GET` | `/api/bills/:id` | View bill details by Bill ID | BILL.VIEW (perm-pos-pay) |
 | | `GET` | `/api/bills/by-order/:orderId` | View bill details by Order ID | BILL.VIEW (perm-pos-pay) |
@@ -302,48 +309,53 @@ npm run test:phase9:all
 
 # Phase 10: Realtime & Ecosystem (85 tests):
 npm run test:phase10:all
+
+# Phase 11: Review & Digital Bill (67 tests):
+npm run test:phase11:all
 ```
 
-### Phase 10 Test Commands (Realtime & Ecosystem)
+### Phase 11 Test Commands (Review & Digital Bill)
 
 ```bash
-# Run all 4 backend suites sequentially (48 tests):
-npm run test:phase10
+# Run all 3 backend suites sequentially (27 tests):
+npm run test:phase11
 
 # Run individual sub-phase suites:
-npm run test:phase10:call-staff  # Suite 1: Call Staff & Two-Way Acknowledgment (16 tests)
-npm run test:phase10:security    # Suite 2: WebSocket Room Security & Isolation (13 tests)
-npm run test:phase10:events      # Suite 3: Domain Events Matrix 7 Groups (11 tests)
-npm run test:phase10:sdk         # Suite 4A: Frontend SDK Contract (34 tests)
-npm run test:phase10:resilience  # Suite 4B: Client Resilience & Deduplication (8 tests)
-npm run test:phase10:e2e         # Suite 5: Browser E2E Multi-Tab Ecosystem (3 tests)
+npm run test:phase11:submission # Suite 1: Customer Review Submission & Atomic CAS (11 tests)
+npm run test:phase11:isolation  # Suite 2: Branch Isolation & Moderation RBAC (9 tests)
+npm run test:phase11:bill       # Suite 3: Digital Bill Access Token & 24h Expiration (7 tests)
+
+# Run full master acceptance Phase 11 (67 tests):
+npm run test:phase11:acceptance
 ```
 
-### 643-Test Ecosystem Reconciliation Matrix
+### 710-Test Ecosystem Reconciliation Matrix
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  IMENU TEST ECOSYSTEM — 643 VERIFIED AUTOMATED TEST CASES                │
+│  IMENU TEST ECOSYSTEM — 710 VERIFIED AUTOMATED TEST CASES                │
 ├────────────────────────────────┬──────────────────────┬────────────────┤
 │ Test Group                      │ Source Location       │ Test Count     │
 ├────────────────────────────────┼──────────────────────┼────────────────┤
-│ 1. Phase 10 Realtime & Ecosyst │ tests/phase-10-realt │ 85 (100% PASS) │
-│ 2. Phase 9 Dashboard & Reports │ tests/phase-09-dashb │ 57             │
-│ 3. Phase 8 Payment & Bill      │ tests/phase-08-payme │ 98             │
-│ 4. Phase 7 Kitchen / KDS       │ tests/phase-07-kitch │ 50             │
-│ 5. Phase 6 Orders & POS        │ tests/phase-06-order │ 279            │
-│ 6. Phases 2–5 Regression       │ tests/phase-02..05   │ 74             │
+│ 1. Phase 11 Review & Bill      │ tests/phase-11-revie │ 67 (100% PASS) │
+│ 2. Phase 10 Realtime & Ecosyst │ tests/phase-10-realt │ 85             │
+│ 3. Phase 9 Dashboard & Reports │ tests/phase-09-dashb │ 57             │
+│ 4. Phase 8 Payment & Bill      │ tests/phase-08-payme │ 98             │
+│ 5. Phase 7 Kitchen / KDS       │ tests/phase-07-kitch │ 50             │
+│ 6. Phase 6 Orders & POS        │ tests/phase-06-order │ 279            │
+│ 7. Phases 2–5 Regression       │ tests/phase-02..05   │ 74             │
 ├────────────────────────────────┴──────────────────────┼────────────────┤
-│ TOTAL ECOSYSTEM (FULL ROADMAP ACCEPTANCE REQUIREMENT)  │ 643 TESTS      │
-│  - Passed in Developer/CI Run:                         │ 643 / 643 PASS │
+│ TOTAL ECOSYSTEM (FULL ROADMAP ACCEPTANCE REQUIREMENT)  │ 710 TESTS      │
+│  - Passed in Developer/CI Run:                         │ 710 / 710 PASS │
 │  - Adversarial Hardening & Regression:                 │ 0 FAIL, 0 BLOCK│
-│  - Full 10-Phase Roadmap Acceptance Status:            │ ✅ 10/10 PHASES│
+│  - Full 11-Phase Roadmap Acceptance Status:            │ ✅ 11/11 PHASES│
 └───────────────────────────────────────────────────────┴────────────────┘
 ```
 
 ### Detailed Test Documentation
 
 - **Master test index:** [tests/README.md](tests/README.md) (Vietnamese) | [tests/README_en.md](tests/README_en.md) (English)
+- **Phase 11 detailed documentation:** [tests/phase-11-review-digital-bill/README.md](tests/phase-11-review-digital-bill/README.md) (Vietnamese) | [tests/phase-11-review-digital-bill/README_en.md](tests/phase-11-review-digital-bill/README_en.md) (English)
 - **Phase 10 detailed documentation:** [tests/phase-10-realtime/README.md](tests/phase-10-realtime/README.md) (Vietnamese) | [tests/phase-10-realtime/README_en.md](tests/phase-10-realtime/README_en.md) (English)
 - **Phase 9 detailed documentation:** [tests/phase-09-dashboard-reports/README.md](tests/phase-09-dashboard-reports/README.md) (Vietnamese) | [tests/phase-09-dashboard-reports/README_en.md](tests/phase-09-dashboard-reports/README_en.md) (English)
 - **Phase 8 detailed documentation:** [tests/phase-08-payment-bill/README.md](tests/phase-08-payment-bill/README.md) (Vietnamese) | [tests/phase-08-payment-bill/README_en.md](tests/phase-08-payment-bill/README_en.md) (English)
@@ -354,27 +366,28 @@ npm run test:phase10:e2e         # Suite 5: Browser E2E Multi-Tab Ecosystem (3 t
 
 ## 11. 📊 Project Status & Acceptance
 
-### Full Project Status: ✅ ACCEPTED — FULL 10/10 PHASES ROADMAP COMPLETED
+### Full Project Status: ✅ ACCEPTED — FULL 11/11 PHASES ROADMAP COMPLETED
 
-Phase 10 (Realtime WebSocket Gateway, Room Security & Isolation, Domain Events Matrix, Call Staff Flow, Client Resilience & Multi-Tab Ecosystem E2E) has completed all 6 sub-phases (10.1 through 10.6) and has been officially accepted through the Master Phase 10 Closure Gate verification process. The entire 10-Phase roadmap of the iMenu ecosystem is 100% complete.
+Phase 11 (Customer Review Per Branch & Digital Bill Download) has completed all 4 functional subsystems and has been officially accepted through the Master Phase 11 Closure Gate verification process. The entire 11-Phase roadmap of the iMenu ecosystem is 100% complete.
 
 **Full Ecosystem Acceptance Results:**
 
 | Test Group | Test Count | Result |
 | :--- | :---: | :---: |
-| Phase 10 Realtime & Ecosystem (6 suites) | 85 | ✅ PASS |
+| Phase 11 Review & Digital Bill (4 suites) | 67 | ✅ PASS |
+| Phase 10 Realtime & Ecosystem Full Regression | 85 | ✅ PASS |
 | Phase 9 Dashboard & Reports Full Regression | 57 | ✅ PASS |
 | Phase 8 Payment & Bill Full Regression | 98 | ✅ PASS |
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
 | Phase 6 Orders & POS Full Regression | 279 | ✅ PASS |
 | Phases 2–5 Core Regressions | 74 | ✅ PASS |
-| **TOTAL ECOSYSTEM** | **643** | **643/643 PASS (100%)** |
+| **TOTAL ECOSYSTEM** | **710** | **710/710 PASS (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0
 - **BLOCKED:** 0
 
-### Overall 10/10 Phases Roadmap
+### Overall 11/11 Phases Roadmap
 
 | Phase | Status |
 | :--- | :--- |
@@ -387,4 +400,5 @@ Phase 10 (Realtime WebSocket Gateway, Room Security & Isolation, Domain Events M
 | Phase 7: Kitchen Display System (KDS) | ✅ Accepted & Officially Closed |
 | Phase 8: Payment, Bill & Financial Audit | ✅ Accepted & Officially Closed |
 | Phase 9: Dashboard, Revenue Reports & UI/UX Overhaul | ✅ Accepted & Officially Closed |
-| Phase 10: Realtime WebSocket Gateway, Room Security & Ecosystem Finalization | ✅ **ACCEPTED & ROADMAP COMPLETED (10/10 PHASES)** |
+| Phase 10: Realtime WebSocket Gateway, Room Security & Ecosystem Finalization | ✅ Accepted & Officially Closed |
+| Phase 11: Customer Review Per Branch & Digital Bill Download | ✅ **ACCEPTED & ROADMAP COMPLETED (11/11 PHASES)** |

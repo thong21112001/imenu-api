@@ -94,6 +94,16 @@ export class Order {
   @Prop({ trim: true })
   idempotencyKey?: string;
 
+  // --- Phase 11: Customer Review & Digital Bill ---
+  @Prop({ default: false, index: true })
+  isReviewed: boolean;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Review' })
+  reviewId?: Types.ObjectId;
+
+  @Prop({ trim: true, sparse: true, index: true })
+  receiptAccessToken?: string;
+
   // --- Business Timestamps ---
   @Prop({ type: Date, default: Date.now })
   openedAt: Date; // Thoi diem bat dau phien phuc vu ban an
@@ -159,5 +169,6 @@ OrderSchema.index({ restaurantId: 1, createdBy: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, paidBy: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, status: 1, createdAt: -1 });
 OrderSchema.index({ restaurantId: 1, idempotencyKey: 1 }, { sparse: true });
+OrderSchema.index({ restaurantId: 1, receiptAccessToken: 1 }, { sparse: true });
 OrderSchema.index({ createdAt: -1 });
 

@@ -195,7 +195,14 @@ Chi tiết Swagger trực quan xem tại: `http://localhost:3001/api-docs`
 | | `POST` | `/api/orders/customer/:id/request-payment` | Khách yêu cầu thanh toán qua QR | Public |
 | | `GET` | `/api/orders/customer/:id/vietqr` | Khách lấy mã VietQR động server-side | Public |
 | | `GET` | `/api/orders/customer/:id/receipt` | Khách xem dữ liệu hóa đơn điện tử | Public |
+| | `GET` | `/api/orders/customer/:id/download-bill` | Khách tải dữ liệu hóa đơn điện tử (Mã truy cập 24h) | Public (receiptAccessToken) |
 | | `POST` | `/api/orders/:id/complete-payment` | Chốt thanh toán cố đẳng & giải phóng bàn | POS.CONFIRM (perm-pos-pay) |
+| **Reviews & CSAT** | `POST` | `/api/reviews/customer` | Khách gửi đánh giá chất lượng bữa ăn (Atomic CAS 1 lần) | Public (QR / Token) |
+| | `GET` | `/api/reviews/customer/by-order/:orderId` | Khách xem lại đánh giá theo đơn hàng | Public (QR / Token) |
+| | `GET` | `/api/reviews` | Danh sách đánh giá phân trang, lọc theo chi nhánh & sao | REVIEW.VIEW (perm-review-view) |
+| | `GET` | `/api/reviews/summary` | Thống kê chỉ số CSAT & phân tích chi nhánh | REVIEW.VIEW (perm-review-view) |
+| | `POST` | `/api/reviews/:id/reply` | Quản lý gửi phản hồi đánh giá của khách | REVIEW.REPLY (perm-review-reply) |
+| | `PATCH` | `/api/reviews/:id/toggle-hidden` | Ẩn/Hiện đánh giá trên hệ thống (Kiểm duyệt) | RESTAURANT.ADMIN (Chủ nhà hàng) |
 | **Bills & In Ấn** | `GET` | `/api/bills` | Danh sách hóa đơn (lọc, tìm kiếm, phân trang) | BILL.VIEW (perm-pos-pay) |
 | | `GET` | `/api/bills/:id` | Xem chi tiết hóa đơn theo Bill ID | BILL.VIEW (perm-pos-pay) |
 | | `GET` | `/api/bills/by-order/:orderId` | Xem chi tiết hóa đơn theo Order ID | BILL.VIEW (perm-pos-pay) |
@@ -301,48 +308,53 @@ npm run test:phase9:all
 
 # Phase 10: Realtime & Ecosystem (85 ca):
 npm run test:phase10:all
+
+# Phase 11: Review & Digital Bill (67 ca):
+npm run test:phase11:all
 ```
 
-### Kiểm Thử Phase 10 (Realtime & Ecosystem)
+### Kiểm Thử Phase 11 (Review & Digital Bill)
 
 ```bash
-# Chạy 4 suite backend liên tiếp (48 ca):
-npm run test:phase10
+# Chạy 3 suite backend liên tiếp (27 ca):
+npm run test:phase11
 
-# Chạy riêng lẻ từng phân hệ Phase 10:
-npm run test:phase10:call-staff  # Suite 1: Khách gọi nhân viên & xác nhận hai chiều (16 ca)
-npm run test:phase10:security    # Suite 2: Bảo mật phòng WebSocket & phân lập chi nhánh (13 ca)
-npm run test:phase10:events      # Suite 3: Ma trận 7 nhóm sự kiện miền thời gian thực (11 ca)
-npm run test:phase10:sdk         # Suite 4A: Hợp đồng Frontend SDK Contract (34 ca)
-npm run test:phase10:resilience  # Suite 4B: Khả năng phục hồi kết nối & khử trùng lặp (8 ca)
-npm run test:phase10:e2e         # Suite 5: Kịch bản Browser E2E đa tab thời gian thực (3 ca)
+# Chạy riêng lẻ từng phân hệ Phase 11:
+npm run test:phase11:submission # Suite 1: Khách gửi đánh giá & Atomic CAS (11 ca)
+npm run test:phase11:isolation  # Suite 2: Phân lập chi nhánh & Moderation RBAC (9 ca)
+npm run test:phase11:bill       # Suite 3: Mã hóa đơn điện tử & Hết hạn 24 giờ (7 ca)
+
+# Chạy toàn bộ master acceptance Phase 11 (67 ca):
+npm run test:phase11:acceptance
 ```
 
-### Bảng Đối Chiếu 643 Ca Test Toàn Hệ Sinh Thái
+### Bảng Đối Chiếu 710 Ca Test Toàn Hệ Sinh Thái
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  HỆ SINH THÁI KIỂM THỬ IMENU — 643 CA TEST TỰ ĐỘNG CHUẨN XÁC           │
+│  HỆ SINH THÁI KIỂM THỬ IMENU — 710 CA TEST TỰ ĐỘNG CHUẨN XÁC           │
 ├────────────────────────────────┬──────────────────────┬────────────────┤
 │ Nhóm Kiểm Thử                  │ Tệp Nguồn / Vị Trí   │ Số Ca Test     │
 ├────────────────────────────────┼──────────────────────┼────────────────┤
-│ 1. Phase 10 Realtime & Ecosyst │ tests/phase-10-realt │ 85 (100% PASS) │
-│ 2. Phase 9 Dashboard & Reports │ tests/phase-09-dashb │ 57             │
-│ 3. Phase 8 Payment & Bill      │ tests/phase-08-payme │ 98             │
-│ 4. Phase 7 Kitchen / KDS       │ tests/phase-07-kitch │ 50             │
-│ 5. Phase 6 Orders & POS        │ tests/phase-06-order │ 279            │
-│ 6. Phases 2–5 Regression       │ tests/phase-02..05   │ 74             │
+│ 1. Phase 11 Review & Bill      │ tests/phase-11-revie │ 67 (100% PASS) │
+│ 2. Phase 10 Realtime & Ecosyst │ tests/phase-10-realt │ 85             │
+│ 3. Phase 9 Dashboard & Reports │ tests/phase-09-dashb │ 57             │
+│ 4. Phase 8 Payment & Bill      │ tests/phase-08-payme │ 98             │
+│ 5. Phase 7 Kitchen / KDS       │ tests/phase-07-kitch │ 50             │
+│ 6. Phase 6 Orders & POS        │ tests/phase-06-order │ 279            │
+│ 7. Phases 2–5 Regression       │ tests/phase-02..05   │ 74             │
 ├────────────────────────────────┴──────────────────────┼────────────────┤
-│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)│ 643 CA TEST    │
-│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):│ 643 / 643 PASS │
+│ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)│ 710 CA TEST    │
+│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):│ 710 / 710 PASS │
 │  - Trạng thái kiểm thử đối kháng & hồi quy:           │ 0 FAIL, 0 BLOCK│
-│  - Trạng thái nghiệm thu toàn bộ lộ trình:            │ ✅ 10/10 PHASES│
+│  - Trạng thái nghiệm thu toàn bộ lộ trình:            │ ✅ 11/11 PHASES│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Tài liệu Kiểm Thử Chi Tiết
 
 - **Mục lục kiểm thử tổng thể:** [tests/README.md](tests/README.md) (Tiếng Việt) | [tests/README_en.md](tests/README_en.md) (English)
+- **Tài liệu Phase 11 chi tiết:** [tests/phase-11-review-digital-bill/README.md](tests/phase-11-review-digital-bill/README.md) (Tiếng Việt) | [tests/phase-11-review-digital-bill/README_en.md](tests/phase-11-review-digital-bill/README_en.md) (English)
 - **Tài liệu Phase 10 chi tiết:** [tests/phase-10-realtime/README.md](tests/phase-10-realtime/README.md) (Tiếng Việt) | [tests/phase-10-realtime/README_en.md](tests/phase-10-realtime/README_en.md) (English)
 - **Tài liệu Phase 9 chi tiết:** [tests/phase-09-dashboard-reports/README.md](tests/phase-09-dashboard-reports/README.md) (Tiếng Việt) | [tests/phase-09-dashboard-reports/README_en.md](tests/phase-09-dashboard-reports/README_en.md) (English)
 - **Tài liệu Phase 8 chi tiết:** [tests/phase-08-payment-bill/README.md](tests/phase-08-payment-bill/README.md) (Tiếng Việt) | [tests/phase-08-payment-bill/README_en.md](tests/phase-08-payment-bill/README_en.md) (English)
@@ -353,27 +365,28 @@ npm run test:phase10:e2e         # Suite 5: Kịch bản Browser E2E đa tab th�
 
 ## 11. 📊 Trạng Thái Dự Án & Nghiệm Thu
 
-### Trạng Thái Toàn Bộ Dự Án: ✅ ĐÃ NGHIỆM THU — HOÀN TẤT LỘ TRÌNH 10/10 PHASES
+### Trạng Thái Toàn Bộ Dự Án: ✅ ĐÃ NGHIỆM THU — HOÀN TẤT LỘ TRÌNH 11/11 PHASES
 
-Phase 10 (Realtime WebSocket Gateway, Room Security & Isolation, Domain Events Matrix, Call Staff Flow, Client Resilience & Multi-Tab Ecosystem E2E) đã hoàn thành toàn bộ 6 phân hệ (Sub-phase 10.1 đến 10.6) và đã được nghiệm thu chính thức thông qua cổng kiểm tra đóng Phase (Master Phase 10 Closure Gate). Toàn bộ lộ trình 10 Phases của hệ thống iMenu đã hoàn tất 100%.
+Phase 11 (Đánh Giá Khách Hàng Theo Chi Nhánh & Tải Hóa Đơn Điện Tử — Customer Review Per Branch & Digital Bill Download) đã hoàn thành toàn bộ 4 phân hệ và đã được nghiệm thu chính thức thông qua cổng kiểm tra đóng Phase (Master Phase 11 Closure Gate). Toàn bộ lộ trình 11 Phases của hệ thống iMenu đã hoàn tất 100%.
 
 **Kết quả nghiệm thu toàn hệ sinh thái:**
 
 | Nhóm Kiểm Thử | Số Ca Test | Kết Quả |
 | :--- | :---: | :---: |
-| Phase 10 Realtime & Ecosystem (6 suites) | 85 | ✅ PASS |
+| Phase 11 Review & Digital Bill (4 suites) | 67 | ✅ PASS |
+| Phase 10 Realtime & Ecosystem Full Regression | 85 | ✅ PASS |
 | Phase 9 Dashboard & Reports Full Regression | 57 | ✅ PASS |
 | Phase 8 Payment & Bill Full Regression | 98 | ✅ PASS |
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
 | Phase 6 Orders & POS Full Regression | 279 | ✅ PASS |
 | Phases 2–5 Core Regressions | 74 | ✅ PASS |
-| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **643** | **643/643 PASS (100%)** |
+| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **710** | **710/710 PASS (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0
 - **BLOCKED:** 0
 
-### Lộ Trình Tổng Thể 10/10 Phases
+### Lộ Trình Tổng Thể 11/11 Phases
 
 | Phase | Trạng Thái |
 | :--- | :--- |
@@ -386,4 +399,5 @@ Phase 10 (Realtime WebSocket Gateway, Room Security & Isolation, Domain Events M
 | Phase 7: Màn Hình Bếp KDS & Điều Phối Món Ăn | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 8: Thanh Toán, Hóa Đơn & Đối Soát Tài Chính | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 9: Dashboard, Báo Cáo Doanh Thu & Tối Ưu UI/UX | ✅ Nghiệm thu & Đóng chính thức |
-| Phase 10: Thời Gian Thực, Phân Lập Phòng WebSocket & Hoàn Thiện Hệ Sinh Thái | ✅ **ĐÃ NGHIỆM THU & HOÀN TẤT LỘ TRÌNH (10/10 PHASES)** |
+| Phase 10: Thời Gian Thực, Phân Lập Phòng WebSocket & Hoàn Thiện Hệ Sinh Thái | ✅ Nghiệm thu & Đóng chính thức |
+| Phase 11: Đánh Giá Khách Hàng Theo Chi Nhánh & Tải Hóa Đơn Điện Tử | ✅ **ĐÃ NGHIỆM THU & HOÀN TẤT LỘ TRÌNH (11/11 PHASES)** |

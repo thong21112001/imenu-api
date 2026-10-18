@@ -80,38 +80,59 @@ tests/
 │   ├── e2e-dashboard-reports-runner.test.ts # P9-06: Browser E2E Dashboard, Reports & UI (4 tests)
 │   └── run-all-phase9.ts              # P9-MASTER: Master Test Orchestrator Phase 9 (57 tests)
 │
-└── phase-10-realtime/                  # [✅ ACCEPTED] Phase 10: Realtime WebSocket, Room Security & Ecosystem Finalization
-    ├── README.md                      # Comprehensive Phase 10 test guide (Vietnamese)
-    ├── README_en.md                   # Comprehensive Phase 10 test guide (English)
-    ├── call-staff-notification.test.ts # P10-01: Call Staff & Two-Way Acknowledgment (16 tests)
-    ├── websocket-room-security.test.ts # P10-02: WebSocket Room Security & Multi-Branch Isolation (13 tests)
-    ├── domain-events-matrix.test.ts   # P10-03: Domain Events Matrix 7 Realtime Groups (11 tests)
-    ├── subphase-10-4-client-resilience.test.ts # P10-04B: Reconnection Backoff Jitter & Deduplication (8 tests)
-    ├── e2e-realtime-runner.test.ts    # P10-05: Multi-Tab Browser E2E Realtime Ecosystem (3 tests)
-    └── run-all-phase10.ts             # P10-MASTER: Master Test Orchestrator Phase 10 (85 tests)
+├── phase-10-realtime/                  # [COMPLETED] Phase 10: Realtime WebSocket, Room Security & Ecosystem Finalization
+│   ├── README.md                      # Comprehensive Phase 10 test guide (Vietnamese)
+│   ├── README_en.md                   # Comprehensive Phase 10 test guide (English)
+│   ├── call-staff-notification.test.ts # P10-01: Call Staff & Two-Way Acknowledgment (16 tests)
+│   ├── websocket-room-security.test.ts # P10-02: WebSocket Room Security & Multi-Branch Isolation (13 tests)
+│   ├── domain-events-matrix.test.ts   # P10-03: Domain Events Matrix 7 Realtime Groups (11 tests)
+│   ├── subphase-10-4-client-resilience.test.ts # P10-04B: Reconnection Backoff Jitter & Deduplication (8 tests)
+│   ├── e2e-realtime-runner.test.ts    # P10-05: Multi-Tab Browser E2E Realtime Ecosystem (3 tests)
+│   └── run-all-phase10.ts             # P10-MASTER: Master Test Orchestrator Phase 10 (85 tests)
+│
+└── phase-11-review-digital-bill/       # [✅ ACCEPTED] Phase 11: Customer Review Per Branch & Digital Bill Download
+    ├── README.md                      # Comprehensive Phase 11 test guide (Vietnamese)
+    ├── README_en.md                   # Comprehensive Phase 11 test guide (English)
+    ├── customer-review-submission.test.ts # P11-01: Customer Review Submission, State Machine & Atomic CAS (11 tests)
+    ├── branch-review-isolation.test.ts    # P11-02: Multi-Branch Isolation, CSAT Analytics & Moderation RBAC (9 tests)
+    ├── digital-bill-download.test.ts      # P11-03: 48-Hex Digital Bill Access Token & 24h Expiration (7 tests)
+    └── run-all-phase11.ts                 # P11-MASTER: Master Test Orchestrator Phase 11 (67 tests)
 ```
 
 ---
 
-## 2. 🗺️ Phase 10 Sub-phase Mapping
+## 2. 🗺️ Phase 11 Sub-phase Mapping
 
-All Phase 10 functional sub-phases are consolidated inside `tests/phase-10-realtime/`:
+All Phase 11 functional sub-phases are consolidated inside `tests/phase-11-review-digital-bill/`:
 
 | Sub-phase | Test File | Primary Focus | Test Count | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| **10.1 Call Staff & Acknowledgment** | `call-staff-notification.test.ts` | Customer call staff, two-way staff acknowledgment, branch isolation, 60s cooldown (`isCooldownReplay`), `reason`/`note` length limits, TTL map eviction, RBAC `perm-pos-view`, hardening TC-10.1.14–16 | 16 | **PASS** |
-| **10.2 WebSocket Room Security** | `websocket-room-security.test.ts` | JWT Bearer handshake auth, hierarchical room isolation (`restaurant_${id}`, `branch_${id}`, `table_${id}`), guest isolation from staff rooms, room cleanup on `switch:branch` and `leave:restaurant`, hardening TC-10.2.11–13 | 13 | **PASS** |
-| **10.3 Domain Events Matrix** | `domain-events-matrix.test.ts` | 7 domain event groups (New Order, Order Updated, Item Status, Table Status, Call Staff, Payment & Bill, KDS 86 Out-of-Stock), payload integrity and broadcast verification | 11 | **PASS** |
-| **10.4 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Frontend SDK Contract verification: `tables.callStaff` (SDK-30), `tables.acknowledgeCall` (SDK-31), `customerOrders.callStaff` (SDK-32) plus 31 inherited contract tests | 34 | **PASS** |
-| **10.4 Client Resilience Suite** | `subphase-10-4-client-resilience.test.ts` | Client resilience, Reconnection Jitter Backoff, `CANONICAL_EVENT_MAP` deduplication, FIFO 50-notification ring buffer, hardening TC-10.4.6–8 | 8 | **PASS** |
-| **10.5 Multi-Tab Browser E2E** | `e2e-realtime-runner.test.ts` | Real browser multi-tab E2E: Diner calls staff $\rightarrow$ Admin Header audio badge displays without reload; Staff acknowledges $\rightarrow$ Diner receives confirmation toast; Zero-reload full lifecycle | 3 | **PASS** |
-| **10.6 Master Orchestrator** | `run-all-phase10.ts` | Master Test Orchestrator Phase 10: Dev Mode (Suites 1–5 Backend & SDK: 82 tests) & Acceptance Mode (Full 6 Suites: 85 tests) | N/A | **READY** |
+| **11.1 Customer Review Submission** | `customer-review-submission.test.ts` | Review submission, State Machine Guard (`PaymentRequested`/`Paid`), `isReviewed` & `reviewId`, duplicate prevention, Atomic CAS Concurrency (`AUD-11.1`), anti-IDOR (`AUD-11.3`), validation rating $\le 5$ & comment $\le 500$ chars | 11 | **PASS** |
+| **11.2 Branch Isolation & CSAT** | `branch-review-isolation.test.ts` | Multi-branch isolation (`AUD-11.5`), filter bypass prevention, HQ owner multi-branch access, CSAT summary (`/reviews/summary`), merchant replies, cross-branch reply prevention (403), Owner-only moderation toggle (`AUD-11.7`), RBAC | 9 | **PASS** |
+| **11.3 Digital Bill Download** | `digital-bill-download.test.ts` | 48-hex random `receiptAccessToken`, compound index, forged token rejection (404), 24h expiration (`AUD-11.4` -> 400 Bad Request), valid download within 24h, diner receipt query compatibility | 7 | **PASS** |
+| **11.4 Frontend SDK Contract** | `packages/utils/tests/sdk-contract.test.ts` | Frontend SDK Contract verification: `customerOrders.downloadBill` (SDK-33), `reviews.createCustomerReview` (SDK-34), `reviews.getCustomerReviewByOrder` (SDK-35), `reviews.list` (SDK-36), `reviews.getSummary & reply` (SDK-37), `renderReceiptToPngDataUrl` 80mm Retina PNG (SDK-38) | 40 | **PASS** |
+| **11.5 Master Orchestrator** | `run-all-phase11.ts` | Master Test Orchestrator Phase 11: Automated runner for all 4 test suites (67 test cases) in Developer Run and Acceptance Run modes | N/A | **READY** |
 
 ---
 
 ## 3. ⚡ Master Test Commands
 
 All test execution commands are registered in `package.json`:
+
+### 🔹 Phase 11 (Customer Review & Digital Bill Download) Tests:
+```powershell
+# Run the entire Phase 11 suite (67 tests):
+npm run test:phase11:all
+
+# Run in strict Acceptance mode (Official Quality Gate):
+npm run test:phase11:acceptance
+
+# Run individual Phase 11 suites:
+npm run test:phase11:submission # Suite 1: Customer Review Submission & Atomic CAS (11 tests)
+npm run test:phase11:isolation  # Suite 2: Branch Isolation & Moderation RBAC (9 tests)
+npm run test:phase11:bill       # Suite 3: Digital Bill Access Token & 24h Expiration (7 tests)
+npm run test:phase11            # Run all 3 Backend suites sequentially (27 tests)
+```
 
 ### 🔹 Phase 10 (Realtime & Ecosystem Finalization) Tests:
 ```powershell
@@ -216,25 +237,26 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Ecosystem Test Reconciliation Matrix (643 Test Cases)
+## 4. 📊 Ecosystem Test Reconciliation Matrix (710 Test Cases)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 10)                                │
+│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 11)                                │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Test Subsystem                 │ Test Scripts / Files         │ Actual Test Cases      │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
-│ Phase 10 Realtime & Ecosystem  │ 6 test files (BE + SDK + E2E)│ 85 (100% PASS)         │
+│ Phase 11 Review & Digital Bill │ 4 test files (BE + SDK)      │ 67 (100% PASS)         │
+│ Phase 10 Realtime & Ecosystem  │ 6 test files (BE + SDK + E2E)│ 85                     │
 │ Phase 9 Dashboard & Reports    │ 7 test files (BE + SDK + E2E)│ 57                     │
 │ Phase 8 Payment & Bill Suites  │ 6 test files (BE + SDK + E2E)│ 98                     │
 │ Phase 7 Kitchen / KDS Suites   │ 6 test files (BE + SDK + E2E)│ 50                     │
 │ Phase 6 Orders & POS Suites    │ 9 test files (BE + SDK + E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 test files                 │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 643 TEST CASES (PASS)  │
-│  - Passed in Developer/CI Run:                                 │ 643 / 643 PASS (100%)  │
+│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 710 TEST CASES (PASS)  │
+│  - Passed in Developer/CI Run:                                 │ 710 / 710 PASS (100%)  │
 │  - Failure & Blocked Rates:                                    │ 0 FAIL, 0 BLOCKED      │
-│  - Full 10-Phase Roadmap Acceptance Status:                    │ ✅ 10/10 PHASES PASSED │
+│  - Full 11-Phase Roadmap Acceptance Status:                    │ ✅ 11/11 PHASES PASSED │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

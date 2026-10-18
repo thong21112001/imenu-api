@@ -91,6 +91,7 @@ async function main() {
   const qrTokenA2 = `qr-a2-${timestamp}`;
   const qrTokenA3 = `qr-a3-${timestamp}`;
   const qrTokenB1 = `qr-b1-${timestamp}`;
+  const qrTokenB03 = `qr-b03-${timestamp}`;
 
   let menuItem1Id = '';
   let menuItem2Id = '';
@@ -140,6 +141,13 @@ async function main() {
             isDeleted: false,
           },
         } as any,
+        $set: {
+          bankAccount: {
+            bankId: '970422',
+            accountNo: '0901112222',
+            accountName: 'NHA HANG A',
+          },
+        },
       },
     );
 
@@ -282,6 +290,25 @@ async function main() {
       { $set: { qrToken: qrTokenA3 } },
     );
 
+    // Bàn B03 (IN HOA để kiểm tra Case-Insensitive QR lookup)
+    const tB03Res = await request('/tables', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: JSON.stringify({
+        code: 'B03',
+        name: 'Bàn B03 VIP',
+        capacity: 4,
+        zoneId: zoneAId,
+        wifiSsid: 'Wifi_Test_B03',
+        wifiPassword: 'pass_b03_123',
+      }),
+    });
+    const tableB03Id = tB03Res.data?.data?.id || tB03Res.data?.data?._id;
+    await connection.collection('tables').updateOne(
+      { _id: new Types.ObjectId(tableB03Id) },
+      { $set: { qrToken: qrTokenB03, wifiSsid: 'Wifi_Test_B03', wifiPassword: 'pass_b03_123' } },
+    );
+
     // Bàn B1 (Nhà hàng B)
     const tB1Res = await request('/tables', {
       method: 'POST',
@@ -392,6 +419,22 @@ async function main() {
       failed++;
     }
 
+    // TC-05: Case-insensitive QR Table resolution (mã IN HOA "B03" vs URL query "b03") & Wifi/Bank credentials
+    const tc05 = await request(`/orders/public/table-context?restaurantSlug=${restASlug.toUpperCase()}&tableCode=b03&qrToken=${qrTokenB03}`);
+    if (
+      tc05.status === 200 &&
+      tc05.data?.data?.table?.code === 'B03' &&
+      tc05.data?.data?.table?.wifiSsid === 'Wifi_Test_B03' &&
+      tc05.data?.data?.table?.wifiPassword === 'pass_b03_123' &&
+      tc05.data?.data?.restaurant?.bankAccount
+    ) {
+      pass('TC-05: GET /orders/public/table-context với tableCode "b03" chữ thường khớp bàn IN HOA "B03" và trả về wifiSsid & bankAccount');
+      passed++;
+    } else {
+      fail('TC-05: GET /orders/public/table-context với tableCode case-insensitive thất bại', tc05);
+      failed++;
+    }
+
     // =========================================================================
     // SECTION 2: CUSTOMER QR ORDERING & IDEMPOTENCY (AC-6.8.2)
     // =========================================================================
@@ -425,6 +468,25 @@ async function main() {
       passed++;
     } else {
       fail('TC-06: Tạo đơn QR không đúng trạng thái WaitingConfirmation', tc06);
+      failed++;
+    }
+
+    // TC-06B: Khách gọi món với mã bàn chữ thường "b03" cho bàn IN HOA "B03"
+    const tc06b = await request('/orders/customer', {
+      method: 'POST',
+      headers: { 'idempotency-key': `idem-b03-${timestamp}` },
+      body: JSON.stringify({
+        restaurantSlug: restASlug,
+        tableCode: 'b03',
+        qrToken: qrTokenB03,
+        items: [{ menuItemId: menuItem1Id, quantity: 1 }],
+      }),
+    });
+    if (tc06b.status === 201 || tc06b.status === 200) {
+      pass('TC-06B: POST /orders/customer với tableCode "b03" (chữ thường) tạo đơn thành công cho bàn "B03"');
+      passed++;
+    } else {
+      fail('TC-06B: POST /orders/customer với tableCode "b03" thất bại', tc06b);
       failed++;
     }
 

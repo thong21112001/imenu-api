@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Logger,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -20,13 +21,21 @@ import {
 import { JwtUser, isSuperAdminUser } from '../auth/interface/jwtUser';
 
 @Injectable()
-export class RolesService {
+export class RolesService implements OnApplicationBootstrap {
   private readonly logger = new Logger(RolesService.name);
 
   constructor(
     @InjectModel(Role.name) private readonly roleModel: Model<RoleDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      await this.seedDefaultRoles();
+    } catch (err: any) {
+      this.logger.warn(`Failed to auto-seed default roles: ${err?.message}`);
+    }
+  }
 
   /**
    * Danh sach toan bo cac string permission IDs chuan cua he thong
@@ -72,6 +81,7 @@ export class RolesService {
           'perm-kds-view', 'perm-kds-cook', 'perm-kds-out',
           'perm-rep-view', 'perm-rep-export',
           'perm-staff-manage', 'perm-role-manage', 'perm-qr-print', 'perm-settings',
+          'perm-review-view', 'perm-review-reply',
         ],
       },
       {
@@ -91,12 +101,14 @@ export class RolesService {
           { resource: ResourceType.REPORT, actions: [ActionType.VIEW] },
           { resource: ResourceType.STAFF, actions: [ActionType.VIEW, ActionType.CREATE, ActionType.UPDATE] },
           { resource: ResourceType.BRANCH, actions: [ActionType.VIEW] },
+          { resource: ResourceType.REVIEW, actions: [ActionType.VIEW, ActionType.UPDATE] },
         ],
         permissionIds: [
           'perm-menu-view', 'perm-menu-create', 'perm-menu-status', 'perm-menu-category',
           'perm-pos-view', 'perm-pos-order', 'perm-pos-pay', 'perm-pos-table',
           'perm-kds-view', 'perm-kds-cook', 'perm-kds-out',
           'perm-rep-view', 'perm-qr-print',
+          'perm-review-view', 'perm-review-reply',
         ],
       },
       {
@@ -144,6 +156,19 @@ export class RolesService {
         ],
         permissionIds: [
           'perm-table-view', 'perm-pos-view', 'perm-pos-order',
+        ],
+      },
+      {
+        name: 'Nhân viên Kinh doanh / Đối tác Phát triển (Sales Rep)',
+        slug: 'sales_rep',
+        isSystem: true,
+        color: '#0d9488',
+        description: 'Phát triển thị trường, kết nối nhà hàng đối tác và quản lý hoa hồng tiếp thị liên kết',
+        permissions: [
+          { resource: ResourceType.SALES, actions: [ActionType.VIEW, ActionType.CREATE] },
+        ],
+        permissionIds: [
+          'perm-sales-view', 'perm-sales-create-restaurant',
         ],
       },
     ];

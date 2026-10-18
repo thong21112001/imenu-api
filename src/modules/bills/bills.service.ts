@@ -23,6 +23,7 @@ import {
 import { buildVietnameseRegex } from '../../shared/common/utils/vietnamese-search.util';
 import { JwtUser, isSuperAdminUser } from '../auth/interface/jwtUser';
 import { ActivityAction, ActivityModule } from '../activity-log/constants/audit-log.const';
+import { CounterService } from '../../shared/common/services/counter.service';
 
 @Injectable()
 export class BillsService implements OnModuleInit {
@@ -33,6 +34,7 @@ export class BillsService implements OnModuleInit {
     @InjectModel(Restaurant.name) private readonly restaurantModel: Model<RestaurantDocument>,
     @InjectModel(Table.name) private readonly tableModel: Model<TableDocument>,
     private readonly eventEmitter: EventEmitter2,
+    private readonly counterService: CounterService,
   ) {}
 
   async onModuleInit() {
@@ -123,22 +125,12 @@ export class BillsService implements OnModuleInit {
       });
     }
 
-    // 4. Sinh mã hóa đơn billCode: BILL-YYMMDD-XXXX (đảm bảo không trùng lặp)
+    // 4. Sinh mã hóa đơn billCode nguyên tử tuyệt đối bằng CounterService: BILL-YYMMDD-XXXX (AUD-12.1)
     const now = new Date();
     const dateStr = now.toISOString().slice(2, 10).replace(/-/g, '');
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const countToday = await this.billModel.countDocuments({
-      restaurantId: new Types.ObjectId(restaurantId),
-      createdAt: { $gte: startOfDay },
-    });
-    const seq = (countToday + 1).toString().padStart(4, '0');
-    let candidate = `BILL-${dateStr}-${seq}`;
-    let attempt = 0;
-    while (await this.billModel.exists({ restaurantId: new Types.ObjectId(restaurantId), billCode: candidate })) {
-      attempt++;
-      candidate = `BILL-${dateStr}-${seq}-${attempt}`;
-    }
-    const billCode = candidate;
+    const counterKey = `BILL:${dateStr}:${restaurantId.toString()}`;
+    const seq = await this.counterService.getNextSequence(counterKey);
+    const billCode = `BILL-${dateStr}-${seq.toString().padStart(4, '0')}`;
 
     // 5. Chụp snapshot các món ăn (LOẠI TRỪ TOÀN BỘ MÓN CÓ STATUS === 'Cancelled')
     const activeItems = (order.items || []).filter((it: any) => it.status !== 'Cancelled');
