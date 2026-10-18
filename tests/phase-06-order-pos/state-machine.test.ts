@@ -12,6 +12,7 @@ import { calculateOrderStatus } from '../../src/modules/orders/domain/order-stat
 import { OrderItem } from '../../src/modules/orders/entities/order-item.schema';
 import { CategoriesService } from '../../src/modules/menu/categories.service';
 import { TablesService } from '../../src/modules/tables/tables.service';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3098;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -540,7 +541,7 @@ async function main() {
           fullName: 'Chủ Nhà Hàng SM',
           phone: '0908888777',
           email: `owner.sm.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -567,7 +568,7 @@ async function main() {
         fullName: 'Thu Ngân SM',
         username: `cashier_sm_${timestamp}`,
         email: `cashier.sm.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0903333333',
         roleId: cashierRole._id.toString(),
       }),
@@ -580,7 +581,7 @@ async function main() {
         fullName: 'Bồi Bàn SM',
         username: `waiter_sm_${timestamp}`,
         email: `waiter.sm.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0904444444',
         roleId: waiterRole._id.toString(),
       }),
@@ -593,7 +594,7 @@ async function main() {
         fullName: 'Bếp Trưởng SM',
         username: `kitchen_sm_${timestamp}`,
         email: `kitchen.sm.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0905555555',
         roleId: kitchenRole._id.toString(),
       }),
@@ -603,7 +604,7 @@ async function main() {
     const loginUser = async (email: string) => {
       const res = await request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password: 'Password@123' }),
+        body: JSON.stringify({ email, password: getTestFixtureSecret() }),
       });
       return res.data?.data?.accessToken;
     };

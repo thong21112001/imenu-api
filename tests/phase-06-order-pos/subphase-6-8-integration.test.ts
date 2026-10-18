@@ -8,6 +8,7 @@ import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
 import { RealtimeGateway } from '../../src/modules/realtime/realtime.gateway';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3105;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -113,7 +114,7 @@ async function main() {
           fullName: 'Chủ Quán A',
           phone: '0901112222',
           email: `owner.a.${timestamp}@imenu.test`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -164,7 +165,7 @@ async function main() {
           fullName: 'Chủ Quán B',
           phone: '0909998888',
           email: `owner.b.${timestamp}@imenu.test`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -184,7 +185,7 @@ async function main() {
         fullName: 'Thu Ngân Chính A',
         username: `cashier_a_${timestamp}`,
         email: `cashier.a.${timestamp}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0901234561',
         roleId: cashierRole._id.toString(),
       }),
@@ -198,7 +199,7 @@ async function main() {
         fullName: 'Đầu Bếp A',
         username: `kitchen_a_${timestamp}`,
         email: `kitchen.a.${timestamp}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0901234562',
         roleId: kitchenRole._id.toString(),
       }),
@@ -212,7 +213,7 @@ async function main() {
         fullName: 'Thu Ngân A2',
         username: `cashier_a2_${timestamp}`,
         email: `cashier.a2.${timestamp}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0901234563',
         roleId: cashierRole._id.toString(),
         branchId: subBranchAId,
@@ -222,7 +223,7 @@ async function main() {
     const loginUser = async (email: string) => {
       const res = await request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password: 'Password@123' }),
+        body: JSON.stringify({ email, password: getTestFixtureSecret() }),
       });
       return res.data?.data?.accessToken;
     };

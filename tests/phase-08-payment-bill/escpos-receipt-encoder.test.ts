@@ -1,5 +1,6 @@
 import { EscPosEncoder, buildReceiptData } from '../../src/modules/bills/helpers/escpos-encoder.helper';
 import { ReceiptData } from '../../src/modules/bills/interfaces/receipt-data.interface';
+import { getSampleStorePass1 } from '../shared/test-credentials.helper';
 
 const colors = {
   reset: '\x1b[0m',
@@ -105,7 +106,7 @@ async function main() {
           address: '123 Đồng Khởi, P. Bến Nghé, Q1',
           phone: '02838221122',
           wifiSsid: 'AmThucViet_VIP',
-          wifiPassword: 'amthucviet8888',
+          wifiPassword: getSampleStorePass1(),
           bankAccount: {
             bankId: '970422',
             bankName: 'MBBank',

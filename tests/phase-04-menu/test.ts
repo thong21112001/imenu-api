@@ -9,6 +9,7 @@ import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
 import { CategoriesService } from '../../src/modules/menu/categories.service';
 import { hashPassword } from '../../src/shared/common/utils/password.util';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3098;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -106,7 +107,7 @@ async function main() {
           fullName: 'Chủ Quán 4A',
           phone: '0981111111',
           email: emailOwnerA,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -126,7 +127,7 @@ async function main() {
           fullName: 'Chủ Quán 4B',
           phone: '0982222222',
           email: emailOwnerB,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -141,7 +142,7 @@ async function main() {
     await usersService.createDemoUser({
       username: `cashier_p4_${timestamp}`,
       email: emailCashier,
-      passwordHash: await hashPassword('Password@123'),
+      passwordHash: await hashPassword(getTestFixtureSecret()),
       fullName: 'Thu Ngân 4A',
       phone: '0983333333',
       roleId: (cashierRole as any)._id.toString(),
@@ -155,7 +156,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: emailCashier,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     cashierToken = cashierLoginRes.data?.data?.accessToken;

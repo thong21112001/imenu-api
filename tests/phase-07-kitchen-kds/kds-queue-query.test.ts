@@ -7,6 +7,7 @@ import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3110;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -107,7 +108,7 @@ async function main() {
           fullName: 'Chủ Quán KDS A',
           phone: '0901234001',
           email: `owner.kds.a.${ts}@imenu.test`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -259,14 +260,14 @@ async function main() {
         fullName: 'Đầu Bếp Chi Nhánh A1',
         phone: '0902220001',
         email: `kitchen.a1.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         role: 'kitchen',
         branchId: branchA1Id,
       }),
     });
     const lgnK1 = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `kitchen.a1.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `kitchen.a1.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     kitchenA1Token = lgnK1.data?.data?.accessToken;
 
@@ -277,14 +278,14 @@ async function main() {
         fullName: 'Phục Vụ Chi Nhánh A1',
         phone: '0902220002',
         email: `waiter.a1.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         role: 'waiter',
         branchId: branchA1Id,
       }),
     });
     const lgnW1 = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `waiter.a1.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `waiter.a1.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     waiterA1Token = lgnW1.data?.data?.accessToken;
 
@@ -295,14 +296,14 @@ async function main() {
         fullName: 'Đầu Bếp Chi Nhánh A2',
         phone: '0902220003',
         email: `kitchen.a2.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         role: 'kitchen',
         branchId: branchA2Id,
       }),
     });
     const lgnK2 = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `kitchen.a2.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `kitchen.a2.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     kitchenA2Token = lgnK2.data?.data?.accessToken;
 
@@ -319,7 +320,7 @@ async function main() {
           fullName: 'Chủ Quán B',
           phone: '0903330001',
           email: `owner.kds.b.${ts}@imenu.test`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -374,14 +375,14 @@ async function main() {
         fullName: 'Đầu Bếp Quán B',
         phone: '0903330002',
         email: `kitchen.b1.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         role: 'kitchen',
         branchId: branchB1Id,
       }),
     });
     const lgnKB = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `kitchen.b1.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `kitchen.b1.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     kitchenB1Token = lgnKB.data?.data?.accessToken;
 

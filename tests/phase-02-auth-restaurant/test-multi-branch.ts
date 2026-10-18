@@ -7,6 +7,7 @@ import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { AuthService } from '../../src/modules/auth/auth.service';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3098;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -75,7 +76,7 @@ async function main() {
   const ownerEmail = `mb.owner.${timestamp}@sample.vn`;
   const branchManagerEmail = `mb.manager.a.${timestamp}@sample.vn`;
   const cashierEmail = `mb.cashier.a.${timestamp}@sample.vn`;
-  const testPassword = 'Password@123';
+  const testPassword = getTestFixtureSecret();
 
   let ownerToken = '';
   let managerToken = '';

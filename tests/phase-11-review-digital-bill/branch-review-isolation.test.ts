@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3130;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -77,7 +78,7 @@ async function main() {
           fullName: 'P11 Master Owner',
           phone: '0909998877',
           email: `p11owner.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -120,14 +121,14 @@ async function main() {
         fullName: 'Quản Lý Chi Nhánh 1',
         email: `manager1.${timestamp}@imenu.vn`,
         phone: '0901000001',
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const staff1Login = await request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({
         email: `manager1.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const staff1Token = staff1Login.data?.data?.accessToken;
@@ -142,14 +143,14 @@ async function main() {
         fullName: 'Quản Lý Chi Nhánh 2',
         email: `manager2.${timestamp}@imenu.vn`,
         phone: '0901000002',
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const staff2Login = await request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({
         email: `manager2.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const staff2Token = staff2Login.data?.data?.accessToken;
@@ -164,14 +165,14 @@ async function main() {
         fullName: 'Phục Vụ Bàn 1',
         email: `waiter.${timestamp}@imenu.vn`,
         phone: '0901000003',
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const waiterLogin = await request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({
         email: `waiter.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const waiterToken = waiterLogin.data?.data?.accessToken;

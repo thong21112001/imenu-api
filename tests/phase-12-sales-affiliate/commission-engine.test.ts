@@ -7,6 +7,7 @@ import { Connection, Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../../src/app.module';
 import { SalesService } from '../../src/modules/sales/services/sales.service';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3135;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -101,7 +102,7 @@ async function main() {
       salesRole.slug = 'sales_rep';
     }
 
-    const hashedPassword = await bcrypt.hash('Password@123', 10);
+    const hashedPassword = await bcrypt.hash(getTestFixtureSecret(), 10);
 
     // 1. Parent Sales Rep
     const parentId = new Types.ObjectId();
@@ -139,14 +140,14 @@ async function main() {
     // Login Parent
     const loginParentRes = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: parentEmail, password: 'Password@123' }),
+      body: JSON.stringify({ email: parentEmail, password: getTestFixtureSecret() }),
     });
     const parentToken = loginParentRes.data?.data?.accessToken;
 
     // Login CTV
     const loginCtvRes = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: ctvEmail, password: 'Password@123' }),
+      body: JSON.stringify({ email: ctvEmail, password: getTestFixtureSecret() }),
     });
     const ctvToken = loginCtvRes.data?.data?.accessToken;
 

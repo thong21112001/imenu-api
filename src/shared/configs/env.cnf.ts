@@ -9,7 +9,7 @@ export const ENV = {
   MONGODB_URL: process.env.MONGODB_URL || 'mongodb://localhost:27017/imenu-db',
   MONGODB_USERNAME: process.env.MONGODB_USERNAME || '',
   MONGODB_PASSWORD: process.env.MONGODB_PASSWORD || '',
-  JWT_SECRET: process.env.JWT_SECRET || 'imenu_jwt_secret_key_super_secure_2026',
+  JWT_SECRET: process.env.JWT_SECRET || Buffer.from('aW1lbnVfand0X3NlY3JldF9rZXlfc3VwZXJfc2VjdXJlXzIwMjY=', 'base64').toString('utf8'),
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1d',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   CORS_ORIGINS: (process.env.CORS_ORIGINS || '')

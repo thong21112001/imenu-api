@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret, getSampleWelcomePass } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3124;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -87,7 +88,7 @@ async function main() {
           fullName: 'Owner Bep Nha',
           phone: '0955545678',
           email: `bepnha.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -107,7 +108,7 @@ async function main() {
       {
         $set: {
           wifiSsid: 'BepNha_5G_VIP',
-          wifiPassword: 'bepnha@welcome2026',
+          wifiPassword: getSampleWelcomePass(),
         },
       },
     );
@@ -210,7 +211,7 @@ async function main() {
         restaurant &&
         restaurant.slug === restaurantSlug &&
         restaurant.wifiSsid === 'BepNha_5G_VIP' &&
-        restaurant.wifiPassword === 'bepnha@welcome2026'
+        restaurant.wifiPassword === getSampleWelcomePass()
       ) {
         pass('TC-9.5-02: Thông tin nhà hàng chứa đầy đủ slug và Wifi credentials (wifiSsid, wifiPassword)');
         passed++;

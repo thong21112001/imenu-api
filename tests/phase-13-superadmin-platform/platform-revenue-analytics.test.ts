@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
+import { getTestNumberSecret } from '../shared/test-credentials.helper';
 import { AppModule } from '../../src/app.module';
 
 const TEST_PORT = 3138;
@@ -108,7 +109,7 @@ async function main() {
     await db.collection('users').deleteMany({ email: /.*@test-rev-p13\.vn/ });
     await db.collection('restaurants').deleteMany({ slug: /^test-rev-/ });
 
-    const hashedPassword = await bcrypt.hash('Test@123456', 10);
+    const hashedPassword = await bcrypt.hash(getTestNumberSecret(), 10);
 
     // Seed SuperAdmin
     const superAdminId = new Types.ObjectId();
@@ -413,14 +414,14 @@ async function main() {
     // Login SuperAdmin
     const loginSuper = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'superadmin@test-rev-p13.vn', password: 'Test@123456' }),
+      body: JSON.stringify({ email: 'superadmin@test-rev-p13.vn', password: getTestNumberSecret() }),
     });
     const superToken = loginSuper.data?.data?.accessToken;
 
     // Login Owner
     const loginOwner = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'owner@test-rev-p13.vn', password: 'Test@123456' }),
+      body: JSON.stringify({ email: 'owner@test-rev-p13.vn', password: getTestNumberSecret() }),
     });
     const ownerToken = loginOwner.data?.data?.accessToken;
 

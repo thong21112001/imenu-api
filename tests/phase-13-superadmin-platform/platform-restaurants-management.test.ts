@@ -6,6 +6,7 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../../src/app.module';
+import { getTestNumberSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3137;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -111,7 +112,7 @@ async function main() {
     }
 
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('Test@123456', salt);
+    const hashedPassword = await bcrypt.hash(getTestNumberSecret(), salt);
 
     // Seed 1 Superadmin
     const superAdminId = new Types.ObjectId();
@@ -202,21 +203,21 @@ async function main() {
     // Login SuperAdmin
     const loginSuper = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'superadmin@test-p13.vn', password: 'Test@123456' }),
+      body: JSON.stringify({ email: 'superadmin@test-p13.vn', password: getTestNumberSecret() }),
     });
     const superToken = loginSuper.data?.data?.accessToken;
 
     // Login Owner
     const loginOwner = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'owner@test-p13.vn', password: 'Test@123456' }),
+      body: JSON.stringify({ email: 'owner@test-p13.vn', password: getTestNumberSecret() }),
     });
     const ownerToken = loginOwner.data?.data?.accessToken;
 
     // Login Sales Rep
     const loginSales = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'sales@test-p13.vn', password: 'Test@123456' }),
+      body: JSON.stringify({ email: 'sales@test-p13.vn', password: getTestNumberSecret() }),
     });
     const salesToken = loginSales.data?.data?.accessToken;
 
@@ -326,7 +327,7 @@ async function main() {
     // Login lại để nhận token mới (vì tokenVersion đã được bump khi khóa)
     const reLoginOwner = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: 'owner@test-p13.vn', password: 'Test@123456' }),
+      body: JSON.stringify({ email: 'owner@test-p13.vn', password: getTestNumberSecret() }),
     });
     const newOwnerToken = reLoginOwner.data?.data?.accessToken;
 

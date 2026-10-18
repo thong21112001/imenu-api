@@ -8,6 +8,7 @@ import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
 import { SuperAdminConstants } from '../../src/shared/common/constants/envConstants';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3097;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -105,7 +106,7 @@ async function main() {
           fullName: 'Chủ Quán 3A',
           phone: '0901111111',
           email: emailOwnerA,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -131,7 +132,7 @@ async function main() {
           fullName: 'Chủ Quán 3B',
           phone: '0902222222',
           email: emailOwnerB,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -278,7 +279,7 @@ async function main() {
         headers: { Authorization: `Bearer ${superAdminToken}` },
         body: JSON.stringify({
           email: emailStaffCreated,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
           fullName: 'Nhân Viên Thu Ngân Được Admin Tạo Hộ',
           phone: '0903333333',
           roleId: cashierRoleId,
@@ -345,7 +346,7 @@ async function main() {
         method: 'POST',
         body: JSON.stringify({
           email: emailStaffCreated,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         }),
       });
 
@@ -475,7 +476,7 @@ async function main() {
         // Login as demo user
         const demoLoginRes = await request('/auth/login', {
           method: 'POST',
-          body: JSON.stringify({ email: 'owner@sample.vn', password: 'Password@123' }),
+          body: JSON.stringify({ email: 'owner@sample.vn', password: getTestFixtureSecret() }),
         });
         if (demoLoginRes.data.data?.accessToken) {
           const writeRes = await request('/roles', {
@@ -542,7 +543,7 @@ async function main() {
           email: `subadmin.${timestamp}@imenu.vn`,
           username: `subadmin${timestamp}`,
           phone: '0907777888',
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
           roleId: restaurantAdminRole._id.toString(),
           branchId: subBranchId,
         }),
@@ -554,7 +555,7 @@ async function main() {
         method: 'POST',
         body: JSON.stringify({
           email: `subadmin.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         }),
       });
       subAdminToken = subAdminLogin.data.data?.accessToken;
@@ -596,7 +597,7 @@ async function main() {
           fullName: 'Nhân viên lậu',
           email: `inv.staff.${timestamp}@imenu.vn`,
           phone: '0901239999',
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
           roleId: cashierRoleId,
           branchId: mainBranchId,
         }),
@@ -611,7 +612,7 @@ async function main() {
           fullName: 'Admin lậu',
           email: `admin.fraud.${timestamp}@imenu.vn`,
           phone: '0901239998',
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
           roleId: restaurantAdminRole._id.toString(),
           branchId: subBranchId,
         }),
@@ -625,7 +626,7 @@ async function main() {
           fullName: 'Thu Ngân CN Quận 7',
           email: `cashier.q7.${timestamp}@imenu.vn`,
           phone: '0901239997',
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
           roleId: cashierRoleId,
           branchId: subBranchId,
         }),

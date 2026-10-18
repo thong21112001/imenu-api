@@ -5,6 +5,7 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from '../../src/app.module';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3122;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -90,7 +91,7 @@ async function main() {
           fullName: 'P9 Top Items Owner',
           phone: '0933345678',
           email: `owner.top.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });

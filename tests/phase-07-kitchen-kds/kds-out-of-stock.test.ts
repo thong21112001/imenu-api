@@ -8,6 +8,7 @@ import { io, Socket } from 'socket.io-client';
 import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3113;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -100,7 +101,7 @@ async function main() {
           fullName: 'Chủ Quán 86',
           phone: '0908880001',
           email: `owner.86.${ts}@imenu.test`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -205,14 +206,14 @@ async function main() {
         fullName: 'Bếp Trưởng Main',
         phone: '0908880003',
         email: `chef.main.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         role: 'kitchen',
         branchId: branchMainId,
       }),
     });
     const lgnMain = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `chef.main.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `chef.main.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     kitchenMainToken = lgnMain.data?.data?.accessToken;
 
@@ -224,14 +225,14 @@ async function main() {
         fullName: 'Bếp Trưởng Sub',
         phone: '0908880004',
         email: `chef.sub.${ts}@imenu.test`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         role: 'kitchen',
         branchId: branchSubId,
       }),
     });
     const lgnSub = await request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email: `chef.sub.${ts}@imenu.test`, password: 'Password@123' }),
+      body: JSON.stringify({ email: `chef.sub.${ts}@imenu.test`, password: getTestFixtureSecret() }),
     });
     kitchenSubToken = lgnSub.data?.data?.accessToken;
 

@@ -8,6 +8,7 @@ import { AppModule } from '../../src/app.module';
 import { TablesService } from '../../src/modules/tables/tables.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { io, Socket } from 'socket.io-client';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3125;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -113,7 +114,7 @@ async function main() {
           fullName: 'Owner Realtime',
           phone: '0909123456',
           email: `owner.p10.suite1.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -152,7 +153,7 @@ async function main() {
         fullName: 'Phục Vụ Đà Nẵng',
         username: `waiter_s1_${timestamp}`,
         email: `waiter.s1.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0912345679',
         roleId: waiterRole!._id.toString(),
         branchId: branch2Id,
@@ -163,7 +164,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         username: `waiter_s1_${timestamp}`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
       }),
     });
     const branch2StaffToken = loginStaffRes.data?.data?.accessToken;

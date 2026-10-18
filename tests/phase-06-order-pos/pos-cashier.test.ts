@@ -10,6 +10,7 @@ import { UsersService } from '../../src/modules/users/users.service';
 import { OrderFinancialCalculator } from '../../src/modules/orders/domain/order-financial.calculator';
 import { CategoriesService } from '../../src/modules/menu/categories.service';
 import { TablesService } from '../../src/modules/tables/tables.service';
+import { getTestFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3099;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -237,7 +238,7 @@ async function main() {
           fullName: 'Chủ Quán POS',
           phone: '0901234567',
           email: `owner.pos.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -279,7 +280,7 @@ async function main() {
           fullName: 'Chủ Quán B',
           phone: '0909999888',
           email: `owner.b.${timestamp}@imenu.vn`,
-          password: 'Password@123',
+          password: getTestFixtureSecret(),
         },
       }),
     });
@@ -298,7 +299,7 @@ async function main() {
         fullName: 'Thu Ngân Chính',
         username: `cashier_main_${timestamp}`,
         email: `cashier.main.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0902222111',
         roleId: cashierRole._id.toString(),
       }),
@@ -312,7 +313,7 @@ async function main() {
         fullName: 'Phục Vụ Bàn',
         username: `waiter_${timestamp}`,
         email: `waiter.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0902222222',
         roleId: waiterRole._id.toString(),
       }),
@@ -326,7 +327,7 @@ async function main() {
         fullName: 'Thu Ngân Chi Nhánh Phụ',
         username: `cashier_sub_${timestamp}`,
         email: `cashier.sub.${timestamp}@imenu.vn`,
-        password: 'Password@123',
+        password: getTestFixtureSecret(),
         phone: '0902222333',
         roleId: cashierRole._id.toString(),
         branchId: subBranchId,
@@ -337,7 +338,7 @@ async function main() {
     const loginUser = async (email: string) => {
       const res = await request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password: 'Password@123' }),
+        body: JSON.stringify({ email, password: getTestFixtureSecret() }),
       });
       return res.data?.data?.accessToken;
     };

@@ -8,6 +8,7 @@ import { AppModule } from '../../src/app.module';
 import { RolesService } from '../../src/modules/roles/roles.service';
 import { UsersService } from '../../src/modules/users/users.service';
 import { OrdersService } from '../../src/modules/orders/orders.service';
+import { getShortFixtureSecret } from '../shared/test-credentials.helper';
 
 const TEST_PORT = 3096;
 const BASE_URL = `http://localhost:${TEST_PORT}/api`;
@@ -339,7 +340,7 @@ async function main() {
     const cashierRole = await connection.collection('roles').findOne({ slug: 'cashier' });
     const cashierId = new Types.ObjectId();
     const bcrypt = await import('bcryptjs');
-    const hashedPassword = await bcrypt.hash('123456', 10);
+    const hashedPassword = await bcrypt.hash(getShortFixtureSecret(), 10);
 
     await connection.collection('users').insertOne({
       _id: cashierId,
@@ -360,7 +361,7 @@ async function main() {
       method: 'POST',
       body: JSON.stringify({
         email: `cashier_${timestamp}@test.com`,
-        password: '123456',
+        password: getShortFixtureSecret(),
       }),
     });
     cashierToken = loginRes.data?.data?.accessToken || '';
