@@ -42,4 +42,10 @@ export class CreateRoleDto {
   @IsArray()
   @IsOptional()
   permissionIds?: string[];
+
+  @ApiPropertyOptional({ description: 'ID nhà hàng (Dành cho Super Admin)' })
+  @IsString()
+  @IsOptional()
+  restaurantId?: string;
 }
+

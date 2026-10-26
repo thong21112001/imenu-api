@@ -49,7 +49,11 @@ export class RolesController {
     @CurrentRestaurant() restaurantId: string,
     @CurrentUser() user: JwtUser,
   ) {
-    const role = await this.rolesService.create(createRoleDto, restaurantId, user);
+    const isSuperAdmin = isSuperAdminUser(user);
+    const effectiveRestaurantId = isSuperAdmin
+      ? (createRoleDto.restaurantId || restaurantId)
+      : restaurantId;
+    const role = await this.rolesService.create(createRoleDto, effectiveRestaurantId, user);
     return new OkResponse({ message: 'Tạo vai trò mới thành công', data: role });
   }
 

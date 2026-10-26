@@ -23,4 +23,5 @@ export const ENV = {
   SUPERADMIN_FULLNAME: process.env.SUPERADMIN_FULLNAME || 'Quan Tri Vien He Thong iMenu',
   SUPERADMIN_PHONE: process.env.SUPERADMIN_PHONE || '0900000000',
   DEMO_USER_PASSWORD: process.env.DEMO_USER_PASSWORD || '',
+  DEFAULT_SALES_PASSWORD: process.env.DEFAULT_SALES_PASSWORD || process.env.DEMO_USER_PASSWORD || '',
 };
