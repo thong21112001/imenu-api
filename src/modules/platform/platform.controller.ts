@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -109,6 +111,7 @@ export class PlatformController {
   }
 
   @ApiOperation({ summary: 'Phê duyệt đơn ứng tuyển NVKD và tự động cấp tài khoản' })
+  @HttpCode(HttpStatus.OK)
   @Post('sales-applications/:id/approve')
   async approveSalesApplication(
     @Param('id') id: string,
@@ -126,6 +129,7 @@ export class PlatformController {
   }
 
   @ApiOperation({ summary: 'Duyệt hoặc chốt thanh toán kỳ đối soát hoa hồng nguyên tử (AUD-13.3)' })
+  @HttpCode(HttpStatus.OK)
   @Post(['commissions/payout-batch', 'commission/payout-batch'])
   async executePayoutBatch(
     @Body() dto: PayoutBatchDto,

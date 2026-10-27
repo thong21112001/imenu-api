@@ -406,7 +406,7 @@ export class PlatformService implements OnModuleInit {
     // Sinh mã giao dịch SubscriptionTransaction
     let transactionCode: string;
     try {
-      transactionCode = await this.counterService.generateDailyCode('SUB', restaurant._id.toString());
+      transactionCode = await this.counterService.generateDailyCode('SUB');
     } catch {
       transactionCode = `SUB-${Date.now().toString().slice(-8)}`;
     }
@@ -424,6 +424,7 @@ export class PlatformService implements OnModuleInit {
       paymentStatus: 'PAID',
       transactionId: `TX-SUPERADMIN-${Date.now()}`,
       paidAt: new Date(),
+      note: dto.note,
     });
 
     await subTx.save();
@@ -447,7 +448,7 @@ export class PlatformService implements OnModuleInit {
 
         let ledgerCode: string;
         try {
-          ledgerCode = await this.counterService.generateDailyCode('COM', salesUser._id.toString());
+          ledgerCode = await this.counterService.generateDailyCode('COM');
         } catch {
           ledgerCode = `COM-${Date.now().toString().slice(-8)}`;
         }

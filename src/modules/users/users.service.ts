@@ -155,7 +155,7 @@ export class UsersService {
   }
 
   async findById(id: string): Promise<UserDocument> {
-    const user = await this.userModel.findOne({ _id: id, isDeleted: { $ne: true } }).exec();
+    const user = await this.userModel.findOne({ _id: id, isDeleted: { $ne: true } }).populate('role').exec();
     if (!user) {
       throw new NotFoundException('Không tìm thấy tài khoản người dùng');
     }

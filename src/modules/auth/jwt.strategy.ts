@@ -83,6 +83,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       fullName: user.fullName,
       phone: user.phone,
       role: user.role,
+      isSuperAdmin,
       isRoleActive: user.isRoleActive,
       restaurantId: user.restaurantId ? (user.restaurantId as any).toString() : undefined,
       branchId: user.branchId,

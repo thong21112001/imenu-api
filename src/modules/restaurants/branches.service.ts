@@ -12,7 +12,7 @@ import { BranchStatus } from './entities/branch.schema';
 import { CreateBranchDto, UpdateBranchDto, CloseBranchDto, DeactivateBranchDto } from './dto/branch.dto';
 import { Order, OrderDocument } from '../orders/entities/order.entity';
 import { User, UserDocument } from '../users/entities/user.entity';
-import { JwtUser } from '../auth/interface/jwtUser';
+import { JwtUser, isSuperAdminUser } from '../auth/interface/jwtUser';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActivityAction, ActivityModule } from '../activity-log/constants/audit-log.const';
 import { maskBankAccount } from '../bills/helpers/vietqr.helper';
@@ -68,7 +68,7 @@ export class BranchesService {
   }
 
   async create(restaurantId: string, dto: CreateBranchDto, caller?: JwtUser) {
-    if (caller && !caller.isMainBranch) {
+    if (caller && !caller.isMainBranch && !isSuperAdminUser(caller)) {
       throw new ForbiddenException('Chỉ quản trị viên chi nhánh chính mới có quyền tạo chi nhánh mới');
     }
 
@@ -103,7 +103,7 @@ export class BranchesService {
   }
 
   async update(restaurantId: string, branchId: string, dto: UpdateBranchDto, caller?: JwtUser) {
-    if (caller && !caller.isMainBranch) {
+    if (caller && !caller.isMainBranch && !isSuperAdminUser(caller)) {
       // Chi nhánh con chỉ được phép cập nhật thông tin chi nhánh của chính mình
       if (caller.branchId !== branchId) {
         throw new ForbiddenException('Bạn chỉ có quyền cập nhật thông tin chi nhánh của mình');
@@ -152,8 +152,8 @@ export class BranchesService {
     if (dto.name !== undefined) currentBranch.name = dto.name;
     if (dto.address !== undefined) currentBranch.address = dto.address;
     if (dto.phone !== undefined) currentBranch.phone = dto.phone;
-    if (dto.isMainBranch !== undefined && (!caller || caller.isMainBranch)) currentBranch.isMainBranch = dto.isMainBranch;
-    if (dto.status !== undefined && (!caller || caller.isMainBranch)) currentBranch.status = dto.status;
+    if (dto.isMainBranch !== undefined && (!caller || caller.isMainBranch || isSuperAdminUser(caller))) currentBranch.isMainBranch = dto.isMainBranch;
+    if (dto.status !== undefined && (!caller || caller.isMainBranch || isSuperAdminUser(caller))) currentBranch.status = dto.status;
     if (dto.bankAccount !== undefined) {
       const oldBank = currentBranch.bankAccount || ({} as any);
       if (
@@ -206,7 +206,7 @@ export class BranchesService {
   }
 
   async closeBranch(restaurantId: string, branchId: string, dto: CloseBranchDto, caller?: JwtUser) {
-    if (caller && !caller.isMainBranch) {
+    if (caller && !caller.isMainBranch && !isSuperAdminUser(caller)) {
       throw new ForbiddenException('Chỉ quản trị viên chi nhánh chính mới có quyền tạm đóng chi nhánh');
     }
 
@@ -296,7 +296,7 @@ export class BranchesService {
   }
 
   async reopenBranch(restaurantId: string, branchId: string, caller?: JwtUser) {
-    if (caller && !caller.isMainBranch) {
+    if (caller && !caller.isMainBranch && !isSuperAdminUser(caller)) {
       throw new ForbiddenException('Chỉ quản trị viên chi nhánh chính mới có quyền mở lại chi nhánh');
     }
 
@@ -338,7 +338,7 @@ export class BranchesService {
     dto: DeactivateBranchDto,
     caller?: JwtUser,
   ) {
-    if (caller && !caller.isMainBranch) {
+    if (caller && !caller.isMainBranch && !isSuperAdminUser(caller)) {
       throw new ForbiddenException('Chỉ quản trị viên chi nhánh chính mới có quyền ngừng hoạt động chi nhánh');
     }
 
