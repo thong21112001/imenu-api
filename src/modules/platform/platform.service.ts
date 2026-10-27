@@ -1020,15 +1020,17 @@ export class PlatformService implements OnModuleInit {
       throw new BadRequestException('Danh sách mã hoa hồng không được rỗng');
     }
 
-    const objectIds = dto.ledgerIds
-      .filter((id) => Types.ObjectId.isValid(id))
-      .map((id) => new Types.ObjectId(id));
+    const uniqueIds = Array.from(
+      new Set(dto.ledgerIds.filter((id) => Types.ObjectId.isValid(id))),
+    );
+
+    const objectIds = uniqueIds.map((id) => new Types.ObjectId(id));
 
     if (objectIds.length === 0) {
       throw new BadRequestException('Không tìm thấy bản ghi hoa hồng hợp lệ');
     }
 
-    // AUD-13.3: Thao tác nguyên tử (Atomic Update) chống thanh toán đúp
+    // AUD-13.3 / P15: Thao tác nguyên tử (Atomic Update) chống thanh toán đúp
     if (dto.action === 'APPROVE') {
       const result = await this.commissionLedgerModel.updateMany(
         {
@@ -1041,6 +1043,18 @@ export class PlatformService implements OnModuleInit {
           },
         },
       );
+
+      try {
+        await this.activityLogService.handleActivityLog({
+          userId: caller.userId,
+          userName: caller.fullName || 'Superadmin',
+          module: ActivityModule.SYSTEM,
+          action: ActivityAction.UPDATE,
+          description: `Superadmin ${caller.fullName} đã duyệt hàng loạt ${result.modifiedCount} khoản hoa hồng.`,
+        });
+      } catch {
+        // silent logging
+      }
 
       return {
         success: true,
@@ -1065,6 +1079,18 @@ export class PlatformService implements OnModuleInit {
           },
         },
       );
+
+      try {
+        await this.activityLogService.handleActivityLog({
+          userId: caller.userId,
+          userName: caller.fullName || 'Superadmin',
+          module: ActivityModule.SYSTEM,
+          action: ActivityAction.UPDATE,
+          description: `Superadmin ${caller.fullName} đã chốt thanh toán ${result.modifiedCount} khoản hoa hồng với mã tham chiếu: ${payoutReference}`,
+        });
+      } catch {
+        // silent logging
+      }
 
       return {
         success: true,

@@ -51,8 +51,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     } else if (user.restaurantId) {
       try {
         const restaurant = await this.restaurantsService.findById(user.restaurantId.toString());
-        // AUD-13.2: Chặn tức thì các tài khoản thuộc nhà hàng đang bị khóa/tạm ngưng
-        if (restaurant?.isSuspended || restaurant?.subscriptionStatus === 'SUSPENDED') {
+        // AUD-13.2 / P15: Chặn tức thì các tài khoản thuộc nhà hàng đang bị khóa/tạm ngưng
+        if (
+          restaurant?.isSuspended ||
+          restaurant?.subscriptionStatus === 'SUSPENDED' ||
+          (restaurant as any)?.status === 'SUSPENDED' ||
+          (restaurant as any)?.status === 'INACTIVE'
+        ) {
           throw new ForbiddenException('Nhà hàng đang tạm ngưng hoạt động. Vui lòng liên hệ quản trị hệ thống.');
         }
 
