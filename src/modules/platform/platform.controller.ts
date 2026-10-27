@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -15,6 +17,7 @@ import { SuperAdminGuard } from '../../shared/common/guards/super-admin.guard';
 import { CurrentUser } from '../../shared/common/decorators/current-user.decorator';
 import { JwtUser } from '../auth/interface/jwtUser';
 import { QueryPlatformRestaurantsDto } from './dto/query-platform-restaurants.dto';
+import { QueryPlatformCommissionsDto } from './dto/query-platform-commissions.dto';
 import { UpdateRestaurantStatusDto } from './dto/update-restaurant-status.dto';
 import { UpdateRestaurantSubscriptionDto } from './dto/update-restaurant-subscription.dto';
 import { QueryPlatformRevenuesDto } from './dto/query-platform-revenues.dto';
@@ -40,7 +43,7 @@ export class PlatformController {
   @Get('restaurants')
   async getRestaurants(@Query() query: QueryPlatformRestaurantsDto) {
     const data = await this.platformService.getRestaurants(query);
-    return { success: true, ...data };
+    return { success: true, data, ...data };
   }
 
   @ApiOperation({ summary: 'Khóa / Mở khóa hoạt động nhà hàng (AUD-13.2)' })
@@ -108,6 +111,7 @@ export class PlatformController {
   }
 
   @ApiOperation({ summary: 'Phê duyệt đơn ứng tuyển NVKD và tự động cấp tài khoản' })
+  @HttpCode(HttpStatus.OK)
   @Post('sales-applications/:id/approve')
   async approveSalesApplication(
     @Param('id') id: string,
@@ -117,7 +121,15 @@ export class PlatformController {
     return { success: true, ...data };
   }
 
+  @ApiOperation({ summary: 'Danh sách hoa hồng toàn sàn phục vụ đối soát và chi trả hàng loạt' })
+  @Get('commissions')
+  async getCommissions(@Query() query: QueryPlatformCommissionsDto) {
+    const data = await this.platformService.getCommissions(query);
+    return { success: true, data, ...data };
+  }
+
   @ApiOperation({ summary: 'Duyệt hoặc chốt thanh toán kỳ đối soát hoa hồng nguyên tử (AUD-13.3)' })
+  @HttpCode(HttpStatus.OK)
   @Post(['commissions/payout-batch', 'commission/payout-batch'])
   async executePayoutBatch(
     @Body() dto: PayoutBatchDto,

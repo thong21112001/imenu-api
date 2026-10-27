@@ -17,6 +17,17 @@ export class CompositeRateLimiterService {
     return key.trim().toLowerCase();
   }
 
+  private pruneExpired(): void {
+    const now = Date.now();
+    for (const [k, r] of this.attempts.entries()) {
+      const isLocked = r.lockedUntil && now < r.lockedUntil;
+      const isWindowExpired = now - r.firstAttemptAt > this.WINDOW_MS;
+      if (!isLocked && isWindowExpired) {
+        this.attempts.delete(k);
+      }
+    }
+  }
+
   /**
    * Kiểm tra trước khi thực hiện hành động (VD: Đăng nhập)
    * Nếu cặp (IP, Email) đang bị khóa -> ném 429 Too Many Requests
@@ -55,6 +66,7 @@ export class CompositeRateLimiterService {
     const record = this.attempts.get(key);
 
     if (!record || now - record.firstAttemptAt > this.WINDOW_MS) {
+      if (this.attempts.size > 2000) this.pruneExpired();
       this.attempts.set(key, {
         count: 1,
         firstAttemptAt: now,
@@ -74,5 +86,33 @@ export class CompositeRateLimiterService {
   resetAttempts(ip: string, identifier: string): void {
     const key = `login:${this.cleanKey(ip)}:${this.cleanKey(identifier)}`;
     this.attempts.delete(key);
+  }
+
+  /**
+   * Kiểm tra giới hạn tần suất cho các endpoint công khai (QR, Đặt món, Đánh giá, Gọi nhân viên)
+   * Mặc định: tối đa 60 requests / phút từ 1 IP cho mỗi action
+   */
+  checkPublicRateLimit(ip: string, action: string, maxRequests = 60, windowMs = 60000): void {
+    const key = `public:${this.cleanKey(action)}:${this.cleanKey(ip || 'unknown')}`;
+    const now = Date.now();
+    const record = this.attempts.get(key);
+
+    if (!record || now - record.firstAttemptAt > windowMs) {
+      if (this.attempts.size > 2000) this.pruneExpired();
+      this.attempts.set(key, { count: 1, firstAttemptAt: now });
+      return;
+    }
+
+    record.count += 1;
+    if (record.count > maxRequests) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          error: 'Too Many Requests',
+          message: 'Bạn đang gửi quá nhiều yêu cầu. Vui lòng thử lại sau giây lát.',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
   }
 }

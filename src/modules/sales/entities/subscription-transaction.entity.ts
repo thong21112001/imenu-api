@@ -56,6 +56,9 @@ export class SubscriptionTransaction {
 
   @Prop()
   paidAt?: Date;
+
+  @Prop({ trim: true })
+  note?: string;
 }
 
 export type SubscriptionTransactionDocument = SubscriptionTransaction & Document;

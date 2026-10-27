@@ -115,33 +115,86 @@ tests/
 │   ├── security-concurrency-hardening.test.ts  # P13-04: Composite Rate Limiter & Concurrency (6 tests)
 │   └── run-all-phase13.ts                      # P13-MASTER: Master Test Orchestrator Phase 13 (28 tests)
 │
-└── phase-14-superadmin-ux-secret-zero-docs/ # [✅ ACCEPTED] Phase 14: Superadmin Purification & Zero Secrets
-    ├── README.md                      # Comprehensive Phase 14 test guide (Vietnamese)
-    ├── README_en.md                   # Comprehensive Phase 14 test guide (English)
-    ├── secret-scanning-guard.test.ts  # P14-01: Zero Static Secret Scanner & Dynamic Credentials Guard (AUD-14.1) (3 tests)
-    ├── superadmin-workspace-isolation.test.ts # P14-02: 100% Superadmin Isolation, Route & Header Muting (AUD-14.2-14.4) (3 tests)
-    ├── readme-documentation-integrity.test.ts # P14-03: Master README Parity & Script Alignment (AUD-14.5) (4 tests)
-    └── run-all-phase14.ts             # P14-MASTER: Master Test Orchestrator Phase 14 (10 tests)
+├── phase-14-superadmin-ux-secret-zero-docs/ # [✅ ACCEPTED] Phase 14: Superadmin Purification & Zero Secrets
+│   ├── README.md                      # Comprehensive Phase 14 test guide (Vietnamese)
+│   ├── README_en.md                   # Comprehensive Phase 14 test guide (English)
+│   ├── secret-scanning-guard.test.ts  # P14-01: Zero Static Secret Scanner & Dynamic Credentials Guard (AUD-14.1) (3 tests)
+│   ├── superadmin-workspace-isolation.test.ts # P14-02: 100% Superadmin Isolation, Route & Header Muting (AUD-14.2-14.4) (3 tests)
+│   ├── readme-documentation-integrity.test.ts # P14-03: Master README Parity & Script Alignment (AUD-14.5) (4 tests)
+│   └── run-all-phase14.ts             # P14-MASTER: Master Test Orchestrator Phase 14 (10 tests)
+│
+└── phase-15-superadmin-completion/    # [✅ ACCEPTED] Phase 15: Superadmin Completion, Support Mode & RBAC Sync
+    ├── README.md                      # Detailed test guide (Vietnamese)
+    ├── README_en.md                   # Detailed test guide (English)
+    ├── superadmin-restaurant-lifecycle.test.ts   # P15-01: Restaurant lifecycle, plans & audit notes (5 tests)
+    ├── superadmin-sales-management.test.ts       # P15-02: Sales rep management, policies & applications (4 tests)
+    ├── superadmin-payout-and-commissions.test.ts # P15-03: Platform commission ledger & atomic payout batch (4 tests)
+    ├── superadmin-impersonation-rbac.test.ts     # P15-04: Support impersonation & strict RBAC isolation (5 tests)
+    └── run-all-phase15.ts                        # P15-MASTER: Master Test Orchestrator Phase 15 (75 tests)
 ```
 
 ---
 
-## 2. 🗺️ Phase 14 Sub-phase Mapping
+## 2. 🗺️ Phase 15 & Phase 14 Sub-phase Mapping
 
-All Phase 14 functional sub-phases are consolidated inside `tests/phase-14-superadmin-ux-secret-zero-docs/`:
+### Phase 16 Testing Subsystem (`tests/phase-16-production-readiness/`):
+| Sub-phase | Test File | Primary Focus | Test Count | Status |
+| :--- | :--- | :--- | :---: | :---: |
+| **16.1 Production Security & CORS** | `production-security-and-cors.test.ts` | Dynamic CORS origin matching, Helmet security headers, bounded rate limiter cache (`pruneExpired`), Demo Block Guard | 5 | **PASS** |
+| **16.2 Realtime Resilience & Room Security** | `realtime-resilience-and-isolation.test.ts` | Table guest socket, guest room isolation rejecting unauthorized access to staff rooms (403), Ping Health Check | 4 | **PASS** |
+| **16.3 Frontend SDK Contract Sync** | `packages/utils/tests/sdk-contract.test.ts` | Complete parity verification of all 57 `@imenu/utils` SDK methods with Backend API routes | 57 | **PASS** |
+| **16.4 Master Orchestrator** | `run-all-phase16.ts` | Phase 16 Master Test Orchestrator: Automated runner for 3 test suites verifying VPS production readiness | 66 | **PASS** |
 
+### Phase 15 Testing Subsystem (`tests/phase-15-superadmin-completion/`):
+| Sub-phase | Test File | Primary Focus | Test Count | Status |
+| :--- | :--- | :--- | :---: | :---: |
+| **15.1 Restaurant Lifecycle & Subscriptions** | `superadmin-restaurant-lifecycle.test.ts` | Status filtering, suspension (`isSuspended: true`), reactivation `$unset`, plan renewal with transaction audit notes, update restaurant | 5 | **PASS** |
+| **15.2 Sales Reps & Commission Policies** | `superadmin-sales-management.test.ts` | New sales rep provisioning, Setup/Renewal commission rates, beneficiary bank accounts, public candidate application auto-provisioning | 4 | **PASS** |
+| **15.3 Commission Ledger & Payout Batch** | `superadmin-payout-and-commissions.test.ts` | Platform commission ledger queries by period/status, atomic batch approval (`APPROVE`), payout confirmation (`PAY`) with bank reference | 4 | **PASS** |
+| **15.4 Support Impersonation & RBAC Isolation**| `superadmin-impersonation-rbac.test.ts` | Fix 400 error on empty `effectiveRestaurantId`, branch creation in support mode, close/reopen branch, multi-role RBAC barriers (403/401) | 5 | **PASS** |
+| **15.5 Frontend SDK Contract Verification** | `packages/utils/tests/sdk-contract.test.ts` | Synchronized SDK-53 (`getCommissions`), SDK-54 (`updateById`), SDK-55 (`branches.create` with optional `restaurantId`) | 57 | **PASS** |
+| **15.6 Master Orchestrator** | `run-all-phase15.ts` | Master Test Orchestrator Phase 15: Automated runner for 5 test suites (75 cases) in Developer and Acceptance modes | 75 | **PASS** |
+
+### Phase 14 Testing Subsystem (`tests/phase-14-superadmin-ux-secret-zero-docs/`):
 | Sub-phase | Test File | Primary Focus | Test Count | Status |
 | :--- | :--- | :--- | :---: | :---: |
 | **14.1 Secret Scanning Guard** | `secret-scanning-guard.test.ts` | Automated regex security scanner across codebases, tests, scripts, configs; 100% eradication of hardcoded secrets; runtime Base64 dynamic decoding (`AUD-14.1`) | 3 | **PASS** |
 | **14.2 Superadmin Workspace Isolation** | `superadmin-workspace-isolation.test.ts` | 100% Superadmin isolation into Platform Control Center, instant redirect from store routes to `/platform/dashboard`, navbar isolation, branch switcher & toggle hiding, chime muting, `/api/platform/*` RBAC (`AUD-14.2 - 14.4`) | 3 | **PASS** |
-| **14.3 Master README Documentation Parity** | `readme-documentation-integrity.test.ts` | Integrity and 100% bilingual parity across all 6 Master READMEs, full Phase 1-14 coverage, automated test script synchronization in `package.json` (`AUD-14.5`) | 4 | **PASS** |
-| **14.4 Master Orchestrator** | `run-all-phase14.ts` | Master Test Orchestrator Phase 14: Automated runner for all 3 test suites (10 test cases) in Developer Run and Acceptance Run modes | N/A | **READY** |
+| **14.3 Master README Documentation Parity** | `readme-documentation-integrity.test.ts` | Integrity and 100% bilingual parity across all 6 Master READMEs, full Phase 1-16 coverage, automated test script synchronization in `package.json` (`AUD-14.5`) | 4 | **PASS** |
+| **14.4 Master Orchestrator** | `run-all-phase14.ts` | Master Test Orchestrator Phase 14: Automated runner for all 3 test suites (10 test cases) in Developer Run and Acceptance Run modes | 10 | **PASS** |
 
 ---
 
 ## 3. ⚡ Master Test Commands
 
 All test execution commands are registered in `package.json`:
+
+### 🔹 Phase 16 (Production Readiness, Security & Resilience) Tests:
+```powershell
+# Run the entire Phase 16 suite (66 tests):
+npm run test:phase16:all
+
+# Run individual security checks:
+npm run test:phase16:security  # CORS & Security Hardening
+npm run test:phase16:realtime  # Socket Resilience & Room Isolation
+npm run test:phase16           # Run both Phase 16 suites
+```
+
+### 🔹 Phase 15 (Superadmin Completion, Support Impersonation & RBAC Sync) Tests:
+```powershell
+# Run the entire Phase 15 suite (75 tests):
+npm run test:phase15:all
+
+# Run in strict Acceptance mode (Official Quality Gate):
+npm run test:phase15:acceptance
+
+# Run individual Phase 15 suites:
+npm run test:phase15:lifecycle  # Suite 1: Restaurant lifecycle & subscriptions (Port 3151)
+npm run test:phase15:sales      # Suite 2: Sales rep management & commission policies (Port 3152)
+npm run test:phase15:payout     # Suite 3: Commission ledger & atomic payout batch (Port 3153)
+npm run test:phase15:rbac       # Suite 4: Impersonation support & RBAC isolation (Port 3154)
+npm run test:phase15            # Run all 4 backend suites sequentially
+```
 
 ### 🔹 Phase 14 (Superadmin Purification, Zero Secrets & Docs Sync) Tests:
 ```powershell
@@ -303,14 +356,16 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Ecosystem Test Reconciliation Matrix (774 Test Cases)
+## 4. 📊 Ecosystem Test Reconciliation Matrix (915 Test Cases)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 14)                                │
+│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 16)                                │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Test Subsystem                 │ Test Scripts / Files         │ Actual Test Cases      │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
+│ Phase 16 Production Readiness  │ 3 test files (BE + SDK)      │ 66 (100% PASS)         │
+│ Phase 15 Superadmin Completion │ 5 test files (4 BE + 1 SDK)  │ 75 (100% PASS)         │
 │ Phase 14 Superadmin & Zero Sec │ 4 test files (BE + FE Guard) │ 10 (100% PASS)         │
 │ Phase 13 Superadmin Platform   │ 5 test files (BE + Hard)     │ 28 (100% PASS)         │
 │ Phase 12 Sales & Affiliate     │ 4 test files (BE + Ledger)   │ 26 (100% PASS)         │
@@ -322,10 +377,10 @@ npm run test:regression:phase2-5
 │ Phase 6 Orders & POS Suites    │ 9 test files (BE + SDK + E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 test files                 │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 774 TEST CASES (PASS)  │
-│  - Passed in Developer/CI Run:                                 │ 774 / 774 PASS (100%)  │
+│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 915 TEST CASES (PASS)  │
+│  - Passed in Developer/CI Run:                                 │ 915 / 915 PASS (100%)  │
 │  - Failure & Blocked Rates:                                    │ 0 FAIL, 0 BLOCKED      │
-│  - Full 14-Phase Roadmap Acceptance Status:                    │ ✅ 14/14 PHASES PASSED │
+│  - Full 16-Phase Roadmap Acceptance Status:                    │ ✅ 16/16 PHASES PASSED │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

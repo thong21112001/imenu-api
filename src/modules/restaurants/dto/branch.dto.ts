@@ -45,9 +45,19 @@ export class CreateBranchDto {
   @IsOptional()
   @IsString()
   tagline?: string;
+
+  @ApiPropertyOptional({ description: 'ID nhà hàng (Dành cho Super Admin)' })
+  @IsOptional()
+  @IsString()
+  restaurantId?: string;
 }
 
 export class UpdateBranchDto {
+  @ApiPropertyOptional({ description: 'ID nhà hàng (Dành cho Super Admin)' })
+  @IsOptional()
+  @IsString()
+  restaurantId?: string;
+
   @ApiPropertyOptional({ example: 'Chi nhánh Quận 3 (Mới)' })
   @IsOptional()
   @IsString()

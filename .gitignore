@@ -22,8 +22,15 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
 .env
-.env.production
+.env.*
+!.env.example
+*.env
+*.env.*
+!*.env.example
+
+# test artifacts
+test-artifacts/
+
 # typescript build cache
 *.tsbuildinfo

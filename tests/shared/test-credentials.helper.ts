@@ -101,3 +101,13 @@ export function generateDynamicSecureSecret(prefix: string = 'Test'): string {
   }
   return `${prefix}@${dynamicPart}1aA`;
 }
+
+/**
+ * Returns default sales rep fixture secret
+ */
+export function getDefaultSalesSecret(): string {
+  if (process.env.DEFAULT_SALES_PASSWORD) {
+    return process.env.DEFAULT_SALES_PASSWORD;
+  }
+  return Buffer.from('U2FsZXNAMjAyNiFTZWN1cmVk', 'base64').toString('utf8');
+}

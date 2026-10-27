@@ -87,4 +87,24 @@ export class RestaurantsController {
       data,
     });
   }
+
+  @ApiOperation({ summary: 'Cập nhật thông tin một nhà hàng theo ID (Super Admin hoặc Chủ nhà hàng)' })
+  @UseGuards(DemoBlockGuard)
+  @Put(':id')
+  async updateById(
+    @Param('id') id: string,
+    @Body() dto: UpdateRestaurantDto,
+    @CurrentUser() user: JwtUser,
+  ) {
+    const isSuperAdmin = isSuperAdminUser(user);
+    if (!isSuperAdmin && user.restaurantId !== id) {
+      throw new ForbiddenException('Bạn không có quyền chỉnh sửa nhà hàng này');
+    }
+    const data = await this.restaurantsService.updateCurrent(id, dto, user);
+    return new OkResponse({
+      message: 'Cập nhật thông tin nhà hàng thành công',
+      data,
+    });
+  }
 }
+

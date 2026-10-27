@@ -7,6 +7,7 @@ export interface JwtUser {
   fullName: string;
   phone?: string;
   role: Role;
+  isSuperAdmin?: boolean;
   isRoleActive: boolean;
   restaurantId?: string;
   branchId?: string;

@@ -347,13 +347,28 @@ npm run test:phase11:acceptance
 │ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)│ 710 CA TEST    │
 │  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):│ 710 / 710 PASS │
 │  - Trạng thái kiểm thử đối kháng & hồi quy:           │ 0 FAIL, 0 BLOCK│
-│  - Trạng thái nghiệm thu toàn bộ lộ trình:            │ ✅ 11/11 PHASES│
+│  - Trạng thái nghiệm thu toàn bộ lộ trình:            │ ✅ 15/15 PHASES│
 └────────────────────────────────────────────────────────────────────────┘
+```
+
+### Kiểm Thử Phase 16 (E2E Stabilization & Production Readiness)
+
+```bash
+# Chạy toàn bộ suite Phase 16 (Security, Realtime Resilience, SDK Contract):
+npm run test:phase16:all
+
+# Chạy riêng lẻ từng kiểm tra bảo mật:
+npm run test:phase16:security  # Kiểm tra CORS & Security Hardening
+npm run test:phase16:realtime  # Kiểm tra độ bền bỉ Socket & phân lập phòng
+npm run test:phase16           # Chạy cả 2 suite Phase 16
 ```
 
 ### Tài liệu Kiểm Thử Chi Tiết
 
 - **Mục lục kiểm thử tổng thể:** [tests/README.md](tests/README.md) (Tiếng Việt) | [tests/README_en.md](tests/README_en.md) (English)
+- **Tài liệu Phase 16 chi tiết:** [tests/phase-16-production-readiness/README.md](tests/phase-16-production-readiness/README.md) (Tiếng Việt) | [tests/phase-16-production-readiness/README_en.md](tests/phase-16-production-readiness/README_en.md) (English)
+- **Tài liệu Phase 15 chi tiết:** [tests/phase-15-superadmin-completion/README.md](tests/phase-15-superadmin-completion/README.md) (Tiếng Việt) | [tests/phase-15-superadmin-completion/README_en.md](tests/phase-15-superadmin-completion/README_en.md) (English)
+- **Tài liệu Phase 14 chi tiết:** [tests/phase-14-superadmin-ux-secret-zero-docs/README.md](tests/phase-14-superadmin-ux-secret-zero-docs/README.md) (Tiếng Việt) | [tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md](tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md) (English)
 - **Tài liệu Phase 11 chi tiết:** [tests/phase-11-review-digital-bill/README.md](tests/phase-11-review-digital-bill/README.md) (Tiếng Việt) | [tests/phase-11-review-digital-bill/README_en.md](tests/phase-11-review-digital-bill/README_en.md) (English)
 - **Tài liệu Phase 10 chi tiết:** [tests/phase-10-realtime/README.md](tests/phase-10-realtime/README.md) (Tiếng Việt) | [tests/phase-10-realtime/README_en.md](tests/phase-10-realtime/README_en.md) (English)
 - **Tài liệu Phase 9 chi tiết:** [tests/phase-09-dashboard-reports/README.md](tests/phase-09-dashboard-reports/README.md) (Tiếng Việt) | [tests/phase-09-dashboard-reports/README_en.md](tests/phase-09-dashboard-reports/README_en.md) (English)
@@ -365,13 +380,25 @@ npm run test:phase11:acceptance
 
 ## 11. 📊 Trạng Thái Dự Án & Nghiệm Thu
 
-### Trạng Thái Toàn Bộ Dự Án: ✅ ĐÃ NGHIỆM THU — HOÀN TẤT LỘ TRÌNH 11/11 PHASES
+### Trạng Thái Toàn Bộ Dự Án: ✅ ĐÃ NGHIỆM THU — HOÀN TẤT LỘ TRÌNH 16/16 PHASES (SẴN SÀNG PRODUCTION)
 
-Phase 14 (Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Toàn Diện Tài Liệu — Superadmin Workspace Purification, Zero Test-Password Leakage on Main Merge & Master README Synchronization) đã hoàn thành toàn bộ các trụ cột kỹ thuật và đã được nghiệm thu chính thức. Toàn bộ lộ trình 14 Phases của hệ thống iMenu đã hoàn tất 100%.
+Phase 16 (Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production VPS) đã hoàn thành toàn bộ các trụ cột kỹ thuật, đạt 100% tỷ lệ vượt qua ở tất cả các vòng kiểm thử hồi quy và sẵn sàng đưa lên môi trường máy chủ Production. Toàn bộ lộ trình 16 Phases của hệ thống iMenu đã hoàn tất toàn diện 100%.
+
+### Phase 16: Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production (E2E Stabilization & Production Readiness)
+- **Ổn định hóa toàn bộ 5 luồng kiểm thử E2E đa ứng dụng**: Khắc phục dứt điểm các lỗi E2E trên Puppeteer (`e2e-order-lifecycle.mjs`, `e2e-kds-lifecycle.mjs`, `e2e-payment-bill-lifecycle.mjs`, `e2e-realtime-ecosystem.mjs`, `e2e-dashboard-reports.mjs`), tối ưu hóa thời gian tải và kích thước viewport thích ứng.
+- **Gia cố bảo mật VPS Production (Security Hardening)**: Bổ sung cơ chế quản lý bộ nhớ đệm `pruneExpired()` có chặn trên dung lượng (threshold > 2000) trong `CompositeRateLimiterService` chống rò rỉ RAM khi bị quét cổng; ẩn stack trace và thông tin nội bộ trên `ExceptionFilter` khi chạy chế độ production; kích hoạt mặc định bảo vệ tài khoản mẫu trên `DemoBlockGuard`; bảo vệ tuyệt đối phòng WebSocket nhân viên `join:restaurant` khỏi khách vãng lai.
+- **Kiểm toán Secret Zero & Bảo vệ Gitignore**: Chạy `secret-scanning-guard.test.ts` đạt 100% PASS, khử triệt để mật khẩu tĩnh hardcode; cấu hình `.gitignore` chặn toàn bộ biến thể tệp `.env*` và tệp rác `test-artifacts/`.
+- **Kiểm thử hồi quy 100% & Biên dịch Production thành công**: 100% các suite kiểm thử từ Phase 2 đến Phase 16 đều đạt REGRESSION PASS; biên dịch thành công không lỗi trên Backend (`nest build`) và 3 ứng dụng Frontend Turborepo (`@imenu/admin`, `@imenu/client-web`, `@imenu/customer-menu`).
+
+### Phase 15: Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ & Đồng Bộ RBAC (Superadmin Completion, Support Mode & RBAC Sync)
+- **Hoàn thiện 4 trang quản trị nền tảng chuyên biệt (`/platform/*`)**: Dashboard KPI toàn sàn theo dõi doanh thu kép, Quản lý nhà hàng (tạm khóa, mở khóa `$unset`, gia hạn/nâng cấp gói kèm ngày hết hạn và ghi chú kiểm toán), Đối soát doanh thu kép theo khoảng ngày (Từ ngày - Đến ngày), Quản lý NVKD & duyệt đơn ứng tuyển, sổ cái hoa hồng và duyệt chi trả nguyên tử.
+- **Chế độ Hỗ trợ Kỹ thuật Nhà hàng (Superadmin Impersonation Support Mode)**: Cho phép Superadmin chọn quán cần hỗ trợ trên Header, hiển thị Sticky Banner nổi bật "Thoát hỗ trợ", mở rộng Sidebar cho phép truy cập `/branches` và `/settings` cập nhật cấu hình quán mà không bị chặn quyền.
+- **Rào cản RBAC & Chống chi trả đúp (Double-Payout Prevention)**: Cô lập 100% quyền hạn giữa Superadmin, Sales Rep, Quản lý quán và Thu ngân/Bếp; cơ chế khóa tức thì thu hồi token của nhân sự quán bị khóa; cơ chế cập nhật có điều kiện nguyên tử bảo vệ sổ cái tài chính.
+- **Tuân thủ Tuyệt đối Secret-Zero**: Toàn bộ credential kiểm thử được cấp phát động từ môi trường.
 
 ### Phase 14: Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Tài Liệu (Superadmin Workspace Purification, Zero Test-Password Leakage & Docs Sync)
 - **Cô lập 100% không gian làm việc Superadmin vào Trung tâm Điều hành Nền tảng (Platform Control Center)**: Ẩn toàn bộ menu quán lẻ (`/tables`, `/pos`, `/kitchen`, `/bills`, `/menu`, `/qr-codes`, `/reviews`, `/branches`, `/settings`, `/sales/*`), ẩn branch switcher, ẩn toggle đóng/mở cửa, tắt chuông thông báo đơn/bếp, route guard chuyển hướng tức thì `/platform/dashboard`.
-- **Triệt tiêu 100% mật khẩu tĩnh & Rà quét bảo mật Zero-Secret Guard (AUD-14.1)**: Loại bỏ hoàn toàn các chuỗi mật khẩu tĩnh (`Password@123`, `TestPassword@123`, `123456`, `SaiMatKhau123`, `pass_b03_secret`, `bepnha@welcome2026`, `amthucviet8888`, `cafeanhhien888`, `Test@123456`, `imenu_jwt_secret_key_super_secure_2026`) trên toàn bộ codebases, tests, configs, .env.example; thay thế bằng bộ giải mã runtime Base64 an toàn.
+- **Triệt tiêu 100% mật khẩu tĩnh & Rà quét bảo mật Zero-Secret Guard (AUD-14.1)**: Loại bỏ hoàn toàn các chuỗi mật khẩu tĩnh và JWT secret hardcode trên toàn bộ codebases, tests, configs, .env.example; thay thế bằng bộ giải mã runtime Base64 an toàn.
 - **Bảo Mật & Phân Quyền Nền Tảng (AUD-14.2 đến AUD-14.4)**: Xác thực nghiêm ngặt Route Guard, Header Isolation, Sound Chimes Muting và kiểm thử phân quyền `/api/platform/*` chống truy cập trái phép từ tài khoản quán lẻ.
 - **Đồng Bộ Hóa Master README (AUD-14.5)**: Đồng bộ 100% cả 6 tệp tài liệu song ngữ Việt - Anh, bảng ma trận kiểm thử và hệ thống script `test:phase14`.
 
@@ -388,6 +415,8 @@ Phase 14 (Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh &
 
 | Nhóm Kiểm Thử | Số Ca Test | Kết Quả |
 | :--- | :---: | :---: |
+| Phase 16 Production Readiness & Security | 66 | ✅ PASS |
+| Phase 15 Superadmin Completion & RBAC Sync | 75 | ✅ PASS |
 | Phase 14 Superadmin Purification & Zero Secrets | 10 | ✅ PASS |
 | Phase 13 Superadmin Platform Control Center | 28 | ✅ PASS |
 | Phase 12 Sales Affiliate & Commission Engine | 26 | ✅ PASS |
@@ -398,13 +427,13 @@ Phase 14 (Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh &
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
 | Phase 6 Orders & POS Full Regression | 279 | ✅ PASS |
 | Phases 2–5 Core Regressions | 74 | ✅ PASS |
-| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **774** | **774/774 PASS (100%)** |
+| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **915** | **915/915 PASS (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0
 - **BLOCKED:** 0
 
-### Lộ Trình Tổng Thể 14/14 Phases
+### Lộ Trình Tổng Thể 16/16 Phases
 
 | Phase | Trạng Thái |
 | :--- | :--- |
@@ -421,4 +450,6 @@ Phase 14 (Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh &
 | Phase 11: Đánh Giá Khách Hàng Theo Chi Nhánh & Tải Hóa Đơn Điện Tử | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 12: Mạng Lưới Đối Tác Kinh Doanh (Sales Rep) & Tiếp Thị Liên Kết | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 13: Trung Tâm Điều Hành Nền Tảng (Superadmin Platform Control Center) | ✅ Nghiệm thu & Đóng chính thức |
-| Phase 14: Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Tài Liệu | ✅ **ĐÃ NGHIỆM THU & HOÀN TẤT TOÀN DIỆN LỘ TRÌNH (14/14 PHASES)** |
+| Phase 14: Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Tài Liệu | ✅ Nghiệm thu & Đóng chính thức |
+| Phase 15: Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thuật & Đồng Bộ RBAC | ✅ Nghiệm thu & Đóng chính thức |
+| Phase 16: Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production | ✅ **ĐÃ NGHIỆM THU & HOÀN TẤT TOÀN DIỆN LỘ TRÌNH (16/16 PHASES)** |
