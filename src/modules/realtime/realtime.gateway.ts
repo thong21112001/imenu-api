@@ -14,7 +14,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: true,
     credentials: true,
   },
   namespace: '/',
@@ -90,10 +90,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @MessageBody() data: { restaurantId: string; branchId?: string },
   ) {
     if (data?.restaurantId) {
-      // 1. Hardening AUD-7.4: Chỉ nhân viên/quản lý có JWT hợp lệ mới được join phòng restaurant_${restId}
+      // 1. Hardening: Chi nhan vien/quan ly co JWT hop le moi duoc vao room staff restaurant_${restId}
+      // Neu la khach vang lai -> chuyen huong vao public_menu_${restId} an toan
       if (!client.data?.user) {
-        this.logger.warn(`[Security] Unauthorized guest join:restaurant attempt: Guests cannot join staff restaurant room`);
-        return { success: false, message: 'Unauthorized: Guests cannot join staff restaurant room' };
+        const publicRoom = `public_menu_${data.restaurantId}`;
+        client.join(publicRoom);
+        return { success: true, message: `Joined ${publicRoom}` };
       }
 
       const userRestId = client.data.user.restaurantId || client.data.user.user?.restaurantId;

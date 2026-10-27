@@ -100,6 +100,10 @@
     "test:phase15": "npm run test:phase15:lifecycle && npm run test:phase15:sales && npm run test:phase15:payout && npm run test:phase15:rbac",
     "test:phase15:all": "ts-node tests/phase-15-superadmin-completion/run-all-phase15.ts --mode=dev",
     "test:phase15:acceptance": "ts-node tests/phase-15-superadmin-completion/run-all-phase15.ts --mode=acceptance",
+    "test:phase16:security": "ts-node tests/phase-16-production-readiness/production-security-and-cors.test.ts",
+    "test:phase16:realtime": "ts-node tests/phase-16-production-readiness/realtime-resilience-and-isolation.test.ts",
+    "test:phase16": "npm run test:phase16:security && npm run test:phase16:realtime",
+    "test:phase16:all": "ts-node tests/phase-16-production-readiness/run-all-phase16.ts",
     "seed": "ts-node src/database/seed.ts",
     "seed:clean": "ts-node src/database/seed.ts --clean"
   },

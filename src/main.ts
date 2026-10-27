@@ -20,8 +20,21 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // 1. Cau hinh CORS
+  const configuredOrigins = ENV.CORS_ORIGINS.length > 0
+    ? ENV.CORS_ORIGINS
+    : ['http://localhost:3000', 'http://localhost:3003', 'http://localhost:3004', 'http://localhost:3005'];
+
   app.enableCors({
-    origin: true, // Chap nhan origin tu request de ho tro gui credentials
+    origin: (origin, callback) => {
+      // Cho phep non-browser hoac server-to-server requests khong co origin
+      if (!origin) return callback(null, true);
+      // Kiem tra danh sach domain hop le hoac moi truong dev
+      const isAllowed =
+        ENV.NODE_ENV !== 'production' ||
+        configuredOrigins.includes(origin) ||
+        configuredOrigins.some((allowed) => allowed === '*' || origin.endsWith(allowed.replace('*.', '')));
+      callback(null, isAllowed);
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
     allowedHeaders:

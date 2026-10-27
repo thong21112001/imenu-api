@@ -14,6 +14,11 @@ export class DemoBlockGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
+    const isDemoRestrictionsEnabled = process.env.ENABLE_DEMO_RESTRICTIONS === 'true';
+    if (!isDemoRestrictionsEnabled) {
+      return true;
+    }
+
     if (
       user?.isDemo ||
       user?.email === 'owner@sample.vn'
