@@ -352,9 +352,22 @@ npm run test:phase11:acceptance
 └───────────────────────────────────────────────────────┴────────────────┘
 ```
 
+### Phase 16 Testing (E2E Stabilization & Production Readiness)
+
+```bash
+# Run all Phase 16 test suites (Security, Realtime Resilience, SDK Contract):
+npm run test:phase16:all
+
+# Run individual security checks:
+npm run test:phase16:security  # CORS & Security Hardening
+npm run test:phase16:realtime  # Socket Resilience & Room Isolation
+npm run test:phase16           # Run both Phase 16 suites
+```
+
 ### Detailed Test Documentation
 
 - **Master test index:** [tests/README.md](tests/README.md) (Vietnamese) | [tests/README_en.md](tests/README_en.md) (English)
+- **Phase 16 detailed documentation:** [tests/phase-16-production-readiness/README.md](tests/phase-16-production-readiness/README.md) (Vietnamese) | [tests/phase-16-production-readiness/README_en.md](tests/phase-16-production-readiness/README_en.md) (English)
 - **Phase 15 detailed documentation:** [tests/phase-15-superadmin-completion/README.md](tests/phase-15-superadmin-completion/README.md) (Vietnamese) | [tests/phase-15-superadmin-completion/README_en.md](tests/phase-15-superadmin-completion/README_en.md) (English)
 - **Phase 14 detailed documentation:** [tests/phase-14-superadmin-ux-secret-zero-docs/README.md](tests/phase-14-superadmin-ux-secret-zero-docs/README.md) (Vietnamese) | [tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md](tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md) (English)
 - **Phase 11 detailed documentation:** [tests/phase-11-review-digital-bill/README.md](tests/phase-11-review-digital-bill/README.md) (Vietnamese) | [tests/phase-11-review-digital-bill/README_en.md](tests/phase-11-review-digital-bill/README_en.md) (English)
@@ -368,9 +381,15 @@ npm run test:phase11:acceptance
 
 ## 11. 📊 Project Status & Acceptance
 
-### Full Project Status: ✅ ACCEPTED — FULL 15/15 PHASES ROADMAP COMPLETED
+### Full Project Status: ✅ ACCEPTED — FULL 16/16 PHASES ROADMAP COMPLETED (PRODUCTION READY)
 
-Phase 15 (Superadmin Completion, Support Impersonation Mode & Multi-Role RBAC Synchronization) has completed all technical pillars and has been officially accepted. The full 15-Phase roadmap of the iMenu ecosystem is 100% complete.
+Phase 16 (E2E Stabilization & Production Readiness) has completed all technical pillars, achieved 100% pass rates across all regression suites, and is fully ready for deployment onto Production VPS infrastructure. The complete 16-Phase roadmap of the iMenu ecosystem is 100% finished.
+
+### Phase 16: E2E Stabilization & Production Readiness
+- **Full stabilization across 5 multi-app Puppeteer E2E test scripts**: Resolved all edge case failures in (`e2e-order-lifecycle.mjs`, `e2e-kds-lifecycle.mjs`, `e2e-payment-bill-lifecycle.mjs`, `e2e-realtime-ecosystem.mjs`, `e2e-dashboard-reports.mjs`), with responsive viewport adaptation and smooth 3-way WebSocket synchronization.
+- **Production Server Hardening**: Bounded memory eviction `pruneExpired()` with high capacity threshold (> 2000) in `CompositeRateLimiterService` preventing memory leaks under port scans; 500 error sanitization in `ExceptionFilter` under production mode; default protection on demo accounts in `DemoBlockGuard`; strict guest isolation on `join:restaurant` in `RealtimeGateway`.
+- **Zero-Secret Compliance & Gitignore Hardening**: `secret-scanning-guard.test.ts` passed 100%, zero hardcoded secrets; `.gitignore` covers all `.env*` variants and `test-artifacts/`.
+- **100% Full Regression Pass & Clean Production Builds**: All test suites from Phase 2 to Phase 16 passed with 0 failures; clean builds with 0 errors across Backend (`dist/`) and all 3 Frontend Next.js applications in Turborepo (`@imenu/admin`, `@imenu/client-web`, `@imenu/customer-menu`).
 
 ### Phase 15: Superadmin Completion, Impersonation Support Mode & Multi-Role RBAC Sync
 - **4 Dedicated Platform Management Modules (`/platform/*`)**: Real-time KPI dashboard tracking dual revenue streams, Restaurant Lifecycle Management (suspension, reactivation with `$unset`, plan extensions/upgrades with custom expiration and audit notes), Dual-Revenue reconciliation by custom date ranges (From Date - To Date), Sales Rep administration with interactive policy modals, candidate application approvals, and atomic commission payout batches.
@@ -397,6 +416,7 @@ Phase 15 (Superadmin Completion, Support Impersonation Mode & Multi-Role RBAC Sy
 
 | Test Group | Test Count | Result |
 | :--- | :---: | :---: |
+| Phase 16 Production Readiness & Security | 66 | ✅ PASS |
 | Phase 15 Superadmin Completion & RBAC Sync | 75 | ✅ PASS |
 | Phase 14 Superadmin Purification & Zero Secrets | 10 | ✅ PASS |
 | Phase 13 Superadmin Platform Control Center | 28 | ✅ PASS |
@@ -408,13 +428,13 @@ Phase 15 (Superadmin Completion, Support Impersonation Mode & Multi-Role RBAC Sy
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
 | Phase 6 Orders & POS Full Regression | 279 | ✅ PASS |
 | Phases 2–5 Core Regressions | 74 | ✅ PASS |
-| **TOTAL ECOSYSTEM** | **849** | **849/849 PASS (100%)** |
+| **TOTAL ECOSYSTEM** | **915** | **915/915 PASS (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0
 - **BLOCKED:** 0
 
-### Overall 15/15 Phases Roadmap
+### Overall 16/16 Phases Roadmap
 
 | Phase | Status |
 | :--- | :--- |
@@ -432,4 +452,5 @@ Phase 15 (Superadmin Completion, Support Impersonation Mode & Multi-Role RBAC Sy
 | Phase 12: Sales Partner Network (Sales Rep) & Affiliate Engine | ✅ Accepted & Officially Closed |
 | Phase 13: Superadmin Platform Control Center & Enterprise Governance | ✅ Accepted & Officially Closed |
 | Phase 14: Superadmin Workspace Purification, Zero Test-Password Leakage & Docs Sync | ✅ Accepted & Officially Closed |
-| Phase 15: Superadmin Completion, Impersonation Support Mode & Multi-Role RBAC Sync | ✅ **ACCEPTED & FULL ROADMAP COMPLETED (15/15 PHASES)** |
+| Phase 15: Superadmin Completion, Impersonation Support Mode & Multi-Role RBAC Sync | ✅ Accepted & Officially Closed |
+| Phase 16: E2E Stabilization & Production Readiness | ✅ **ACCEPTED & FULL ROADMAP COMPLETED (16/16 PHASES)** |

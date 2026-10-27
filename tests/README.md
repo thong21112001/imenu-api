@@ -137,6 +137,14 @@ tests/
 
 ## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 15 & Phase 14 (Phase Sub-phase Mapping)
 
+### Phân Hệ Kiểm Thử Phase 16 (`tests/phase-16-production-readiness/`):
+| Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
+| :--- | :--- | :--- | :---: | :---: |
+| **16.1 Production Security & CORS** | `production-security-and-cors.test.ts` | CORS whitelist động, Helmet security headers, Rate Limiting bảo vệ bộ nhớ đệm (`pruneExpired`), Demo Block Guard | 5 | **PASS** |
+| **16.2 Realtime Resilience & Room Security** | `realtime-resilience-and-isolation.test.ts` | Socket bàn khách, cô lập phòng nhà hàng khỏi khách vãng lai (403 Unauthorized), Ping Health Check | 4 | **PASS** |
+| **16.3 Frontend SDK Contract Sync** | `packages/utils/tests/sdk-contract.test.ts` | Kiểm chứng đồng bộ toàn bộ 57 endpoint SDK `@imenu/utils` với Backend API và Route Controllers | 57 | **PASS** |
+| **16.4 Master Orchestrator** | `run-all-phase16.ts` | Master Test Orchestrator Phase 16: Tự động điều phối 3 suites kiểm thử xác nhận sẵn sàng cho Production VPS | 66 | **PASS** |
+
 ### Phân Hệ Kiểm Thử Phase 15 (`tests/phase-15-superadmin-completion/`):
 | Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
 | :--- | :--- | :--- | :---: | :---: |
@@ -152,7 +160,7 @@ tests/
 | :--- | :--- | :--- | :---: | :---: |
 | **14.1 Secret Scanning Guard** | `secret-scanning-guard.test.ts` | Rà quét bảo mật regex tự động toàn bộ codebase, tests, scripts, configs, triệt tiêu 100% mật khẩu tĩnh, xác thực runtime dynamic base64 helper (`AUD-14.1`) | 3 | **PASS** |
 | **14.2 Superadmin Workspace Isolation** | `superadmin-workspace-isolation.test.ts` | Cô lập 100% Superadmin vào Platform Control Center, Route Guard chuyển hướng tức thì `/platform/dashboard`, ẩn sidebar quán lẻ, ẩn branch switcher & toggle giờ, tắt chuông thông báo đơn/bếp, RBAC bảo vệ `/platform/*` (`AUD-14.2 - 14.4`) | 3 | **PASS** |
-| **14.3 Master README Documentation Parity** | `readme-documentation-integrity.test.ts` | Kiểm chứng tính toàn vẹn và đồng bộ 100% của cả 6 tệp Master README song ngữ, độ phủ Phases 1-15, đối chiếu các script kiểm thử tự động trong `package.json` (`AUD-14.5`) | 4 | **PASS** |
+| **14.3 Master README Documentation Parity** | `readme-documentation-integrity.test.ts` | Kiểm chứng tính toàn vẹn và đồng bộ 100% của cả 6 tệp Master README song ngữ, độ phủ Phases 1-16, đối chiếu các script kiểm thử tự động trong `package.json` (`AUD-14.5`) | 4 | **PASS** |
 | **14.4 Master Orchestrator** | `run-all-phase14.ts` | Master Test Orchestrator Phase 14: Tự động điều phối 3 suites kiểm thử ở cả 2 chế độ Developer Run và Final Acceptance Run | 10 | **PASS** |
 
 ---
@@ -160,6 +168,17 @@ tests/
 ## 3. ⚡ Danh Mục Lệnh Thực Thi Kiểm Thử (Master Test Commands)
 
 Tất cả các lệnh kiểm thử được đăng ký tại `package.json`:
+
+### 🔹 Kiểm Thử Phase 16 (Production Readiness, Security & Resilience):
+```powershell
+# Chạy toàn bộ master suite Phase 16 (66 ca kiểm thử):
+npm run test:phase16:all
+
+# Chạy riêng lẻ từng kiểm tra bảo mật:
+npm run test:phase16:security  # Kiểm tra CORS & Security Hardening
+npm run test:phase16:realtime  # Kiểm tra độ bền bỉ Socket & phân lập phòng
+npm run test:phase16           # Chạy cả 2 suite Phase 16
+```
 
 ### 🔹 Kiểm Thử Phase 15 (Superadmin Completion, Support Impersonation & RBAC Sync):
 ```powershell
@@ -337,14 +356,15 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Đối Chiếu 849 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
+## 4. 📊 Đối Chiếu 915 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  TỔNG HỢP 849 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 15)                      │
+│  TỔNG HỢP 915 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 16)                      │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Phân Hệ Kiểm Thử               │ Số Tệp / Kịch Bản            │ Số Ca Test Thực Tế     │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
+│ Phase 16 Production Readiness  │ 3 tệp kiểm thử (BE + SDK)    │ 66 (100% PASS)         │
 │ Phase 15 Superadmin Completion │ 5 tệp kiểm thử (4 BE + 1 SDK)│ 75 (100% PASS)         │
 │ Phase 14 Superadmin & Zero Sec │ 4 tệp kiểm thử (BE + FE Guard│ 10 (100% PASS)         │
 │ Phase 13 Superadmin Platform   │ 5 tệp kiểm thử (BE + Hard)   │ 28 (100% PASS)         │
@@ -357,9 +377,10 @@ npm run test:regression:phase2-5
 │ Phase 6 Orders & POS Suites    │ 9 tệp kiểm thử (BE + SDK+E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 tệp kiểm thử               │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ TỔNG CỘNG HỆ SINH THÁI (FULL ECOSYSTEM ROADMAP ACCEPTED)       │ 849 CA TEST (PASS)     │
-│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 849 / 849 PASS (100%)  │
+│ TỔNG CỘNG HỆ SINH THÁI (FULL ECOSYSTEM ROADMAP ACCEPTED)       │ 915 CA TEST (PASS)     │
+│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 915 / 915 PASS (100%)  │
 │  - Tỷ lệ thất bại & chặn (Fail/Blocked):                       │ 0 FAIL, 0 BLOCKED      │
-│  - Trạng thái nghiệm thu toàn bộ lộ trình:                     │ ✅ 15/15 PHASES HOÀN TẤT│
+│  - Trạng thái nghiệm thu toàn bộ lộ trình:                     │ ✅ 16/16 PHASES HOÀN TẤT│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+

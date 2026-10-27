@@ -137,6 +137,14 @@ tests/
 
 ## 2. 🗺️ Phase 15 & Phase 14 Sub-phase Mapping
 
+### Phase 16 Testing Subsystem (`tests/phase-16-production-readiness/`):
+| Sub-phase | Test File | Primary Focus | Test Count | Status |
+| :--- | :--- | :--- | :---: | :---: |
+| **16.1 Production Security & CORS** | `production-security-and-cors.test.ts` | Dynamic CORS origin matching, Helmet security headers, bounded rate limiter cache (`pruneExpired`), Demo Block Guard | 5 | **PASS** |
+| **16.2 Realtime Resilience & Room Security** | `realtime-resilience-and-isolation.test.ts` | Table guest socket, guest room isolation rejecting unauthorized access to staff rooms (403), Ping Health Check | 4 | **PASS** |
+| **16.3 Frontend SDK Contract Sync** | `packages/utils/tests/sdk-contract.test.ts` | Complete parity verification of all 57 `@imenu/utils` SDK methods with Backend API routes | 57 | **PASS** |
+| **16.4 Master Orchestrator** | `run-all-phase16.ts` | Phase 16 Master Test Orchestrator: Automated runner for 3 test suites verifying VPS production readiness | 66 | **PASS** |
+
 ### Phase 15 Testing Subsystem (`tests/phase-15-superadmin-completion/`):
 | Sub-phase | Test File | Primary Focus | Test Count | Status |
 | :--- | :--- | :--- | :---: | :---: |
@@ -152,7 +160,7 @@ tests/
 | :--- | :--- | :--- | :---: | :---: |
 | **14.1 Secret Scanning Guard** | `secret-scanning-guard.test.ts` | Automated regex security scanner across codebases, tests, scripts, configs; 100% eradication of hardcoded secrets; runtime Base64 dynamic decoding (`AUD-14.1`) | 3 | **PASS** |
 | **14.2 Superadmin Workspace Isolation** | `superadmin-workspace-isolation.test.ts` | 100% Superadmin isolation into Platform Control Center, instant redirect from store routes to `/platform/dashboard`, navbar isolation, branch switcher & toggle hiding, chime muting, `/api/platform/*` RBAC (`AUD-14.2 - 14.4`) | 3 | **PASS** |
-| **14.3 Master README Documentation Parity** | `readme-documentation-integrity.test.ts` | Integrity and 100% bilingual parity across all 6 Master READMEs, full Phase 1-15 coverage, automated test script synchronization in `package.json` (`AUD-14.5`) | 4 | **PASS** |
+| **14.3 Master README Documentation Parity** | `readme-documentation-integrity.test.ts` | Integrity and 100% bilingual parity across all 6 Master READMEs, full Phase 1-16 coverage, automated test script synchronization in `package.json` (`AUD-14.5`) | 4 | **PASS** |
 | **14.4 Master Orchestrator** | `run-all-phase14.ts` | Master Test Orchestrator Phase 14: Automated runner for all 3 test suites (10 test cases) in Developer Run and Acceptance Run modes | 10 | **PASS** |
 
 ---
@@ -160,6 +168,17 @@ tests/
 ## 3. ⚡ Master Test Commands
 
 All test execution commands are registered in `package.json`:
+
+### 🔹 Phase 16 (Production Readiness, Security & Resilience) Tests:
+```powershell
+# Run the entire Phase 16 suite (66 tests):
+npm run test:phase16:all
+
+# Run individual security checks:
+npm run test:phase16:security  # CORS & Security Hardening
+npm run test:phase16:realtime  # Socket Resilience & Room Isolation
+npm run test:phase16           # Run both Phase 16 suites
+```
 
 ### 🔹 Phase 15 (Superadmin Completion, Support Impersonation & RBAC Sync) Tests:
 ```powershell
@@ -337,14 +356,15 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Ecosystem Test Reconciliation Matrix (849 Test Cases)
+## 4. 📊 Ecosystem Test Reconciliation Matrix (915 Test Cases)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 15)                                │
+│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 16)                                │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Test Subsystem                 │ Test Scripts / Files         │ Actual Test Cases      │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
+│ Phase 16 Production Readiness  │ 3 test files (BE + SDK)      │ 66 (100% PASS)         │
 │ Phase 15 Superadmin Completion │ 5 test files (4 BE + 1 SDK)  │ 75 (100% PASS)         │
 │ Phase 14 Superadmin & Zero Sec │ 4 test files (BE + FE Guard) │ 10 (100% PASS)         │
 │ Phase 13 Superadmin Platform   │ 5 test files (BE + Hard)     │ 28 (100% PASS)         │
@@ -357,10 +377,10 @@ npm run test:regression:phase2-5
 │ Phase 6 Orders & POS Suites    │ 9 test files (BE + SDK + E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 test files                 │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 849 TEST CASES (PASS)  │
-│  - Passed in Developer/CI Run:                                 │ 849 / 849 PASS (100%)  │
+│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 915 TEST CASES (PASS)  │
+│  - Passed in Developer/CI Run:                                 │ 915 / 915 PASS (100%)  │
 │  - Failure & Blocked Rates:                                    │ 0 FAIL, 0 BLOCKED      │
-│  - Full 15-Phase Roadmap Acceptance Status:                    │ ✅ 15/15 PHASES PASSED │
+│  - Full 16-Phase Roadmap Acceptance Status:                    │ ✅ 16/16 PHASES PASSED │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

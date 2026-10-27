@@ -73,17 +73,18 @@ export async function runReadmeDocumentationIntegrityTests(): Promise<{ passed: 
       const hasPhase13 = content.includes('Phase 13') || content.includes('PHASE 13');
       const hasPhase14 = content.includes('Phase 14') || content.includes('PHASE 14');
       const hasPhase15 = content.includes('Phase 15') || content.includes('PHASE 15');
+      const hasPhase16 = content.includes('Phase 16') || content.includes('PHASE 16');
 
-      if (!hasPhase12 || !hasPhase13 || !hasPhase14 || !hasPhase15) {
+      if (!hasPhase12 || !hasPhase13 || !hasPhase14 || !hasPhase15 || !hasPhase16) {
         coverageFailures.push(
-          `${doc.label} thiếu giai đoạn: ${[!hasPhase12 && 'Phase 12', !hasPhase13 && 'Phase 13', !hasPhase14 && 'Phase 14', !hasPhase15 && 'Phase 15'].filter(Boolean).join(', ')}`
+          `${doc.label} thiếu giai đoạn: ${[!hasPhase12 && 'Phase 12', !hasPhase13 && 'Phase 13', !hasPhase14 && 'Phase 14', !hasPhase15 && 'Phase 15', !hasPhase16 && 'Phase 16'].filter(Boolean).join(', ')}`
         );
       }
     }
 
     if (coverageFailures.length === 0) {
       pass(
-        'TEST 2: AUD-14.5.2 Toàn bộ 6 tệp Master README đồng bộ cập nhật đầy đủ lộ trình đến Phase 12, 13, 14 và Phase 15'
+        'TEST 2: AUD-14.5.2 Toàn bộ 6 tệp Master README đồng bộ cập nhật đầy đủ lộ trình đến Phase 12, 13, 14, 15 và Phase 16'
       );
     } else {
       failures++;
@@ -134,7 +135,7 @@ export async function runReadmeDocumentationIntegrityTests(): Promise<{ passed: 
   }
 
   // ---------------------------------------------------------------------------
-  // TEST 4: package.json Test Scripts Parity for Phase 14
+  // TEST 4: package.json Test Scripts Parity for Phase 14, 15, and 16
   // ---------------------------------------------------------------------------
   testCount++;
   try {
@@ -156,12 +157,16 @@ export async function runReadmeDocumentationIntegrityTests(): Promise<{ passed: 
       'test:phase15',
       'test:phase15:all',
       'test:phase15:acceptance',
+      'test:phase16:security',
+      'test:phase16:realtime',
+      'test:phase16',
+      'test:phase16:all',
     ];
 
     const missingScripts = requiredScripts.filter((s) => !scripts[s]);
 
     if (missingScripts.length === 0) {
-      pass('TEST 4: AUD-14.5.4 package.json đồng bộ 100% các script kiểm thử tự động Phase 14 & Phase 15');
+      pass('TEST 4: AUD-14.5.4 package.json đồng bộ 100% các script kiểm thử tự động Phase 14, Phase 15 & Phase 16');
     } else {
       failures++;
       fail('TEST 4: AUD-14.5.4 package.json thiếu các script:', missingScripts.join(', '));

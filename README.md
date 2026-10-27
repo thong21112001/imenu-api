@@ -351,9 +351,22 @@ npm run test:phase11:acceptance
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Kiểm Thử Phase 16 (E2E Stabilization & Production Readiness)
+
+```bash
+# Chạy toàn bộ suite Phase 16 (Security, Realtime Resilience, SDK Contract):
+npm run test:phase16:all
+
+# Chạy riêng lẻ từng kiểm tra bảo mật:
+npm run test:phase16:security  # Kiểm tra CORS & Security Hardening
+npm run test:phase16:realtime  # Kiểm tra độ bền bỉ Socket & phân lập phòng
+npm run test:phase16           # Chạy cả 2 suite Phase 16
+```
+
 ### Tài liệu Kiểm Thử Chi Tiết
 
 - **Mục lục kiểm thử tổng thể:** [tests/README.md](tests/README.md) (Tiếng Việt) | [tests/README_en.md](tests/README_en.md) (English)
+- **Tài liệu Phase 16 chi tiết:** [tests/phase-16-production-readiness/README.md](tests/phase-16-production-readiness/README.md) (Tiếng Việt) | [tests/phase-16-production-readiness/README_en.md](tests/phase-16-production-readiness/README_en.md) (English)
 - **Tài liệu Phase 15 chi tiết:** [tests/phase-15-superadmin-completion/README.md](tests/phase-15-superadmin-completion/README.md) (Tiếng Việt) | [tests/phase-15-superadmin-completion/README_en.md](tests/phase-15-superadmin-completion/README_en.md) (English)
 - **Tài liệu Phase 14 chi tiết:** [tests/phase-14-superadmin-ux-secret-zero-docs/README.md](tests/phase-14-superadmin-ux-secret-zero-docs/README.md) (Tiếng Việt) | [tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md](tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md) (English)
 - **Tài liệu Phase 11 chi tiết:** [tests/phase-11-review-digital-bill/README.md](tests/phase-11-review-digital-bill/README.md) (Tiếng Việt) | [tests/phase-11-review-digital-bill/README_en.md](tests/phase-11-review-digital-bill/README_en.md) (English)
@@ -367,9 +380,15 @@ npm run test:phase11:acceptance
 
 ## 11. 📊 Trạng Thái Dự Án & Nghiệm Thu
 
-### Trạng Thái Toàn Bộ Dự Án: ✅ ĐÃ NGHIỆM THU — HOÀN TẤT LỘ TRÌNH 15/15 PHASES
+### Trạng Thái Toàn Bộ Dự Án: ✅ ĐÃ NGHIỆM THU — HOÀN TẤT LỘ TRÌNH 16/16 PHASES (SẴN SÀNG PRODUCTION)
 
-Phase 15 (Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thuật Impersonation & Đồng Bộ Phân Quyền RBAC Toàn Diện) đã hoàn thành toàn bộ các trụ cột kỹ thuật và đã được nghiệm thu chính thức. Toàn bộ lộ trình 15 Phases của hệ thống iMenu đã hoàn tất 100%.
+Phase 16 (Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production VPS) đã hoàn thành toàn bộ các trụ cột kỹ thuật, đạt 100% tỷ lệ vượt qua ở tất cả các vòng kiểm thử hồi quy và sẵn sàng đưa lên môi trường máy chủ Production. Toàn bộ lộ trình 16 Phases của hệ thống iMenu đã hoàn tất toàn diện 100%.
+
+### Phase 16: Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production (E2E Stabilization & Production Readiness)
+- **Ổn định hóa toàn bộ 5 luồng kiểm thử E2E đa ứng dụng**: Khắc phục dứt điểm các lỗi E2E trên Puppeteer (`e2e-order-lifecycle.mjs`, `e2e-kds-lifecycle.mjs`, `e2e-payment-bill-lifecycle.mjs`, `e2e-realtime-ecosystem.mjs`, `e2e-dashboard-reports.mjs`), tối ưu hóa thời gian tải và kích thước viewport thích ứng.
+- **Gia cố bảo mật VPS Production (Security Hardening)**: Bổ sung cơ chế quản lý bộ nhớ đệm `pruneExpired()` có chặn trên dung lượng (threshold > 2000) trong `CompositeRateLimiterService` chống rò rỉ RAM khi bị quét cổng; ẩn stack trace và thông tin nội bộ trên `ExceptionFilter` khi chạy chế độ production; kích hoạt mặc định bảo vệ tài khoản mẫu trên `DemoBlockGuard`; bảo vệ tuyệt đối phòng WebSocket nhân viên `join:restaurant` khỏi khách vãng lai.
+- **Kiểm toán Secret Zero & Bảo vệ Gitignore**: Chạy `secret-scanning-guard.test.ts` đạt 100% PASS, khử triệt để mật khẩu tĩnh hardcode; cấu hình `.gitignore` chặn toàn bộ biến thể tệp `.env*` và tệp rác `test-artifacts/`.
+- **Kiểm thử hồi quy 100% & Biên dịch Production thành công**: 100% các suite kiểm thử từ Phase 2 đến Phase 16 đều đạt REGRESSION PASS; biên dịch thành công không lỗi trên Backend (`nest build`) và 3 ứng dụng Frontend Turborepo (`@imenu/admin`, `@imenu/client-web`, `@imenu/customer-menu`).
 
 ### Phase 15: Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ & Đồng Bộ RBAC (Superadmin Completion, Support Mode & RBAC Sync)
 - **Hoàn thiện 4 trang quản trị nền tảng chuyên biệt (`/platform/*`)**: Dashboard KPI toàn sàn theo dõi doanh thu kép, Quản lý nhà hàng (tạm khóa, mở khóa `$unset`, gia hạn/nâng cấp gói kèm ngày hết hạn và ghi chú kiểm toán), Đối soát doanh thu kép theo khoảng ngày (Từ ngày - Đến ngày), Quản lý NVKD & duyệt đơn ứng tuyển, sổ cái hoa hồng và duyệt chi trả nguyên tử.
@@ -396,6 +415,7 @@ Phase 15 (Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thu�
 
 | Nhóm Kiểm Thử | Số Ca Test | Kết Quả |
 | :--- | :---: | :---: |
+| Phase 16 Production Readiness & Security | 66 | ✅ PASS |
 | Phase 15 Superadmin Completion & RBAC Sync | 75 | ✅ PASS |
 | Phase 14 Superadmin Purification & Zero Secrets | 10 | ✅ PASS |
 | Phase 13 Superadmin Platform Control Center | 28 | ✅ PASS |
@@ -407,13 +427,13 @@ Phase 15 (Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thu�
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
 | Phase 6 Orders & POS Full Regression | 279 | ✅ PASS |
 | Phases 2–5 Core Regressions | 74 | ✅ PASS |
-| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **849** | **849/849 PASS (100%)** |
+| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **915** | **915/915 PASS (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0
 - **BLOCKED:** 0
 
-### Lộ Trình Tổng Thể 15/15 Phases
+### Lộ Trình Tổng Thể 16/16 Phases
 
 | Phase | Trạng Thái |
 | :--- | :--- |
@@ -431,4 +451,5 @@ Phase 15 (Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thu�
 | Phase 12: Mạng Lưới Đối Tác Kinh Doanh (Sales Rep) & Tiếp Thị Liên Kết | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 13: Trung Tâm Điều Hành Nền Tảng (Superadmin Platform Control Center) | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 14: Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Tài Liệu | ✅ Nghiệm thu & Đóng chính thức |
-| Phase 15: Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thuật & Đồng Bộ RBAC | ✅ **ĐÃ NGHIỆM THU & HOÀN TẤT TOÀN DIỆN LỘ TRÌNH (15/15 PHASES)** |
+| Phase 15: Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thuật & Đồng Bộ RBAC | ✅ Nghiệm thu & Đóng chính thức |
+| Phase 16: Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production | ✅ **ĐÃ NGHIỆM THU & HOÀN TẤT TOÀN DIỆN LỘ TRÌNH (16/16 PHASES)** |
