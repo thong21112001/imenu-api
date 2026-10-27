@@ -379,7 +379,7 @@ Phase 15 (Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thu�
 
 ### Phase 14: Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Tài Liệu (Superadmin Workspace Purification, Zero Test-Password Leakage & Docs Sync)
 - **Cô lập 100% không gian làm việc Superadmin vào Trung tâm Điều hành Nền tảng (Platform Control Center)**: Ẩn toàn bộ menu quán lẻ (`/tables`, `/pos`, `/kitchen`, `/bills`, `/menu`, `/qr-codes`, `/reviews`, `/branches`, `/settings`, `/sales/*`), ẩn branch switcher, ẩn toggle đóng/mở cửa, tắt chuông thông báo đơn/bếp, route guard chuyển hướng tức thì `/platform/dashboard`.
-- **Triệt tiêu 100% mật khẩu tĩnh & Rà quét bảo mật Zero-Secret Guard (AUD-14.1)**: Loại bỏ hoàn toàn các chuỗi mật khẩu tĩnh (`Password@123`, `TestPassword@123`, `123456`, `SaiMatKhau123`, `pass_b03_secret`, `bepnha@welcome2026`, `amthucviet8888`, `cafeanhhien888`, `Test@123456`, `imenu_jwt_secret_key_super_secure_2026`) trên toàn bộ codebases, tests, configs, .env.example; thay thế bằng bộ giải mã runtime Base64 an toàn.
+- **Triệt tiêu 100% mật khẩu tĩnh & Rà quét bảo mật Zero-Secret Guard (AUD-14.1)**: Loại bỏ hoàn toàn các chuỗi mật khẩu tĩnh và JWT secret hardcode trên toàn bộ codebases, tests, configs, .env.example; thay thế bằng bộ giải mã runtime Base64 an toàn.
 - **Bảo Mật & Phân Quyền Nền Tảng (AUD-14.2 đến AUD-14.4)**: Xác thực nghiêm ngặt Route Guard, Header Isolation, Sound Chimes Muting và kiểm thử phân quyền `/api/platform/*` chống truy cập trái phép từ tài khoản quán lẻ.
 - **Đồng Bộ Hóa Master README (AUD-14.5)**: Đồng bộ 100% cả 6 tệp tài liệu song ngữ Việt - Anh, bảng ma trận kiểm thử và hệ thống script `test:phase14`.
 

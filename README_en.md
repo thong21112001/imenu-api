@@ -380,7 +380,7 @@ Phase 15 (Superadmin Completion, Support Impersonation Mode & Multi-Role RBAC Sy
 
 ### Phase 14: Superadmin Workspace Purification, Zero Test-Password Leakage & Docs Sync
 - **100% Superadmin Workspace Isolation (Platform Control Center)**: Completely hides all store-scoped routes (`/tables`, `/pos`, `/kitchen`, `/bills`, `/menu`, `/qr-codes`, `/reviews`, `/branches`, `/settings`, `/sales/*`), hides branch switcher, hides store open/close toggle, mutes store and kitchen chimes, enforces instant redirect to `/platform/dashboard` via RouteAccessGuard.
-- **Zero Static Test-Password Leakage & Secret Scanning Guard (AUD-14.1)**: Permanently eradicated all hardcoded static password literals (`Password@123`, `TestPassword@123`, `123456`, `SaiMatKhau123`, `pass_b03_secret`, `bepnha@welcome2026`, `amthucviet8888`, `cafeanhhien888`, `Test@123456`, `imenu_jwt_secret_key_super_secure_2026`) across all codebases, tests, configs, and `.env.example`; backed by dynamic runtime Base64 credential helpers.
+- **Zero Static Test-Password Leakage & Secret Scanning Guard (AUD-14.1)**: Permanently eradicated all hardcoded static password literals and sensitive strings across all codebases, tests, configs, and `.env.example`; backed by dynamic runtime Base64 credential helpers.
 - **Platform RBAC & Security Hardening (AUD-14.2 to AUD-14.4)**: Strictly enforces SuperAdminGuard on `/api/platform/*`, rejecting store staff tokens (403 Forbidden) and eliminating accidental cross-scope operations.
 - **Master README Synchronization (AUD-14.5)**: Full bilingual synchronization across all 6 documentation files, test reconciliation matrix, and `test:phase14` scripts.
 

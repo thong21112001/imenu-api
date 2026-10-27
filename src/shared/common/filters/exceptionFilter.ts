@@ -36,6 +36,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? (exception.getResponse() as any)?.message || exception.message
         : (exception as Error)?.message || 'Internal server error';
 
+    if (status === HttpStatus.INTERNAL_SERVER_ERROR && process.env.NODE_ENV === 'production') {
+      message = 'Đã xảy ra lỗi máy chủ nội bộ. Vui lòng thử lại sau hoặc liên hệ quản trị viên.';
+    }
+
     // Xu ly validation error tu Mongoose
     if ((exception as any)?.name === 'ValidationError') {
       status = HttpStatus.BAD_REQUEST;

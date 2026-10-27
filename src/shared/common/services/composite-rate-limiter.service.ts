@@ -17,6 +17,17 @@ export class CompositeRateLimiterService {
     return key.trim().toLowerCase();
   }
 
+  private pruneExpired(): void {
+    const now = Date.now();
+    for (const [k, r] of this.attempts.entries()) {
+      const isLocked = r.lockedUntil && now < r.lockedUntil;
+      const isWindowExpired = now - r.firstAttemptAt > this.WINDOW_MS;
+      if (!isLocked && isWindowExpired) {
+        this.attempts.delete(k);
+      }
+    }
+  }
+
   /**
    * Kiểm tra trước khi thực hiện hành động (VD: Đăng nhập)
    * Nếu cặp (IP, Email) đang bị khóa -> ném 429 Too Many Requests
@@ -55,6 +66,7 @@ export class CompositeRateLimiterService {
     const record = this.attempts.get(key);
 
     if (!record || now - record.firstAttemptAt > this.WINDOW_MS) {
+      if (this.attempts.size > 2000) this.pruneExpired();
       this.attempts.set(key, {
         count: 1,
         firstAttemptAt: now,
@@ -86,6 +98,7 @@ export class CompositeRateLimiterService {
     const record = this.attempts.get(key);
 
     if (!record || now - record.firstAttemptAt > windowMs) {
+      if (this.attempts.size > 2000) this.pruneExpired();
       this.attempts.set(key, { count: 1, firstAttemptAt: now });
       return;
     }

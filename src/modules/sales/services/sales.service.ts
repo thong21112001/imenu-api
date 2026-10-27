@@ -36,6 +36,7 @@ import { QueryReferredRestaurantsDto } from '../dto/query-referred-restaurants.d
 import { hashPassword } from '../../../shared/common/utils/password.util';
 import { generateSlug } from '../../../shared/common/utils/slug.util';
 import { JwtUser, isSuperAdminUser } from '../../auth/interface/jwtUser';
+import { ENV } from '../../../shared/configs/env.cnf';
 
 @Injectable()
 export class SalesService implements OnApplicationBootstrap {
@@ -231,7 +232,11 @@ export class SalesService implements OnApplicationBootstrap {
     }
 
     const referralCode = await this.generateUniqueReferralCode(app.fullName);
-    const defaultPassword = process.env.DEMO_USER_PASSWORD || 'Demo@123456';
+    const defaultPassword =
+      process.env.DEFAULT_SALES_PASSWORD ||
+      process.env.DEMO_USER_PASSWORD ||
+      ENV.DEFAULT_SALES_PASSWORD ||
+      '';
     const hashedPassword = await hashPassword(defaultPassword);
 
     const generatedUsername = `${app.email.split('@')[0]}_sales`;
@@ -1122,7 +1127,11 @@ export class SalesService implements OnApplicationBootstrap {
       });
     }
 
-    const defaultPassword = process.env.DEMO_USER_PASSWORD || 'Demo@123456';
+    const defaultPassword =
+      process.env.DEFAULT_SALES_PASSWORD ||
+      process.env.DEMO_USER_PASSWORD ||
+      ENV.DEFAULT_SALES_PASSWORD ||
+      '';
     const hashedPassword = await hashPassword(defaultPassword);
 
     // 1. NVKD Trực tiếp: IMENU-DEMO88

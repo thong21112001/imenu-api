@@ -20,7 +20,7 @@ Phase 14 tập trung giải quyết 3 thách thức cốt lõi về trải nghi�
    - `RouteAccessGuard` chuyển hướng tức thì mọi truy cập của Superadmin về `/platform/dashboard`.
 
 2. **Triệt Tiêu 100% Rò Rỉ Mật Khẩu Tĩnh & Rà Quét Bảo Mật Tự Động (Zero Test-Password Leakage)**:
-   - Xóa bỏ vĩnh viễn toàn bộ các chuỗi mật khẩu tĩnh: `'Password@123'`, `'TestPassword@123'`, `'123456'`, `'SaiMatKhau123'`, `'pass_b03_secret'`, `'bepnha@welcome2026'`, `'amthucviet8888'`, `'cafeanhhien888'`, `'Test@123456'`, `'WrongPassword@123'`, `JWT_SECRET=imenu_jwt_secret_key_super_secure_2026` trên cả 2 repository.
+   - Xóa bỏ vĩnh viễn toàn bộ các chuỗi mật khẩu tĩnh và JWT secret hardcode trên cả 2 repository.
    - Triển khai bộ giải mã Base64 động tại runtime (`tests/shared/test-credentials.helper.ts` và `scripts/helpers/test-credentials.mjs`).
    - Tích hợp nút sinh mật khẩu an toàn ngẫu nhiên động (`Sparkles`) trên giao diện Quản lý Nhân sự `/staff`.
    - Xây dựng công cụ rà quét Regex tự động (`secret-scanning-guard.test.ts`) kiểm chứng 0 chuỗi mật khẩu tĩnh trước khi merge vào nhánh `main`.

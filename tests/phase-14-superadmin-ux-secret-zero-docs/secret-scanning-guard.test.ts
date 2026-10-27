@@ -65,6 +65,7 @@ const SCANNED_EXTENSIONS = new Set([
   '.mjs',
   '.json',
   '.example',
+  '.md',
 ]);
 
 function scanDirectory(
@@ -142,26 +143,31 @@ export async function runSecretScanningTests(): Promise<{ passed: boolean; count
     scanDirectory(path.join(apiRoot, 'src'), apiFindings, thisFilePath);
     scanDirectory(path.join(apiRoot, 'tests'), apiFindings, thisFilePath);
 
-    // Also check .env.example
-    const envExamplePath = path.join(apiRoot, '.env.example');
-    if (fs.existsSync(envExamplePath)) {
-      const envContent = fs.readFileSync(envExamplePath, 'utf8');
-      for (const sig of FORBIDDEN_SIGNATURES) {
-        if (sig.pattern.test(envContent)) {
-          apiFindings.push({
-            file: envExamplePath,
-            line: 1,
-            label: sig.label,
-            snippet: 'Forbidden signature matched in .env.example',
-          });
-          sig.pattern.lastIndex = 0;
+    // Also check root configs and documentation
+    for (const f of ['README.md', 'README_en.md', '.env.example', 'ecosystem.config.js']) {
+      const full = path.join(apiRoot, f);
+      if (fs.existsSync(full)) {
+        const content = fs.readFileSync(full, 'utf8');
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          for (const sig of FORBIDDEN_SIGNATURES) {
+            if (sig.pattern.test(lines[i])) {
+              apiFindings.push({
+                file: full,
+                line: i + 1,
+                label: sig.label,
+                snippet: lines[i].trim(),
+              });
+              sig.pattern.lastIndex = 0;
+            }
+          }
         }
       }
     }
 
     if (apiFindings.length === 0) {
       pass(
-        'TEST 1: AUD-14.1.1 Không phát hiện bất kỳ chuỗi mật khẩu tĩnh nào trong toàn bộ imenu-api (src, tests, .env.example)'
+        'TEST 1: AUD-14.1.1 Không phát hiện bất kỳ chuỗi mật khẩu tĩnh nào trong toàn bộ imenu-api (src, tests, docs, configs)'
       );
     } else {
       failures++;
@@ -186,25 +192,31 @@ export async function runSecretScanningTests(): Promise<{ passed: boolean; count
       scanDirectory(path.join(webRoot, 'packages'), webFindings, thisFilePath);
       scanDirectory(path.join(webRoot, 'scripts'), webFindings, thisFilePath);
 
-      const webEnvExample = path.join(webRoot, '.env.example');
-      if (fs.existsSync(webEnvExample)) {
-        const envContent = fs.readFileSync(webEnvExample, 'utf8');
-        for (const sig of FORBIDDEN_SIGNATURES) {
-          if (sig.pattern.test(envContent)) {
-            webFindings.push({
-              file: webEnvExample,
-              line: 1,
-              label: sig.label,
-              snippet: 'Forbidden signature matched in imenu-menudientu .env.example',
-            });
-            sig.pattern.lastIndex = 0;
+      // Also check root configs and documentation
+      for (const f of ['README.md', 'README_en.md', '.env.example', 'ecosystem.config.js', 'nginx-imenu.conf']) {
+        const full = path.join(webRoot, f);
+        if (fs.existsSync(full)) {
+          const content = fs.readFileSync(full, 'utf8');
+          const lines = content.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            for (const sig of FORBIDDEN_SIGNATURES) {
+              if (sig.pattern.test(lines[i])) {
+                webFindings.push({
+                  file: full,
+                  line: i + 1,
+                  label: sig.label,
+                  snippet: lines[i].trim(),
+                });
+                sig.pattern.lastIndex = 0;
+              }
+            }
           }
         }
       }
 
       if (webFindings.length === 0) {
         pass(
-          'TEST 2: AUD-14.1.2 Không phát hiện bất kỳ chuỗi mật khẩu tĩnh nào trong imenu-menudientu (apps, packages, scripts)'
+          'TEST 2: AUD-14.1.2 Không phát hiện bất kỳ chuỗi mật khẩu tĩnh nào trong imenu-menudientu (apps, packages, scripts, docs, configs)'
         );
       } else {
         failures++;

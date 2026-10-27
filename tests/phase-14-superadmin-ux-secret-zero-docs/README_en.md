@@ -20,7 +20,7 @@ Phase 14 addresses three critical challenges regarding enterprise user experienc
    - `RouteAccessGuard` enforces instant redirection for Superadmin to `/platform/dashboard`.
 
 2. **Zero Test-Password Leakage & Automated Secret Scanner Guard**:
-   - Permanently eradicates all hardcoded static password literals: `'Password@123'`, `'TestPassword@123'`, `'123456'`, `'SaiMatKhau123'`, `'pass_b03_secret'`, `'bepnha@welcome2026'`, `'amthucviet8888'`, `'cafeanhhien888'`, `'Test@123456'`, `'WrongPassword@123'`, `JWT_SECRET=imenu_jwt_secret_key_super_secure_2026` across both repositories.
+   - Permanently eradicates all hardcoded static password literals and sensitive strings across both repositories.
    - Deploys secure runtime dynamic Base64 credential helpers (`tests/shared/test-credentials.helper.ts` and `scripts/helpers/test-credentials.mjs`).
    - Integrates dynamic high-entropy password generator button (`Sparkles`) on `/staff`.
    - Delivers automated regex secret scanning test (`secret-scanning-guard.test.ts`) guaranteeing 0 hardcoded credentials before merging into `main`.
