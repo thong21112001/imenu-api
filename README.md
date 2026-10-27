@@ -347,13 +347,15 @@ npm run test:phase11:acceptance
 │ TỔNG CỘNG HỆ SINH THÁI (ACCEPTANCE CLOSURE REQUIREMENT)│ 710 CA TEST    │
 │  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):│ 710 / 710 PASS │
 │  - Trạng thái kiểm thử đối kháng & hồi quy:           │ 0 FAIL, 0 BLOCK│
-│  - Trạng thái nghiệm thu toàn bộ lộ trình:            │ ✅ 11/11 PHASES│
+│  - Trạng thái nghiệm thu toàn bộ lộ trình:            │ ✅ 15/15 PHASES│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Tài liệu Kiểm Thử Chi Tiết
 
 - **Mục lục kiểm thử tổng thể:** [tests/README.md](tests/README.md) (Tiếng Việt) | [tests/README_en.md](tests/README_en.md) (English)
+- **Tài liệu Phase 15 chi tiết:** [tests/phase-15-superadmin-completion/README.md](tests/phase-15-superadmin-completion/README.md) (Tiếng Việt) | [tests/phase-15-superadmin-completion/README_en.md](tests/phase-15-superadmin-completion/README_en.md) (English)
+- **Tài liệu Phase 14 chi tiết:** [tests/phase-14-superadmin-ux-secret-zero-docs/README.md](tests/phase-14-superadmin-ux-secret-zero-docs/README.md) (Tiếng Việt) | [tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md](tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md) (English)
 - **Tài liệu Phase 11 chi tiết:** [tests/phase-11-review-digital-bill/README.md](tests/phase-11-review-digital-bill/README.md) (Tiếng Việt) | [tests/phase-11-review-digital-bill/README_en.md](tests/phase-11-review-digital-bill/README_en.md) (English)
 - **Tài liệu Phase 10 chi tiết:** [tests/phase-10-realtime/README.md](tests/phase-10-realtime/README.md) (Tiếng Việt) | [tests/phase-10-realtime/README_en.md](tests/phase-10-realtime/README_en.md) (English)
 - **Tài liệu Phase 9 chi tiết:** [tests/phase-09-dashboard-reports/README.md](tests/phase-09-dashboard-reports/README.md) (Tiếng Việt) | [tests/phase-09-dashboard-reports/README_en.md](tests/phase-09-dashboard-reports/README_en.md) (English)
@@ -365,9 +367,15 @@ npm run test:phase11:acceptance
 
 ## 11. 📊 Trạng Thái Dự Án & Nghiệm Thu
 
-### Trạng Thái Toàn Bộ Dự Án: ✅ ĐÃ NGHIỆM THU — HOÀN TẤT LỘ TRÌNH 11/11 PHASES
+### Trạng Thái Toàn Bộ Dự Án: ✅ ĐÃ NGHIỆM THU — HOÀN TẤT LỘ TRÌNH 15/15 PHASES
 
-Phase 14 (Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Toàn Diện Tài Liệu — Superadmin Workspace Purification, Zero Test-Password Leakage on Main Merge & Master README Synchronization) đã hoàn thành toàn bộ các trụ cột kỹ thuật và đã được nghiệm thu chính thức. Toàn bộ lộ trình 14 Phases của hệ thống iMenu đã hoàn tất 100%.
+Phase 15 (Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thuật Impersonation & Đồng Bộ Phân Quyền RBAC Toàn Diện) đã hoàn thành toàn bộ các trụ cột kỹ thuật và đã được nghiệm thu chính thức. Toàn bộ lộ trình 15 Phases của hệ thống iMenu đã hoàn tất 100%.
+
+### Phase 15: Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ & Đồng Bộ RBAC (Superadmin Completion, Support Mode & RBAC Sync)
+- **Hoàn thiện 4 trang quản trị nền tảng chuyên biệt (`/platform/*`)**: Dashboard KPI toàn sàn theo dõi doanh thu kép, Quản lý nhà hàng (tạm khóa, mở khóa `$unset`, gia hạn/nâng cấp gói kèm ngày hết hạn và ghi chú kiểm toán), Đối soát doanh thu kép theo khoảng ngày (Từ ngày - Đến ngày), Quản lý NVKD & duyệt đơn ứng tuyển, sổ cái hoa hồng và duyệt chi trả nguyên tử.
+- **Chế độ Hỗ trợ Kỹ thuật Nhà hàng (Superadmin Impersonation Support Mode)**: Cho phép Superadmin chọn quán cần hỗ trợ trên Header, hiển thị Sticky Banner nổi bật "Thoát hỗ trợ", mở rộng Sidebar cho phép truy cập `/branches` và `/settings` cập nhật cấu hình quán mà không bị chặn quyền.
+- **Rào cản RBAC & Chống chi trả đúp (Double-Payout Prevention)**: Cô lập 100% quyền hạn giữa Superadmin, Sales Rep, Quản lý quán và Thu ngân/Bếp; cơ chế khóa tức thì thu hồi token của nhân sự quán bị khóa; cơ chế cập nhật có điều kiện nguyên tử bảo vệ sổ cái tài chính.
+- **Tuân thủ Tuyệt đối Secret-Zero**: Toàn bộ credential kiểm thử được cấp phát động từ môi trường.
 
 ### Phase 14: Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Tài Liệu (Superadmin Workspace Purification, Zero Test-Password Leakage & Docs Sync)
 - **Cô lập 100% không gian làm việc Superadmin vào Trung tâm Điều hành Nền tảng (Platform Control Center)**: Ẩn toàn bộ menu quán lẻ (`/tables`, `/pos`, `/kitchen`, `/bills`, `/menu`, `/qr-codes`, `/reviews`, `/branches`, `/settings`, `/sales/*`), ẩn branch switcher, ẩn toggle đóng/mở cửa, tắt chuông thông báo đơn/bếp, route guard chuyển hướng tức thì `/platform/dashboard`.
@@ -388,6 +396,7 @@ Phase 14 (Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh &
 
 | Nhóm Kiểm Thử | Số Ca Test | Kết Quả |
 | :--- | :---: | :---: |
+| Phase 15 Superadmin Completion & RBAC Sync | 75 | ✅ PASS |
 | Phase 14 Superadmin Purification & Zero Secrets | 10 | ✅ PASS |
 | Phase 13 Superadmin Platform Control Center | 28 | ✅ PASS |
 | Phase 12 Sales Affiliate & Commission Engine | 26 | ✅ PASS |
@@ -398,13 +407,13 @@ Phase 14 (Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh &
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
 | Phase 6 Orders & POS Full Regression | 279 | ✅ PASS |
 | Phases 2–5 Core Regressions | 74 | ✅ PASS |
-| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **774** | **774/774 PASS (100%)** |
+| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **849** | **849/849 PASS (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0
 - **BLOCKED:** 0
 
-### Lộ Trình Tổng Thể 14/14 Phases
+### Lộ Trình Tổng Thể 15/15 Phases
 
 | Phase | Trạng Thái |
 | :--- | :--- |
@@ -421,4 +430,5 @@ Phase 14 (Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh &
 | Phase 11: Đánh Giá Khách Hàng Theo Chi Nhánh & Tải Hóa Đơn Điện Tử | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 12: Mạng Lưới Đối Tác Kinh Doanh (Sales Rep) & Tiếp Thị Liên Kết | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 13: Trung Tâm Điều Hành Nền Tảng (Superadmin Platform Control Center) | ✅ Nghiệm thu & Đóng chính thức |
-| Phase 14: Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Tài Liệu | ✅ **ĐÃ NGHIỆM THU & HOÀN TẤT TOÀN DIỆN LỘ TRÌNH (14/14 PHASES)** |
+| Phase 14: Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Tài Liệu | ✅ Nghiệm thu & Đóng chính thức |
+| Phase 15: Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thuật & Đồng Bộ RBAC | ✅ **ĐÃ NGHIỆM THU & HOÀN TẤT TOÀN DIỆN LỘ TRÌNH (15/15 PHASES)** |

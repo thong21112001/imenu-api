@@ -348,13 +348,15 @@ npm run test:phase11:acceptance
 │ TOTAL ECOSYSTEM (FULL ROADMAP ACCEPTANCE REQUIREMENT)  │ 710 TESTS      │
 │  - Passed in Developer/CI Run:                         │ 710 / 710 PASS │
 │  - Adversarial Hardening & Regression:                 │ 0 FAIL, 0 BLOCK│
-│  - Full 11-Phase Roadmap Acceptance Status:            │ ✅ 11/11 PHASES│
+│  - Full 15-Phase Roadmap Acceptance Status:            │ ✅ 15/15 PHASES│
 └───────────────────────────────────────────────────────┴────────────────┘
 ```
 
 ### Detailed Test Documentation
 
 - **Master test index:** [tests/README.md](tests/README.md) (Vietnamese) | [tests/README_en.md](tests/README_en.md) (English)
+- **Phase 15 detailed documentation:** [tests/phase-15-superadmin-completion/README.md](tests/phase-15-superadmin-completion/README.md) (Vietnamese) | [tests/phase-15-superadmin-completion/README_en.md](tests/phase-15-superadmin-completion/README_en.md) (English)
+- **Phase 14 detailed documentation:** [tests/phase-14-superadmin-ux-secret-zero-docs/README.md](tests/phase-14-superadmin-ux-secret-zero-docs/README.md) (Vietnamese) | [tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md](tests/phase-14-superadmin-ux-secret-zero-docs/README_en.md) (English)
 - **Phase 11 detailed documentation:** [tests/phase-11-review-digital-bill/README.md](tests/phase-11-review-digital-bill/README.md) (Vietnamese) | [tests/phase-11-review-digital-bill/README_en.md](tests/phase-11-review-digital-bill/README_en.md) (English)
 - **Phase 10 detailed documentation:** [tests/phase-10-realtime/README.md](tests/phase-10-realtime/README.md) (Vietnamese) | [tests/phase-10-realtime/README_en.md](tests/phase-10-realtime/README_en.md) (English)
 - **Phase 9 detailed documentation:** [tests/phase-09-dashboard-reports/README.md](tests/phase-09-dashboard-reports/README.md) (Vietnamese) | [tests/phase-09-dashboard-reports/README_en.md](tests/phase-09-dashboard-reports/README_en.md) (English)
@@ -366,9 +368,15 @@ npm run test:phase11:acceptance
 
 ## 11. 📊 Project Status & Acceptance
 
-### Full Project Status: ✅ ACCEPTED — FULL 11/11 PHASES ROADMAP COMPLETED
+### Full Project Status: ✅ ACCEPTED — FULL 15/15 PHASES ROADMAP COMPLETED
 
-Phase 14 (Superadmin Workspace Purification, Zero Test-Password Leakage on Main Merge & Master README Synchronization) has completed all technical pillars and has been officially accepted. The full 14-Phase roadmap of the iMenu ecosystem is 100% complete.
+Phase 15 (Superadmin Completion, Support Impersonation Mode & Multi-Role RBAC Synchronization) has completed all technical pillars and has been officially accepted. The full 15-Phase roadmap of the iMenu ecosystem is 100% complete.
+
+### Phase 15: Superadmin Completion, Impersonation Support Mode & Multi-Role RBAC Sync
+- **4 Dedicated Platform Management Modules (`/platform/*`)**: Real-time KPI dashboard tracking dual revenue streams, Restaurant Lifecycle Management (suspension, reactivation with `$unset`, plan extensions/upgrades with custom expiration and audit notes), Dual-Revenue reconciliation by custom date ranges (From Date - To Date), Sales Rep administration with interactive policy modals, candidate application approvals, and atomic commission payout batches.
+- **Superadmin Impersonation Support Mode**: Enables Superadmin to select any partner restaurant from the Header, displaying an amber Sticky Support Banner with "Exit Support", expanding Sidebar navigation to access operational `/branches` and `/settings` pages to assist owners without permission barriers.
+- **Strict RBAC Boundaries & Double-Payout Prevention**: Enforces 100% privilege boundary isolation between Superadmin, Sales Reps, Restaurant Owners, and Staff; immediate token revocation for staff of suspended restaurants; atomic conditional updates guaranteeing zero double payouts.
+- **Strict Secret-Zero Compliance**: All test credentials and secrets dynamically resolved at runtime from the environment.
 
 ### Phase 14: Superadmin Workspace Purification, Zero Test-Password Leakage & Docs Sync
 - **100% Superadmin Workspace Isolation (Platform Control Center)**: Completely hides all store-scoped routes (`/tables`, `/pos`, `/kitchen`, `/bills`, `/menu`, `/qr-codes`, `/reviews`, `/branches`, `/settings`, `/sales/*`), hides branch switcher, hides store open/close toggle, mutes store and kitchen chimes, enforces instant redirect to `/platform/dashboard` via RouteAccessGuard.
@@ -389,6 +397,7 @@ Phase 14 (Superadmin Workspace Purification, Zero Test-Password Leakage on Main 
 
 | Test Group | Test Count | Result |
 | :--- | :---: | :---: |
+| Phase 15 Superadmin Completion & RBAC Sync | 75 | ✅ PASS |
 | Phase 14 Superadmin Purification & Zero Secrets | 10 | ✅ PASS |
 | Phase 13 Superadmin Platform Control Center | 28 | ✅ PASS |
 | Phase 12 Sales Affiliate & Commission Engine | 26 | ✅ PASS |
@@ -399,13 +408,13 @@ Phase 14 (Superadmin Workspace Purification, Zero Test-Password Leakage on Main 
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
 | Phase 6 Orders & POS Full Regression | 279 | ✅ PASS |
 | Phases 2–5 Core Regressions | 74 | ✅ PASS |
-| **TOTAL ECOSYSTEM** | **774** | **774/774 PASS (100%)** |
+| **TOTAL ECOSYSTEM** | **849** | **849/849 PASS (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0
 - **BLOCKED:** 0
 
-### Overall 14/14 Phases Roadmap
+### Overall 15/15 Phases Roadmap
 
 | Phase | Status |
 | :--- | :--- |
@@ -422,4 +431,5 @@ Phase 14 (Superadmin Workspace Purification, Zero Test-Password Leakage on Main 
 | Phase 11: Customer Review Per Branch & Digital Bill Download | ✅ Accepted & Officially Closed |
 | Phase 12: Sales Partner Network (Sales Rep) & Affiliate Engine | ✅ Accepted & Officially Closed |
 | Phase 13: Superadmin Platform Control Center & Enterprise Governance | ✅ Accepted & Officially Closed |
-| Phase 14: Superadmin Workspace Purification, Zero Test-Password Leakage & Docs Sync | ✅ **ACCEPTED & FULL ROADMAP COMPLETED (14/14 PHASES)** |
+| Phase 14: Superadmin Workspace Purification, Zero Test-Password Leakage & Docs Sync | ✅ Accepted & Officially Closed |
+| Phase 15: Superadmin Completion, Impersonation Support Mode & Multi-Role RBAC Sync | ✅ **ACCEPTED & FULL ROADMAP COMPLETED (15/15 PHASES)** |
