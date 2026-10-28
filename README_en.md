@@ -385,6 +385,12 @@ npm run test:phase16           # Run both Phase 16 suites
 
 Phase 16 (E2E Stabilization & Production Readiness) has completed all technical pillars, achieved 100% pass rates across all regression suites, and is fully ready for deployment onto Production VPS infrastructure. The complete 16-Phase roadmap of the iMenu ecosystem is 100% finished.
 
+### Phase 17: SaaS 2026–2027 Pixel-Perfect UI/UX Overhaul (Linear / Stripe / Vercel Aesthetic)
+- **Minimalist Design Tokens & Core UI Components (`packages/ui`)**: High-end neutral Slate/Zinc palette, 1px hairline borders (`border-zinc-200/80`), standardized `rounded-md` (6px) / `rounded-lg` (8px), 4px grid heights (`h-8`, `h-9`, `h-10`), 100% elimination of heavy shadows and jumping hover animations.
+- **B2B Marketing & Client Landing Web (`apps/imenu-client-web`)**: Bento Grid layout meeting SaaS Editorial/Minimalist standards, complete purge of AI clichés (`Sparkles`, `Wand`, `Bot`, emojis, flashy blobs).
+- **Admin Operations & Platform Dashboard (`apps/imenu-admin`)**: Data-Dense SaaS Tables with `tabular-nums` across all numeric columns; streamlined 4-group AdminSidebar and AdminHeader; optimized contrast for POS and KDS.
+- **Zero-Regression Full Verification**: All 5 browser Puppeteer E2E test suites (`order`, `kds`, `payment`, `realtime`, `reports`) passed 27/27 checkpoints (100%), 57/57 SDK contract tests passed.
+
 ### Phase 16: E2E Stabilization & Production Readiness
 - **Full stabilization across 5 multi-app Puppeteer E2E test scripts**: Resolved all edge case failures in (`e2e-order-lifecycle.mjs`, `e2e-kds-lifecycle.mjs`, `e2e-payment-bill-lifecycle.mjs`, `e2e-realtime-ecosystem.mjs`, `e2e-dashboard-reports.mjs`), with responsive viewport adaptation and smooth 3-way WebSocket synchronization.
 - **Production Server Hardening**: Bounded memory eviction `pruneExpired()` with high capacity threshold (> 2000) in `CompositeRateLimiterService` preventing memory leaks under port scans; 500 error sanitization in `ExceptionFilter` under production mode; default protection on demo accounts in `DemoBlockGuard`; strict guest isolation on `join:restaurant` in `RealtimeGateway`.
@@ -453,4 +459,5 @@ Phase 16 (E2E Stabilization & Production Readiness) has completed all technical 
 | Phase 13: Superadmin Platform Control Center & Enterprise Governance | ✅ Accepted & Officially Closed |
 | Phase 14: Superadmin Workspace Purification, Zero Test-Password Leakage & Docs Sync | ✅ Accepted & Officially Closed |
 | Phase 15: Superadmin Completion, Impersonation Support Mode & Multi-Role RBAC Sync | ✅ Accepted & Officially Closed |
-| Phase 16: E2E Stabilization & Production Readiness | ✅ **ACCEPTED & FULL ROADMAP COMPLETED (16/16 PHASES)** |
+| Phase 16: E2E Stabilization & Production Readiness | ✅ Accepted & Officially Closed |
+| Phase 17: SaaS 2026–2027 Pixel-Perfect UI/UX Overhaul | ⏳ Pending User Visual Acceptance |

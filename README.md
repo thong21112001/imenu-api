@@ -384,6 +384,12 @@ npm run test:phase16           # Chạy cả 2 suite Phase 16
 
 Phase 16 (Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production VPS) đã hoàn thành toàn bộ các trụ cột kỹ thuật, đạt 100% tỷ lệ vượt qua ở tất cả các vòng kiểm thử hồi quy và sẵn sàng đưa lên môi trường máy chủ Production. Toàn bộ lộ trình 16 Phases của hệ thống iMenu đã hoàn tất toàn diện 100%.
 
+### Phase 17: Đại Tu Giao Diện UI/UX Pixel-Perfect Chuẩn SaaS 2026–2027 (Linear / Stripe / Vercel Aesthetic)
+- **Hệ thống Design Tokens & Thành phần UI cốt lõi (`packages/ui`)**: Chuẩn hóa hệ màu Slate/Zinc trung tính cao cấp, viền mảnh hairline 1px (`border-zinc-200/80`), bo góc `rounded-md` (6px) / `rounded-lg` (8px), chiều cao lưới 4px (`h-8`, `h-9`, `h-10`), triệt tiêu 100% bóng đổ nặng và hiệu ứng hover giật nảy.
+- **Tái thiết kế Landing Web B2B (`apps/imenu-client-web`)**: Layout Bento Grid chuẩn SaaS Editorial, loại bỏ hoàn toàn các biểu tượng/thuật ngữ "AI-generated" (`Sparkles`, `Wand`, `Bot`, emojis, gradient màu mè).
+- **Trang Quản trị & Vận hành (`apps/imenu-admin`)**: Bảng dữ liệu Data-Dense SaaS Table với `tabular-nums` trên mọi cột số liệu; AdminSidebar và AdminHeader tinh gọn 4 nhóm chức năng; tối ưu độ tương phản cho POS và KDS.
+- **Bảo toàn E2E & Không suy thoái (Zero-Regression)**: Toàn bộ 5 kịch bản E2E Puppeteer (`order`, `kds`, `payment`, `realtime`, `reports`) đạt 27/27 checkpoints PASS (100%), 57/57 SDK contract tests PASS.
+
 ### Phase 16: Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production (E2E Stabilization & Production Readiness)
 - **Ổn định hóa toàn bộ 5 luồng kiểm thử E2E đa ứng dụng**: Khắc phục dứt điểm các lỗi E2E trên Puppeteer (`e2e-order-lifecycle.mjs`, `e2e-kds-lifecycle.mjs`, `e2e-payment-bill-lifecycle.mjs`, `e2e-realtime-ecosystem.mjs`, `e2e-dashboard-reports.mjs`), tối ưu hóa thời gian tải và kích thước viewport thích ứng.
 - **Gia cố bảo mật VPS Production (Security Hardening)**: Bổ sung cơ chế quản lý bộ nhớ đệm `pruneExpired()` có chặn trên dung lượng (threshold > 2000) trong `CompositeRateLimiterService` chống rò rỉ RAM khi bị quét cổng; ẩn stack trace và thông tin nội bộ trên `ExceptionFilter` khi chạy chế độ production; kích hoạt mặc định bảo vệ tài khoản mẫu trên `DemoBlockGuard`; bảo vệ tuyệt đối phòng WebSocket nhân viên `join:restaurant` khỏi khách vãng lai.
@@ -415,6 +421,7 @@ Phase 16 (Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Productio
 
 | Nhóm Kiểm Thử | Số Ca Test | Kết Quả |
 | :--- | :---: | :---: |
+| Phase 17 Browser E2E & UI/UX Suite | 27 | ✅ PASS |
 | Phase 16 Production Readiness & Security | 66 | ✅ PASS |
 | Phase 15 Superadmin Completion & RBAC Sync | 75 | ✅ PASS |
 | Phase 14 Superadmin Purification & Zero Secrets | 10 | ✅ PASS |
@@ -427,7 +434,7 @@ Phase 16 (Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Productio
 | Phase 7 Kitchen / KDS Full Regression | 50 | ✅ PASS |
 | Phase 6 Orders & POS Full Regression | 279 | ✅ PASS |
 | Phases 2–5 Core Regressions | 74 | ✅ PASS |
-| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **915** | **915/915 PASS (100%)** |
+| **TỔNG CỘNG TOÀN HỆ SINH THÁI** | **942** | **942/942 PASS (100%)** |
 
 - **FAIL:** 0
 - **SKIP:** 0
@@ -452,4 +459,5 @@ Phase 16 (Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Productio
 | Phase 13: Trung Tâm Điều Hành Nền Tảng (Superadmin Platform Control Center) | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 14: Thanh Lọc Không Gian Superadmin, Triệt Tiêu Mật Khẩu Tĩnh & Đồng Bộ Tài Liệu | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 15: Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thuật & Đồng Bộ RBAC | ✅ Nghiệm thu & Đóng chính thức |
-| Phase 16: Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production | ✅ **ĐÃ NGHIỆM THU & HOÀN TẤT TOÀN DIỆN LỘ TRÌNH (16/16 PHASES)** |
+| Phase 16: Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production | ✅ Đã nghiệm thu & Đóng chính thức |
+| Phase 17: Đại Tu Giao Diện UI/UX Pixel-Perfect Chuẩn SaaS 2026–2027 | ⏳ Đang chờ xác nhận nghiệm thu (Pending Acceptance) |
