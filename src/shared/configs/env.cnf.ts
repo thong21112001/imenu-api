@@ -25,7 +25,10 @@ export const ENV = {
   DEMO_USER_PASSWORD: process.env.DEMO_USER_PASSWORD || '',
   DEFAULT_SALES_PASSWORD: process.env.DEFAULT_SALES_PASSWORD || process.env.DEMO_USER_PASSWORD || '',
   // Cau hinh AI & MCP (Model Context Protocol - Phase 18)
-  AI_MCP_PROVIDER: process.env.AI_MCP_PROVIDER || 'gemini',
+  AI_MCP_PROVIDER: process.env.AI_MCP_PROVIDER || 'deterministic',
+  AI_API_KEY: process.env.AI_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '',
+  AI_MODEL_NAME: process.env.AI_MODEL_NAME || 'gemini-1.5-flash',
+  AI_RATE_LIMIT_PER_MIN: parseInt(process.env.AI_RATE_LIMIT_PER_MIN || '20', 10),
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
 };

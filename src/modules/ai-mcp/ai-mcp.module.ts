@@ -3,6 +3,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AiMcpController } from './ai-mcp.controller';
 import { McpRegistryService } from './mcp-registry.service';
 import { PlatformMcpTools } from './tools/platform-mcp.tools';
+import { AiOrchestratorService } from './services/ai-orchestrator.service';
+import { CompositeRateLimiterService } from '../../shared/common/services/composite-rate-limiter.service';
 import { PlatformModule } from '../platform/platform.module';
 import { ReportsModule } from '../reports/reports.module';
 import { SalesModule } from '../sales/sales.module';
@@ -18,10 +20,10 @@ import { SubscriptionTransaction, SubscriptionTransactionSchema } from '../sales
 import { User, UserSchema } from '../users/entities/user.entity';
 
 /**
- * AiMcpModule (Sub-phase 18.1)
+ * AiMcpModule (Sub-phase 18.1 & 18.2)
  *
- * Module quản lý kiến trúc Model Context Protocol (MCP) Core trong iMenu.
- * Đóng gói McpRegistryService, 4 Read-only Platform Tools và controller quản trị.
+ * Module quản lý kiến trúc Model Context Protocol (MCP) Core và AI Orchestrator trong iMenu.
+ * Đóng gói McpRegistryService, 4 Read-only Platform Tools, AiOrchestratorService và Controller bảo mật.
  */
 @Module({
   imports: [
@@ -39,8 +41,13 @@ import { User, UserSchema } from '../users/entities/user.entity';
     ActivityLogModule,
   ],
   controllers: [AiMcpController],
-  providers: [McpRegistryService, PlatformMcpTools, SuperAdminGuard],
-  exports: [McpRegistryService, PlatformMcpTools],
+  providers: [
+    McpRegistryService,
+    PlatformMcpTools,
+    AiOrchestratorService,
+    CompositeRateLimiterService,
+    SuperAdminGuard,
+  ],
+  exports: [McpRegistryService, PlatformMcpTools, AiOrchestratorService],
 })
 export class AiMcpModule {}
-

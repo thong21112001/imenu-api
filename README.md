@@ -354,11 +354,15 @@ npm run test:phase11:acceptance
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Kiểm Thử Phase 18 (AI Agent & Backend MCP Core)
+### Kiểm Thử Phase 18 (AI Agent, Backend MCP Core & AI Orchestrator)
 
 ```bash
-# Chạy bộ kiểm thử tự động Phase 18 (MCP Core & 4 Read-Only Platform Tools):
+# Chạy toàn bộ bộ kiểm thử tự động Phase 18 qua Master Runner (15 ca test):
 npm run test:phase18
+
+# Chạy riêng lẻ từng sub-phase:
+npm run test:phase18:mcp            # Sub-phase 18.1: MCP Core & 4 Read-only Platform Tools (7 ca)
+npm run test:phase18:orchestrator   # Sub-phase 18.2: AI Orchestrator, Fallback & Security (8 ca)
 ```
 
 ### Kiểm Thử Phase 16 (E2E Stabilization & Production Readiness)
@@ -393,17 +397,23 @@ npm run test:phase16           # Chạy cả 2 suite Phase 16
 
 ### Trạng Thái Toàn Bộ Dự Án: ✅ ĐÃ NGHIỆM THU — HOÀN TẤT LỘ TRÌNH PHASES 1 -> 18 (SẴN SÀNG PRODUCTION)
 
-Phase 18 (Trí Tuệ Nhân Tạo & Giao Thức Bối Cảnh Mô Hình - Sub-phase 18.1 Backend MCP Core) đã hoàn thành toàn bộ các chỉ tiêu kỹ thuật, đạt 100% tỷ lệ vượt qua ở tất cả các bài kiểm thử hồi quy và sẵn sàng kết nối các AI Agents cấp cao.
+Phase 18 (Trí Tuệ Nhân Tạo & Giao Thức Bối Cảnh Mô Hình - Sub-phase 18.1 MCP Core & Sub-phase 18.2 AI Orchestrator) đã hoàn thành toàn bộ các chỉ tiêu kỹ thuật, đạt 100% tỷ lệ vượt qua ở tất cả các bài kiểm thử hồi quy (15/15 tests PASS) và sẵn sàng vận hành cùng các AI Agents cấp cao.
 
-### Phase 18: Trí Tuệ Nhân Tạo & Giao Thức Bối Cảnh Mô Hình (AI Agent & Model Context Protocol Core)
+### Phase 18: Trí Tuệ Nhân Tạo & Giao Thức Bối Cảnh Mô Hình (AI Agent, Model Context Protocol & AI Orchestrator)
 - **Kiến trúc MCP Core Registry (`src/modules/ai-mcp`)**: Đăng ký và quản lý metadata phân quyền MCP Tools chuẩn JSON Schema (`name`, `description`, `scope: 'PLATFORM' | 'RESTAURANT' | 'BRANCH'`, `isReadOnly: true`, `inputSchema`, `handler`).
 - **4 Công cụ MCP Nền tảng Chuẩn Hóa Chỉ Đọc (Sub-phase 18.1)**:
   - `get_platform_revenue_overview`: Tổng hợp GMV toàn sàn, doanh thu gói SaaS, tốc độ tăng trưởng và Top nhà hàng đóng góp doanh thu.
   - `detect_restaurant_churn_risk`: Quét phát hiện nhà hàng sụt giảm đơn hàng >40% và sắp hết hạn gói cước, tạo cảnh báo rủi ro rời bỏ kèm liên kết điều hướng `/platform/restaurants`.
   - `diagnose_underperforming_restaurants`: Phân tích chuyên sâu nguyên nhân hiệu suất kém từ tỷ lệ hủy đơn/món KDS và phản hồi đánh giá 1-2 sao CSAT.
   - `audit_sales_commissions_anomalies`: Rà soát sổ cái hoa hồng phát hiện nhà hàng ma (0 đơn, 0 GMV) và các bản ghi hoa hồng trùng lặp.
-- **Bảo mật & Phân quyền Đa tầng**: Bảo vệ toàn bộ endpoint `/api/platform/mcp/*` qua `JwtAuthGuard` và `SuperAdminGuard`, chặn đứng 401/403 cho Merchant và Staff.
-- **Kiểm thử tự động 100% PASS**: Bộ test `mcp-registry-and-tools.test.ts` (7 ca test) đạt 100% REGRESSION PASS; tuân thủ Secret-Zero và kiến trúc Zero-Bloat.
+- **Tầng Điều Phối AI Orchestrator & Deterministic Fallback (Sub-phase 18.2)**:
+  - Endpoint `POST /api/platform/ai-mcp/query` & `GET /api/platform/ai-mcp/tools` bảo vệ bởi `JwtAuthGuard` và `SuperAdminGuard`.
+  - Cơ chế Deterministic Fallback hoạt động 100% không phụ thuộc internet/API key ngoài, sinh câu trả lời có cấu trúc chuẩn (`summaryMarkdown`, `kpiCards`, `toolCallsExecuted`, `actionLinks`).
+  - Hỗ trợ Function Calling chuẩn MCP với timeout 10s khi kết nối LLM ngoài (Gemini/OpenAI).
+  - Bảo vệ an toàn: Chặn Prompt Injection, giới hạn tối đa 1000 ký tự (HTTP 400), giới hạn tần suất Rate Limiting theo `AI_RATE_LIMIT_PER_MIN` (HTTP 429).
+  - Tự động lưu vết Audit Trail vào MongoDB `activity_logs` với action `SUPERADMIN_MCP_INSIGHT_QUERY`.
+- **Bảo mật & Phân quyền Đa tầng**: Bảo vệ toàn bộ endpoint `/api/platform/mcp/*` và `/api/platform/ai-mcp/*` qua `JwtAuthGuard` và `SuperAdminGuard`, chặn đứng 401/403 cho Merchant và Staff.
+- **Kiểm thử tự động 100% PASS**: Bộ test `run-all-phase18.ts` (15 ca test: 7 test 18.1 + 8 test 18.2) đạt 100% REGRESSION PASS; tuân thủ Secret-Zero và kiến trúc Zero-Bloat.
 
 ### Phase 17: Đại Tu Giao Diện UI/UX Pixel-Perfect Chuẩn SaaS 2026–2027 (Linear / Stripe / Vercel Aesthetic)
 - **Hệ thống Design Tokens & Thành phần UI cốt lõi (`packages/ui`)**: Chuẩn hóa hệ màu Slate/Zinc trung tính cao cấp, viền mảnh hairline 1px (`border-zinc-200/80`), bo góc `rounded-md` (6px) / `rounded-lg` (8px), chiều cao lưới 4px (`h-8`, `h-9`, `h-10`), triệt tiêu 100% bóng đổ nặng và hiệu ứng hover giật nảy.
@@ -482,4 +492,4 @@ Phase 18 (Trí Tuệ Nhân Tạo & Giao Thức Bối Cảnh Mô Hình - Sub-phas
 | Phase 15: Hoàn Thiện Phân Hệ Superadmin, Chế Độ Hỗ Trợ Kỹ Thuật & Đồng Bộ RBAC | ✅ Nghiệm thu & Đóng chính thức |
 | Phase 16: Ổn Định Hóa E2E Toàn Diện & Sẵn Sàng Vận Hành Production | ✅ Đã nghiệm thu & Đóng chính thức |
 | Phase 17: Đại Tu Giao Diện UI/UX Pixel-Perfect Chuẩn SaaS 2026–2027 | ✅ Nghiệm thu & Đóng chính thức |
-| Phase 18: Trí Tuệ Nhân Tạo & MCP Core Nền Tảng (Sub-phase 18.1) | ✅ Đã nghiệm thu & Hoàn tất Sub-phase 18.1 |
+| Phase 18: Trí Tuệ Nhân Tạo & MCP Core Nền Tảng (Sub-phase 18.1 & 18.2) | ✅ Đã nghiệm thu & Hoàn tất Sub-phase 18.1 & 18.2 |

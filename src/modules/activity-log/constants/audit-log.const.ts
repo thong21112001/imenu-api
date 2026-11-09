@@ -22,4 +22,5 @@ export enum ActivityAction {
   EXPORT = 'export',
   PAY = 'pay',
   CANCEL = 'cancel',
+  SUPERADMIN_MCP_INSIGHT_QUERY = 'SUPERADMIN_MCP_INSIGHT_QUERY',
 }

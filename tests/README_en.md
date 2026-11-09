@@ -135,7 +135,9 @@ tests/
 └── phase-18-superadmin-mcp/           # [✅ ACCEPTED] Phase 18: AI Agent & Backend MCP Core
     ├── README.md                      # Detailed test guide (Vietnamese)
     ├── README_en.md                   # Detailed test guide (English)
-    └── mcp-registry-and-tools.test.ts # Sub-phase 18.1: MCP Core Registry & 4 Read-only Platform Tools (7 tests)
+    ├── mcp-registry-and-tools.test.ts # Sub-phase 18.1: MCP Core Registry & 4 Read-only Platform Tools (7 tests)
+    ├── ai-orchestrator-and-security.test.ts # Sub-phase 18.2: AI Orchestrator, Fallback & Security (8 tests)
+    └── run-all-phase18.ts             # P18-MASTER: Master Test Orchestrator Phase 18 (15 tests)
 ```
 
 ---
@@ -146,6 +148,8 @@ tests/
 | Sub-phase | Test File | Primary Focus | Test Count | Status |
 | :--- | :--- | :--- | :---: | :---: |
 | **18.1 MCP Core Registry & 4 Platform Tools** | `mcp-registry-and-tools.test.ts` | Standardized MCP Registry, 4 Read-only Platform Tools (`get_platform_revenue_overview`, `detect_restaurant_churn_risk`, `diagnose_underperforming_restaurants`, `audit_sales_commissions_anomalies`), protected by `JwtAuthGuard` & `SuperAdminGuard`, 401/403 RBAC barriers, lean JSON preventing OOM | 7 | **PASS** |
+| **18.2 AI Orchestrator, Fallback & Security** | `ai-orchestrator-and-security.test.ts` | Intelligent tool orchestration via Prompt & Chip ID (`REVENUE_OVERVIEW`, `CHURN_RISK`, `COMMISSION_AUDIT`), 100% Deterministic Fallback (summaryMarkdown, kpiCards, actionLinks, toolCallsExecuted), 10s LLM Timeout, Prompt Injection guard, Rate Limiting (429), Audit Trail (`SUPERADMIN_MCP_INSIGHT_QUERY`), RBAC | 8 | **PASS** |
+| **18-MASTER Master Orchestrator** | `run-all-phase18.ts` | Master Test Runner executing both Phase 18 test suites in sequence | 15 | **PASS** |
 
 ### Phase 16 Testing Subsystem (`tests/phase-16-production-readiness/`):
 | Sub-phase | Test File | Primary Focus | Test Count | Status |
@@ -181,11 +185,15 @@ All test execution commands are registered in `package.json`:
 
 ### 🔹 Phase 18 (AI Agent & Backend MCP Core) Tests:
 ```powershell
-# Run all 7 Phase 18 MCP Core & 4 Read-Only Platform Tools tests (Port 3181):
+# Run all 15 Phase 18 tests via Master Runner:
 npm run test:phase18
 
+# Run individual sub-phases:
+npm run test:phase18:mcp            # Sub-phase 18.1: MCP Core & 4 Read-only Tools (Port 3181)
+npm run test:phase18:orchestrator   # Sub-phase 18.2: AI Orchestrator, Fallback & Security (Port 3182)
+
 # Run directly via ts-node:
-npx ts-node tests/phase-18-superadmin-mcp/mcp-registry-and-tools.test.ts
+npx ts-node tests/phase-18-superadmin-mcp/run-all-phase18.ts
 ```
 
 ### 🔹 Phase 16 (Production Readiness, Security & Resilience) Tests:
@@ -375,7 +383,7 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Ecosystem Test Reconciliation Matrix (922 Test Cases)
+## 4. 📊 Ecosystem Test Reconciliation Matrix (930 Test Cases)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -383,7 +391,7 @@ npm run test:regression:phase2-5
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Test Subsystem                 │ Test Scripts / Files         │ Actual Test Cases      │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
-│ Phase 18 AI MCP Core Platform  │ 1 test file (BE MCP Core)    │ 7 (100% PASS)          │
+│ Phase 18 AI MCP Core Platform  │ 2 test files (MCP + Orch)    │ 15 (100% PASS)         │
 │ Phase 16 Production Readiness  │ 3 test files (BE + SDK)      │ 66 (100% PASS)         │
 │ Phase 15 Superadmin Completion │ 5 test files (4 BE + 1 SDK)  │ 75 (100% PASS)         │
 │ Phase 14 Superadmin & Zero Sec │ 4 test files (BE + FE Guard) │ 10 (100% PASS)         │
@@ -397,8 +405,8 @@ npm run test:regression:phase2-5
 │ Phase 6 Orders & POS Suites    │ 9 test files (BE + SDK + E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 test files                 │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 922 TEST CASES (PASS)  │
-│  - Passed in Developer/CI Run:                                 │ 922 / 922 PASS (100%)  │
+│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 930 TEST CASES (PASS)  │
+│  - Passed in Developer/CI Run:                                 │ 930 / 930 PASS (100%)  │
 │  - Failure & Blocked Rates:                                    │ 0 FAIL, 0 BLOCKED      │
 │  - Full 18-Phase Roadmap Acceptance Status:                    │ ✅ 18/18 PHASES PASSED │
 └────────────────────────────────────────────────────────────────────────────────────────┘

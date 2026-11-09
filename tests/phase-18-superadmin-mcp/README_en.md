@@ -1,90 +1,166 @@
-# 🧪 Phase 18 Test Documentation (Sub-phase 18.1): Backend MCP Core & 4 Read-Only Platform Tools
+# 🧪 Phase 18 Test Documentation: Backend MCP Core, 4 Read-Only Platform Tools & AI Orchestrator
 
-> **Languages:** [🇻🇳 Tiếng Việt](README.md) | [🇬🇧 English](README_en.md)  
+> **Language:** [🇻🇳 Tiếng Việt](README.md) | [🇬🇧 English](README_en.md)  
 > **Project:** iMenu API (`imenu-api`)  
 > **Phase:** Phase 18 — AI Agent & Model Context Protocol (MCP)  
-> **Sub-phase:** Sub-phase 18.1 — Backend MCP Core & 4 Read-Only Platform Tools  
-> **Status:** ✅ **ACCEPTED — REGRESSION PASS (7/7 TEST SUITES PASS - 100%)**
+> **Sub-phases:** Sub-phase 18.1 & Sub-phase 18.2 — MCP Core, Platform Tools, AI Orchestrator, Deterministic Fallback & Audit Trail  
+> **Status:** ✅ **ACCEPTED — REGRESSION PASS (15/15 TEST CASES PASS - 100%)**
 
 ---
 
-## 1. 🎯 Objectives & Technical Focus (Sub-phase 18.1)
+## 1. 🎯 Objectives & Technical Focus
 
-Sub-phase 18.1 establishes the standardized Model Context Protocol (MCP) Core at the `imenu-api` Backend, providing a secure, structured bridge for AI Agents and Superadmins to interact safely with iMenu platform-wide operations data:
+Phase 18 establishes a standardized Model Context Protocol (MCP) and intelligent AI Orchestrator foundation at Backend `imenu-api`, allowing SuperAdmin and external AI Agents to securely query system data and receive executive insights in real time:
 
-1. **MCP Core Registry Architecture (`mcp-registry.service.ts`)**:
-   - Manages MCP Tools registry with standardized JSON Schema authorization metadata: `name`, `description`, `scope: 'PLATFORM' | 'RESTAURANT' | 'BRANCH'`, `isReadOnly: true`, `inputSchema`, and execution `handler`.
-   - **Phase 18 Safety Lock**: Activates and permits execution solely for tools scoped to `PLATFORM`. Any non-PLATFORM invocation is strictly rejected with `403 Forbidden`.
-   - Strictly enforces read-only operations (`isReadOnly === true`), safeguarding database state against inadvertent mutations.
+### 1.1. Sub-phase 18.1: MCP Core Registry & 4 Read-Only Platform Tools
+1. **MCP Registry Architecture (`mcp-registry.service.ts`)**:
+   - Manages MCP Tools registry with standardized JSON Schema metadata: `name`, `description`, `scope: 'PLATFORM' | 'RESTAURANT' | 'BRANCH'`, `isReadOnly: true`, `inputSchema`, and `handler`.
+   - **Phase 18 Safety Lock**: Only activates and permits execution for tools with `scope: 'PLATFORM'`. Enforces read-only safety (`isReadOnly === true`).
+2. **Four Standardized Platform Read-Only Tools**:
+   - `get_platform_revenue_overview`: Aggregates platform GMV, SaaS subscription revenue, growth rate, and top contributing restaurants.
+   - `detect_restaurant_churn_risk`: Scans active restaurants experiencing sharp order drops (>40% drop in 7-14 days) or expiring subscriptions, providing direct navigation link `/platform/restaurants`.
+   - `diagnose_underperforming_restaurants`: Analyzes operational bottlenecks (KDS dish cancellation rate, preparation delay, negative 1-2 star CSAT reviews).
+   - `audit_sales_commissions_anomalies`: Audits `commission-ledger` entries, flagging suspicious Sales Rep transactions (e.g. ghost restaurant referrals with 0 real orders).
 
-2. **Standardized Suite of 4 Read-Only Platform Tools**:
-   - `get_platform_revenue_overview`: Connects `PlatformService` & `ReportsService` to consolidate platform GMV, SaaS subscription revenue, 30-day period-over-period growth rate, and top revenue-generating restaurants.
-   - `detect_restaurant_churn_risk`: Scans active restaurants experiencing significant order drops (>40% over the last 7-14 days) or approaching subscription expiration (within 7 days), generating churn risk alerts with direct deep-links to `/platform/restaurants`.
-   - `diagnose_underperforming_restaurants`: Connects `ReportsService` & `ReviewsService` to diagnose operational bottlenecks (KDS kitchen cancellation rates, prep delays, or 1-2 star CSAT reviews).
-   - `audit_sales_commissions_anomalies`: Connects `SalesService` & `ActivityLogService` to review the `commission-ledger`, detecting suspicious Sales Rep activities (ghost restaurants with zero real orders / 0 GMV or duplicated commission entries).
-
-3. **Multi-tier Security & RBAC Enforcement (Privilege Boundary)**:
-   - All `/api/platform/mcp/*` endpoints are protected by `JwtAuthGuard` and `SuperAdminGuard`.
-   - Unauthenticated requests are blocked with `401 Unauthorized`.
-   - Merchant (`restaurant_admin`), Cashier (`cashier`), and Waiter (`waiter`) roles are blocked with `403 Forbidden`.
-
-4. **Zero-Bloat & Zero-Secret Architecture**:
-   - Responses are formatted as lean JSON structures, stripping Mongoose internal documents (`_doc`, `$__`) to prevent Out-Of-Memory (OOM) errors.
-   - Zero hardcoded secrets/passwords across source code and test files, complying 100% with `secret-scanning-guard.test.ts`.
+### 1.2. Sub-phase 18.2: AI Orchestrator, Deterministic Fallback & Audit Trail
+1. **Intelligent Orchestration Layer (`ai-orchestrator.service.ts`)**:
+   - Analyzes natural language prompts or predefined `promptChipId` values (`REVENUE_OVERVIEW`, `CHURN_RISK`, `COMMISSION_AUDIT`, `UNDERPERFORMING_DIAGNOSE`) to dispatch matching MCP Tools.
+2. **Deterministic Rule-based Fallback (Mandatory)**:
+   - When running in Test/CI or local environments without `AI_API_KEY` (or `AI_MCP_PROVIDER=deterministic`), automatically synthesizes structured executive answers directly from live MCP Tool output:
+     - `summaryMarkdown`: Formatted Markdown with VND currency, bullet highlights, and strategic recommendations.
+     - `kpiCards`: Array of executive KPI cards (`title`, `value`, `change`, `status`: positive/negative/neutral/warning).
+     - `toolCallsExecuted`: Audit list of executed MCP Tools and response latency.
+     - `actionLinks`: Actionable navigation links to Superadmin modules (`/platform/revenues`, `/platform/restaurants`, `/platform/sales`).
+3. **LLM Function Calling with 10s Timeout Fallback**:
+   - When `AI_API_KEY` is present, connects to LLMs (Gemini / OpenAI) via function calling with an AbortController timeout of 10s. Automatically falls back to deterministic synthesizer upon any network or timeout failure.
+4. **Security, Rate Limiting & Prompt Injection Guard**:
+   - Strict 1000-character prompt limit.
+   - Prompt injection detector patterns (`ignore instructions`, `system prompt`, `<script>`, `drop table` -> `400 Bad Request`).
+   - Rate limiting via `CompositeRateLimiterService` based on `AI_RATE_LIMIT_PER_MIN` (-> `429 Too Many Requests`).
+   - Dual-guard security: `JwtAuthGuard` & `SuperAdminGuard` (blocks `401` unauthorized and `403` Merchant/Staff).
+5. **Comprehensive Audit Trail**:
+   - Persists `SUPERADMIN_MCP_INSIGHT_QUERY` events into MongoDB `activity_logs` collection (recording userId, prompt, promptChipId, tools called, response time).
 
 ---
 
-## 2. 📁 Folder Structure
+## 2. 📁 Directory Structure
 
 ```text
 src/modules/ai-mcp/
-├── interfaces/
-│   └── mcp-tool.interface.ts          # MCP Tool and execution response data types
 ├── dto/
-│   └── execute-mcp-tool.dto.ts        # DTO for validating MCP Tool invocation payloads
+│   ├── ai-query.dto.ts                # DTO for prompt validation & chip ID
+│   └── execute-mcp-tool.dto.ts        # DTO for direct tool execution
+├── interfaces/
+│   └── mcp-tool.interface.ts          # MCP Tool and execution response interfaces
+├── services/
+│   └── ai-orchestrator.service.ts     # AI Orchestrator, Fallback & Audit Trail service
 ├── tools/
-│   └── platform-mcp.tools.ts          # 4 standardized Read-Only Platform MCP Tools
-├── mcp-registry.service.ts            # Registry managing metadata and dispatching tools
-├── ai-mcp.controller.ts               # RESTful API Controller secured by SuperAdminGuard
-└── ai-mcp.module.ts                   # NestJS module packaging AI-MCP services
+│   └── platform-mcp.tools.ts          # 4 Platform Read-Only MCP Tools
+├── ai-mcp.controller.ts               # RESTful Controller ('/platform/mcp' & '/platform/ai-mcp')
+├── ai-mcp.module.ts                   # NestJS Module packaging AI-MCP features
+└── mcp-registry.service.ts            # MCP Tool Registry service
 
 tests/phase-18-superadmin-mcp/
-├── README.md                          # Detailed test documentation in Vietnamese
-├── README_en.md                       # Detailed test documentation in English
-└── mcp-registry-and-tools.test.ts     # Automated 7-test suite for Phase 18
+├── README.md                          # Vietnamese documentation
+├── README_en.md                       # English documentation
+├── mcp-registry-and-tools.test.ts     # Suite 1: MCP Core & 4 Read-Only Tools (7 tests)
+├── ai-orchestrator-and-security.test.ts # Suite 2: AI Orchestrator & Security (8 tests)
+└── run-all-phase18.ts                 # Master Test Runner orchestrating Phase 18
 ```
 
 ---
 
-## 3. 🧪 Test Matrix & Verification (7/7 PASS)
+## 3. 🌐 API Endpoints Specification
 
-Test file: `tests/phase-18-superadmin-mcp/mcp-registry-and-tools.test.ts` (Port `3181`):
+| Method | Endpoint | RBAC Guard | Description |
+| :---: | :--- | :---: | :--- |
+| `POST` | `/api/platform/ai-mcp/query` | SuperAdmin | Intelligent AI Query with Function Calling & Deterministic Fallback |
+| `GET` | `/api/platform/ai-mcp/tools` | SuperAdmin | List all standardized platform MCP Tools |
+| `GET` | `/api/platform/mcp/tools/:name` | SuperAdmin | Retrieve tool schema and metadata by tool name |
+| `POST` | `/api/platform/mcp/execute` | SuperAdmin | Directly execute an MCP platform tool (Read-Only) |
 
-| # | Test Scenario | Acceptance Criteria | Result |
-| :---: | :--- | :--- | :---: |
-| **TEST 1** | Register 4 MCP Platform Tools | Verify registry loads 4 tools with `scope: 'PLATFORM'`, `isReadOnly: true`, and valid `inputSchema` | ✅ **PASS** |
-| **TEST 2** | `get_platform_revenue_overview` | Verify platform GMV, SaaS revenue, growth rate, and top restaurants returned in lean JSON format | ✅ **PASS** |
-| **TEST 3** | `detect_restaurant_churn_risk` | Verify detection of >40% order drop and expiring subscriptions with deep link `/platform/restaurants` | ✅ **PASS** |
-| **TEST 4** | `diagnose_underperforming_restaurants` | Verify operational diagnostics on KDS item cancellations and negative 1-2 star CSAT reviews | ✅ **PASS** |
-| **TEST 5** | `audit_sales_commissions_anomalies` | Verify detection of ghost restaurants (0 orders, 0 GMV) and duplicate commission ledger entries | ✅ **PASS** |
-| **TEST 6** | Security & RBAC Enforcement | Verify blocking with `401 Unauthorized` (no token), `403 Forbidden` (Merchant, Staff), and `200 OK` for SuperAdmin | ✅ **PASS** |
-| **TEST 7** | Registry Hardening & Boundaries | Verify `404 Not Found` for non-existent tools and `403 Forbidden` for non-PLATFORM scopes | ✅ **PASS** |
+### Sample Request Payload (`POST /api/platform/ai-mcp/query`):
+```json
+{
+  "prompt": "How is our platform revenue and GMV performing this month?",
+  "promptChipId": "REVENUE_OVERVIEW"
+}
+```
+
+### Standard JSON Response:
+```json
+{
+  "success": true,
+  "mode": "DETERMINISTIC_FALLBACK",
+  "provider": "deterministic",
+  "query": "How is our platform revenue and GMV performing this month?",
+  "promptChipId": "REVENUE_OVERVIEW",
+  "summaryMarkdown": "### 📊 Platform Revenue & GMV Executive Overview\n...",
+  "kpiCards": [
+    { "title": "Total Platform GMV", "value": "12,400,000 đ", "change": "+15% vs previous period", "status": "positive" },
+    { "title": "Subscription SaaS Revenue", "value": "4,800,000 đ", "change": "+20%", "status": "positive" },
+    { "title": "Completed Orders", "value": "120", "change": "135 total orders", "status": "neutral" }
+  ],
+  "toolCallsExecuted": [
+    { "tool": "get_platform_revenue_overview", "arguments": {}, "durationMs": 18, "success": true }
+  ],
+  "actionLinks": [
+    { "label": "View Platform Revenue Report", "url": "/platform/revenues", "type": "primary" },
+    { "label": "Manage Restaurants", "url": "/platform/restaurants", "type": "secondary" }
+  ],
+  "responseTimeMs": 35
+}
+```
 
 ---
 
-## 4. ⚡ Execution Commands
+## 4. ⚙️ Environment Variables (.env)
+
+| Variable Name | Default | Description |
+| :--- | :--- | :--- |
+| `AI_MCP_PROVIDER` | `deterministic` | Provider mode (`deterministic`, `gemini`, `openai`) |
+| `AI_API_KEY` | *(empty)* | External LLM API key (leave empty for CI/Tests) |
+| `AI_MODEL_NAME` | `gemini-1.5-flash` | Target LLM model name |
+| `AI_RATE_LIMIT_PER_MIN` | `20` | Maximum queries allowed per minute |
+
+---
+
+## 5. 🧪 Test Matrix (15/15 PASS)
+
+### Suite 1: `mcp-registry-and-tools.test.ts` (Port 3181 - 7 Tests)
+- **TEST 1**: Registers 4 Platform MCP Tools (scope: `PLATFORM`, `isReadOnly: true`, JSON Schema).
+- **TEST 2**: Executes `get_platform_revenue_overview` returning lean JSON GMV, SaaS, and Top restaurants.
+- **TEST 3**: Executes `detect_restaurant_churn_risk` detecting churning restaurants with `/platform/restaurants` link.
+- **TEST 4**: Executes `diagnose_underperforming_restaurants` analyzing KDS cancellations & low CSAT.
+- **TEST 5**: Executes `audit_sales_commissions_anomalies` detecting ghost referral anomalies.
+- **TEST 6**: Enforces RBAC blocking 401 Unauthorized and 403 Forbidden for Merchant/Staff.
+- **TEST 7**: Registry safety bounds blocking unauthorized scopes and returning 404 for unknown tools.
+
+### Suite 2: `ai-orchestrator-and-security.test.ts` (Port 3182 - 8 Tests)
+- **TEST 1**: AI Query revenue scenario (`REVENUE_OVERVIEW`) -> KPI cards, summary markdown, `/platform/revenues`.
+- **TEST 2**: AI Query churn scenario (`CHURN_RISK`) -> churn risk alerts, `/platform/restaurants`.
+- **TEST 3**: AI Query sales audit scenario (`COMMISSION_AUDIT`) -> commission anomalies, `/platform/sales`.
+- **TEST 4**: Intent keyword matching automatically dispatches MCP tools without prompt chip ID.
+- **TEST 5**: Prompt Security Guard rejects prompts >1000 characters and blocks injection attacks (HTTP 400).
+- **TEST 6**: Verifies Audit Log persistence in MongoDB collection `activity_logs` (`SUPERADMIN_MCP_INSIGHT_QUERY`).
+- **TEST 7**: Rate Limiting Guard triggers on request bursts (HTTP 429 Too Many Requests).
+- **TEST 8**: Strict RBAC Guard blocks unauthenticated users (401) and non-SuperAdmins (403).
+
+---
+
+## 6. ⚡ Test Execution Commands
 
 ```powershell
-# Run automated Phase 18 test suite:
+# 1. Run all 15 tests via Master Runner:
 npm run test:phase18
 
-# Run directly via ts-node:
-npx ts-node tests/phase-18-superadmin-mcp/mcp-registry-and-tools.test.ts
+# 2. Run individual test suites:
+npm run test:phase18:mcp            # Sub-phase 18.1
+npm run test:phase18:orchestrator   # Sub-phase 18.2
 
-# Verify Zero Static Secret leakage:
+# 3. Verify Zero-Secret Hardcoding compliance:
 npm run test:phase14:secrets
 
-# Verify Master README documentation integrity:
+# 4. Verify Master README Documentation integrity:
 npm run test:phase14:docs
 ```
-

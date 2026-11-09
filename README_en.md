@@ -355,11 +355,15 @@ npm run test:phase11:acceptance
 └───────────────────────────────────────────────────────┴────────────────┘
 ```
 
-### Phase 18 Testing (AI Agent & Backend MCP Core)
+### Phase 18 Testing (AI Agent, Backend MCP Core & AI Orchestrator)
 
 ```bash
-# Run automated Phase 18 test suite (MCP Core & 4 Read-Only Platform Tools):
+# Run all automated Phase 18 test suites via Master Runner (15 tests):
 npm run test:phase18
+
+# Run individual sub-phases:
+npm run test:phase18:mcp            # Sub-phase 18.1: MCP Core & 4 Read-only Platform Tools (7 tests)
+npm run test:phase18:orchestrator   # Sub-phase 18.2: AI Orchestrator, Fallback & Security (8 tests)
 ```
 
 ### Phase 16 Testing (E2E Stabilization & Production Readiness)
@@ -394,17 +398,23 @@ npm run test:phase16           # Run both Phase 16 suites
 
 ### Full Project Status: ✅ ACCEPTED — FULL ROADMAP PHASES 1 -> 18 COMPLETED (PRODUCTION READY)
 
-Phase 18 (AI Agent & Model Context Protocol Core - Sub-phase 18.1 Backend MCP Core) has completed all technical goals, achieved 100% pass rates across all regression test suites, and is fully ready for high-level AI Agents integration.
+Phase 18 (AI Agent & Model Context Protocol Core - Sub-phase 18.1 MCP Core & Sub-phase 18.2 AI Orchestrator) has completed all technical goals, achieved 100% pass rates across all regression test suites (15/15 tests PASS), and is fully ready for high-level AI Agents integration.
 
-### Phase 18: AI Agent & Model Context Protocol Core (MCP Core)
+### Phase 18: AI Agent, Model Context Protocol & AI Orchestrator
 - **MCP Core Registry Architecture (`src/modules/ai-mcp`)**: Standardized registry managing MCP Tools metadata with JSON Schema (`name`, `description`, `scope: 'PLATFORM' | 'RESTAURANT' | 'BRANCH'`, `isReadOnly: true`, `inputSchema`, `handler`).
 - **4 Standardized Read-Only Platform MCP Tools (Sub-phase 18.1)**:
   - `get_platform_revenue_overview`: Consolidates platform GMV, SaaS subscription revenue, growth rate, and top revenue-contributing restaurants.
   - `detect_restaurant_churn_risk`: Scans active restaurants with >40% order drop or approaching subscription expiration, generating churn alerts with deep links to `/platform/restaurants`.
   - `diagnose_underperforming_restaurants`: Deeply analyzes low performance causes from KDS kitchen cancellation rates and negative 1-2 star CSAT reviews.
   - `audit_sales_commissions_anomalies`: Audits commission ledger detecting ghost restaurants (0 real orders, 0 GMV) and duplicate commission records.
-- **Multi-tier Security & RBAC Enforcement**: Secures all `/api/platform/mcp/*` endpoints via `JwtAuthGuard` and `SuperAdminGuard`, strictly blocking 401/403 for Merchant and Staff.
-- **100% Automated Test Pass**: `mcp-registry-and-tools.test.ts` (7 tests) achieves 100% REGRESSION PASS, maintaining Zero-Secret and Zero-Bloat architectural standards.
+- **AI Orchestrator & Deterministic Fallback (Sub-phase 18.2)**:
+  - Endpoints `POST /api/platform/ai-mcp/query` & `GET /api/platform/ai-mcp/tools` guarded by `JwtAuthGuard` & `SuperAdminGuard`.
+  - 100% Deterministic Fallback producing structured outputs (`summaryMarkdown`, `kpiCards`, `toolCallsExecuted`, `actionLinks`) without external API dependencies.
+  - MCP Function Calling with 10s timeout support for external LLM connections (Gemini/OpenAI).
+  - Security hardening: Prompt Injection detection, length limit <= 1000 characters (HTTP 400), rate limiting via `AI_RATE_LIMIT_PER_MIN` (HTTP 429).
+  - Comprehensive Audit Trail: Logs `SUPERADMIN_MCP_INSIGHT_QUERY` in MongoDB `activity_logs`.
+- **Multi-tier Security & RBAC Enforcement**: Secures all `/api/platform/mcp/*` and `/api/platform/ai-mcp/*` endpoints via `JwtAuthGuard` and `SuperAdminGuard`, strictly blocking 401/403 for Merchant and Staff.
+- **100% Automated Test Pass**: Master runner `run-all-phase18.ts` (15 tests: 7 in 18.1 + 8 in 18.2) achieves 100% REGRESSION PASS, maintaining Zero-Secret and Zero-Bloat architectural standards.
 
 ### Phase 17: SaaS 2026–2027 Pixel-Perfect UI/UX Overhaul (Linear / Stripe / Vercel Aesthetic)
 - **Minimalist Design Tokens & Core UI Components (`packages/ui`)**: High-end neutral Slate/Zinc palette, 1px hairline borders (`border-zinc-200/80`), standardized `rounded-md` (6px) / `rounded-lg` (8px), 4px grid heights (`h-8`, `h-9`, `h-10`), 100% elimination of heavy shadows and jumping hover animations.
@@ -482,4 +492,4 @@ Phase 18 (AI Agent & Model Context Protocol Core - Sub-phase 18.1 Backend MCP Co
 | Phase 15: Superadmin Completion, Impersonation Support Mode & Multi-Role RBAC Sync | ✅ Accepted & Officially Closed |
 | Phase 16: E2E Stabilization & Production Readiness | ✅ Accepted & Officially Closed |
 | Phase 17: SaaS 2026–2027 Pixel-Perfect UI/UX Overhaul | ✅ Accepted & Officially Closed |
-| Phase 18: AI Agent & Platform Model Context Protocol (Sub-phase 18.1) | ✅ Accepted & Completed Sub-phase 18.1 |
+| Phase 18: AI Agent & Platform Model Context Protocol (Sub-phase 18.1 & 18.2) | ✅ Accepted & Completed Sub-phase 18.1 & 18.2 |
