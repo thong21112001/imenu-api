@@ -123,19 +123,29 @@ tests/
 │   ├── readme-documentation-integrity.test.ts # P14-03: Master README Parity & Script Alignment (AUD-14.5) (4 tests)
 │   └── run-all-phase14.ts             # P14-MASTER: Master Test Orchestrator Phase 14 (10 tests)
 │
-└── phase-15-superadmin-completion/    # [✅ ACCEPTED] Phase 15: Superadmin Completion, Support Mode & RBAC Sync
+├── phase-15-superadmin-completion/    # [✅ ACCEPTED] Phase 15: Superadmin Completion, Support Mode & RBAC Sync
+│   ├── README.md                      # Detailed test guide (Vietnamese)
+│   ├── README_en.md                   # Detailed test guide (English)
+│   ├── superadmin-restaurant-lifecycle.test.ts   # P15-01: Restaurant lifecycle, plans & audit notes (5 tests)
+│   ├── superadmin-sales-management.test.ts       # P15-02: Sales rep management, policies & applications (4 tests)
+│   ├── superadmin-payout-and-commissions.test.ts # P15-03: Platform commission ledger & atomic payout batch (4 tests)
+│   ├── superadmin-impersonation-rbac.test.ts     # P15-04: Support impersonation & strict RBAC isolation (5 tests)
+│   └── run-all-phase15.ts                        # P15-MASTER: Master Test Orchestrator Phase 15 (75 tests)
+│
+└── phase-18-superadmin-mcp/           # [✅ ACCEPTED] Phase 18: AI Agent & Backend MCP Core
     ├── README.md                      # Detailed test guide (Vietnamese)
     ├── README_en.md                   # Detailed test guide (English)
-    ├── superadmin-restaurant-lifecycle.test.ts   # P15-01: Restaurant lifecycle, plans & audit notes (5 tests)
-    ├── superadmin-sales-management.test.ts       # P15-02: Sales rep management, policies & applications (4 tests)
-    ├── superadmin-payout-and-commissions.test.ts # P15-03: Platform commission ledger & atomic payout batch (4 tests)
-    ├── superadmin-impersonation-rbac.test.ts     # P15-04: Support impersonation & strict RBAC isolation (5 tests)
-    └── run-all-phase15.ts                        # P15-MASTER: Master Test Orchestrator Phase 15 (75 tests)
+    └── mcp-registry-and-tools.test.ts # Sub-phase 18.1: MCP Core Registry & 4 Read-only Platform Tools (7 tests)
 ```
 
 ---
 
-## 2. 🗺️ Phase 15 & Phase 14 Sub-phase Mapping
+## 2. 🗺️ Phase 18, 16, 15 & Phase 14 Sub-phase Mapping
+
+### Phase 18 Testing Subsystem (`tests/phase-18-superadmin-mcp/`):
+| Sub-phase | Test File | Primary Focus | Test Count | Status |
+| :--- | :--- | :--- | :---: | :---: |
+| **18.1 MCP Core Registry & 4 Platform Tools** | `mcp-registry-and-tools.test.ts` | Standardized MCP Registry, 4 Read-only Platform Tools (`get_platform_revenue_overview`, `detect_restaurant_churn_risk`, `diagnose_underperforming_restaurants`, `audit_sales_commissions_anomalies`), protected by `JwtAuthGuard` & `SuperAdminGuard`, 401/403 RBAC barriers, lean JSON preventing OOM | 7 | **PASS** |
 
 ### Phase 16 Testing Subsystem (`tests/phase-16-production-readiness/`):
 | Sub-phase | Test File | Primary Focus | Test Count | Status |
@@ -168,6 +178,15 @@ tests/
 ## 3. ⚡ Master Test Commands
 
 All test execution commands are registered in `package.json`:
+
+### 🔹 Phase 18 (AI Agent & Backend MCP Core) Tests:
+```powershell
+# Run all 7 Phase 18 MCP Core & 4 Read-Only Platform Tools tests (Port 3181):
+npm run test:phase18
+
+# Run directly via ts-node:
+npx ts-node tests/phase-18-superadmin-mcp/mcp-registry-and-tools.test.ts
+```
 
 ### 🔹 Phase 16 (Production Readiness, Security & Resilience) Tests:
 ```powershell
@@ -356,14 +375,15 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Ecosystem Test Reconciliation Matrix (915 Test Cases)
+## 4. 📊 Ecosystem Test Reconciliation Matrix (922 Test Cases)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 16)                                │
+│  IMENU ECOSYSTEM AUTOMATED TEST MATRIX (PHASES 2 -> 18)                                │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Test Subsystem                 │ Test Scripts / Files         │ Actual Test Cases      │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
+│ Phase 18 AI MCP Core Platform  │ 1 test file (BE MCP Core)    │ 7 (100% PASS)          │
 │ Phase 16 Production Readiness  │ 3 test files (BE + SDK)      │ 66 (100% PASS)         │
 │ Phase 15 Superadmin Completion │ 5 test files (4 BE + 1 SDK)  │ 75 (100% PASS)         │
 │ Phase 14 Superadmin & Zero Sec │ 4 test files (BE + FE Guard) │ 10 (100% PASS)         │
@@ -377,10 +397,10 @@ npm run test:regression:phase2-5
 │ Phase 6 Orders & POS Suites    │ 9 test files (BE + SDK + E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 test files                 │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 915 TEST CASES (PASS)  │
-│  - Passed in Developer/CI Run:                                 │ 915 / 915 PASS (100%)  │
+│ ECOSYSTEM TOTAL (FULL ECOSYSTEM ROADMAP ACCEPTED)              │ 922 TEST CASES (PASS)  │
+│  - Passed in Developer/CI Run:                                 │ 922 / 922 PASS (100%)  │
 │  - Failure & Blocked Rates:                                    │ 0 FAIL, 0 BLOCKED      │
-│  - Full 16-Phase Roadmap Acceptance Status:                    │ ✅ 16/16 PHASES PASSED │
+│  - Full 18-Phase Roadmap Acceptance Status:                    │ ✅ 18/18 PHASES PASSED │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

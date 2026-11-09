@@ -24,4 +24,8 @@ export const ENV = {
   SUPERADMIN_PHONE: process.env.SUPERADMIN_PHONE || '0900000000',
   DEMO_USER_PASSWORD: process.env.DEMO_USER_PASSWORD || '',
   DEFAULT_SALES_PASSWORD: process.env.DEFAULT_SALES_PASSWORD || process.env.DEMO_USER_PASSWORD || '',
+  // Cau hinh AI & MCP (Model Context Protocol - Phase 18)
+  AI_MCP_PROVIDER: process.env.AI_MCP_PROVIDER || 'gemini',
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
 };
