@@ -28,6 +28,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { CounterModule } from './shared/common/counter/counter.module';
 import { SalesModule } from './modules/sales/sales.module';
 import { PlatformModule } from './modules/platform/platform.module';
+import { AiMcpModule } from './modules/ai-mcp/ai-mcp.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { PlatformModule } from './modules/platform/platform.module';
     ReviewsModule,
     SalesModule,
     PlatformModule,
+    AiMcpModule,
   ],
   controllers: [AppController],
   providers: [

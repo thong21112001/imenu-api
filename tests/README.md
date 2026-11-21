@@ -123,19 +123,33 @@ tests/
 │   ├── readme-documentation-integrity.test.ts # P14-03: Đồng bộ toàn diện 6 Master READMEs & scripts (AUD-14.5) (4 ca)
 │   └── run-all-phase14.ts             # P14-MASTER: Master Test Orchestrator Phase 14 (10 ca test)
 │
-└── phase-15-superadmin-completion/    # [✅ ĐÃ HOÀN THIỆN] Phase 15: Hoàn Thiện Superadmin, Chế Độ Hỗ Trợ & Đồng Bộ RBAC
-    ├── README.md                      # Hướng dẫn kiểm thử Phase 15 (Tiếng Việt)
-    ├── README_en.md                   # Comprehensive Phase 15 test guide (English)
-    ├── superadmin-restaurant-lifecycle.test.ts   # P15-01: Vòng đời nhà hàng, gói cước & lịch sử (5 ca)
-    ├── superadmin-sales-management.test.ts       # P15-02: Quản lý NVKD, hoa hồng & duyệt ứng tuyển (4 ca)
-    ├── superadmin-payout-and-commissions.test.ts # P15-03: Sổ cái hoa hồng & Payout batch nguyên tử (4 ca)
-    ├── superadmin-impersonation-rbac.test.ts     # P15-04: Chế độ hỗ trợ Impersonation & phân quyền RBAC (5 ca)
-    └── run-all-phase15.ts                        # P15-MASTER: Master Test Orchestrator Phase 15 (75 ca test)
+├── phase-15-superadmin-completion/    # [✅ ĐÃ HOÀN THIỆN] Phase 15: Hoàn Thiện Superadmin, Chế Độ Hỗ Trợ & Đồng Bộ RBAC
+│   ├── README.md                      # Hướng dẫn kiểm thử Phase 15 (Tiếng Việt)
+│   ├── README_en.md                   # Comprehensive Phase 15 test guide (English)
+│   ├── superadmin-restaurant-lifecycle.test.ts   # P15-01: Vòng đời nhà hàng, gói cước & lịch sử (5 ca)
+│   ├── superadmin-sales-management.test.ts       # P15-02: Quản lý NVKD, hoa hồng & duyệt ứng tuyển (4 ca)
+│   ├── superadmin-payout-and-commissions.test.ts # P15-03: Sổ cái hoa hồng & Payout batch nguyên tử (4 ca)
+│   ├── superadmin-impersonation-rbac.test.ts     # P15-04: Chế độ hỗ trợ Impersonation & phân quyền RBAC (5 ca)
+│   └── run-all-phase15.ts                        # P15-MASTER: Master Test Orchestrator Phase 15 (75 ca test)
+│
+└── phase-18-superadmin-mcp/           # [✅ ĐÃ HOÀN THIỆN] Phase 18: Trí Tuệ Nhân Tạo & MCP Core Superadmin
+    ├── README.md                      # Hướng dẫn kiểm thử Phase 18 (Tiếng Việt)
+    ├── README_en.md                   # Comprehensive Phase 18 test guide (English)
+    ├── mcp-registry-and-tools.test.ts # Sub-phase 18.1: MCP Core Registry & 4 Read-only Platform Tools (7 ca)
+    ├── ai-orchestrator-and-security.test.ts # Sub-phase 18.2: AI Orchestrator, Fallback & Security (8 ca)
+    └── run-all-phase18.ts             # P18-MASTER: Master Test Orchestrator Phase 18 (15 ca test)
 ```
 
 ---
 
-## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 15 & Phase 14 (Phase Sub-phase Mapping)
+## 2. 🗺️ Ánh Xạ Các Sub-phase Của Phase 18, Phase 16, Phase 15 & Phase 14 (Phase Sub-phase Mapping)
+
+### Phân Hệ Kiểm Thử Phase 18 (`tests/phase-18-superadmin-mcp/`):
+| Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
+| :--- | :--- | :--- | :---: | :---: |
+| **18.1 MCP Core Registry & 4 Platform Tools** | `mcp-registry-and-tools.test.ts` | Đăng ký chuẩn MCP Registry, 4 Read-only Platform Tools (`get_platform_revenue_overview`, `detect_restaurant_churn_risk`, `diagnose_underperforming_restaurants`, `audit_sales_commissions_anomalies`), bảo vệ bởi `JwtAuthGuard` & `SuperAdminGuard`, chặn 401/403 cho Merchant/Staff, JSON tinh gọn chống OOM | 7 | **PASS** |
+| **18.2 AI Orchestrator, Fallback & Security** | `ai-orchestrator-and-security.test.ts` | Điều phối thông minh qua Prompt & Chip ID (`REVENUE_OVERVIEW`, `CHURN_RISK`, `COMMISSION_AUDIT`), Fallback 100% Deterministic (summaryMarkdown, kpiCards, actionLinks, toolCallsExecuted), Timeout 10s LLM, Prompt Injection guard, Rate Limiting (429), Audit Trail (`SUPERADMIN_MCP_INSIGHT_QUERY`), RBAC | 8 | **PASS** |
+| **18-MASTER Master Orchestrator** | `run-all-phase18.ts` | Master Test Runner điều phối tuần tự 2 test suites của Phase 18 | 15 | **PASS** |
 
 ### Phân Hệ Kiểm Thử Phase 16 (`tests/phase-16-production-readiness/`):
 | Phân hệ / Sub-phase | Tệp Kiểm Thử | Trọng Tâm Nghiệp Vụ | Số Ca Test | Trạng Thái |
@@ -168,6 +182,19 @@ tests/
 ## 3. ⚡ Danh Mục Lệnh Thực Thi Kiểm Thử (Master Test Commands)
 
 Tất cả các lệnh kiểm thử được đăng ký tại `package.json`:
+
+### 🔹 Kiểm Thử Phase 18 (AI Agent & Backend MCP Core):
+```powershell
+# Chạy toàn bộ 15 ca kiểm thử Phase 18 qua Master Runner:
+npm run test:phase18
+
+# Chạy riêng lẻ từng sub-phase:
+npm run test:phase18:mcp            # Sub-phase 18.1: MCP Core & 4 Read-only Tools (Port 3181)
+npm run test:phase18:orchestrator   # Sub-phase 18.2: AI Orchestrator, Fallback & Security (Port 3182)
+
+# Chạy kiểm thử trực tiếp qua ts-node:
+npx ts-node tests/phase-18-superadmin-mcp/run-all-phase18.ts
+```
 
 ### 🔹 Kiểm Thử Phase 16 (Production Readiness, Security & Resilience):
 ```powershell
@@ -356,14 +383,15 @@ npm run test:regression:phase2-5
 
 ---
 
-## 4. 📊 Đối Chiếu 915 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
+## 4. 📊 Đối Chiếu 922 Ca Test Hệ Sinh Thái (Test Reconciliation Matrix)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  TỔNG HỢP 915 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 16)                      │
+│  TỔNG HỢP 930 CA TEST TỰ ĐỘNG HỆ SINH THÁI IMENU (PHASES 2 -> 18)                      │
 ├────────────────────────────────┬──────────────────────────────┬────────────────────────┤
 │ Phân Hệ Kiểm Thử               │ Số Tệp / Kịch Bản            │ Số Ca Test Thực Tế     │
 ├────────────────────────────────┼──────────────────────────────┼────────────────────────┤
+│ Phase 18 AI MCP Core Platform  │ 2 tệp kiểm thử (MCP + Orch)  │ 15 (100% PASS)         │
 │ Phase 16 Production Readiness  │ 3 tệp kiểm thử (BE + SDK)    │ 66 (100% PASS)         │
 │ Phase 15 Superadmin Completion │ 5 tệp kiểm thử (4 BE + 1 SDK)│ 75 (100% PASS)         │
 │ Phase 14 Superadmin & Zero Sec │ 4 tệp kiểm thử (BE + FE Guard│ 10 (100% PASS)         │
@@ -377,10 +405,10 @@ npm run test:regression:phase2-5
 │ Phase 6 Orders & POS Suites    │ 9 tệp kiểm thử (BE + SDK+E2E)│ 279                    │
 │ Phases 2–5 Regression Suites   │ 5 tệp kiểm thử               │ 74                     │
 ├────────────────────────────────┴──────────────────────────────┴────────────────────────┤
-│ TỔNG CỘNG HỆ SINH THÁI (FULL ECOSYSTEM ROADMAP ACCEPTED)       │ 915 CA TEST (PASS)     │
-│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 915 / 915 PASS (100%)  │
+│ TỔNG CỘNG HỆ SINH THÁI (FULL ECOSYSTEM ROADMAP ACCEPTED)       │ 930 CA TEST (PASS)     │
+│  - Số ca test đã vượt qua tuyệt đối (Developer/CI Run):        │ 930 / 930 PASS (100%)  │
 │  - Tỷ lệ thất bại & chặn (Fail/Blocked):                       │ 0 FAIL, 0 BLOCKED      │
-│  - Trạng thái nghiệm thu toàn bộ lộ trình:                     │ ✅ 16/16 PHASES HOÀN TẤT│
+│  - Trạng thái nghiệm thu toàn bộ lộ trình:                     │ ✅ 18/18 PHASES HOÀN TẤT│
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
